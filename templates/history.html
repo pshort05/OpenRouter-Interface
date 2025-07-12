@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Session History{% endblock %}
+
+{% block content %}
+<h1>Session History</h1>
+
+<div style="margin-bottom: 20px;">
+    {% if responses %}
+        <a href="{{ url_for('download_history') }}" class="btn">Download as Markdown</a>
+        <form method="POST" action="{{ url_for('clear_history') }}" style="display: inline;" 
+              onsubmit="return confirm('Are you sure you want to clear the session history?');">
+            <button type="submit" class="btn btn-danger">Clear History</button>
+        </form>
+        <p><strong>{{ responses|length }}</strong> response(s) in this session</p>
+    {% else %}
+        <div class="alert alert-info">
+            No responses in this session yet. <a href="{{ url_for('index') }}">Run some prompts</a> to see them here.
+        </div>
+    {% endif %}
+</div>
+
+{% for response in responses %}
+<div class="history-item">
+    <div class="history-header">
+        <strong>{{ response.prompt_name }}</strong> - {{ response.timestamp }}<br>
+        <small>Input: {{ response.input_name }} ({{ response.input_length }} chars) | 
+               Response: {{ response.response_length }} chars</small>
+    </div>
+    <div class="history-content">
+        <pre>{{ response.response }}</pre>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

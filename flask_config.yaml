@@ -1,0 +1,9 @@
+api_base_url: https://openrouter.ai/api/v1
+log_level: INFO
+log_to_file: false
+max_content_length_mb: 16
+max_tokens: 10000
+model: anthropic/claude-sonnet-4
+payload_file: prompt_runner_flask.payload.json
+session_timeout_hours: 24
+temperature: 0.8

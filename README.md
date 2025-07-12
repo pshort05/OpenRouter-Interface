@@ -1,353 +1,361 @@
-# OpenRouter Interface Suite - Modular Architecture
+# OpenRouter Prompt Runner Flask Application
 
-This suite provides two main applications for working with the OpenRouter API: a text editor for processing files and a prompt runner for executing JSON-based prompts. Both applications have been refactored into modular architectures for better maintainability and organization.
+A comprehensive Flask web application for managing and executing JSON prompt files using the OpenRouter API. Features include configuration management, prompts registry, session history, and a modern web interface.
 
-## Applications Overview
+## 🤖 Supported AI Models
 
-### 1. OpenRouter Text Editor
-Processes text files based on action specifications using the OpenRouter API. Includes advanced features like text chunking for large files and compliance checking.
+This application works with 400+ AI models through OpenRouter.ai, including the most popular LLMs:
 
-### 2. OpenRouter Prompt Runner
-Scans for JSON prompt files and executes them against input files using the OpenRouter API. Designed for interactive prompt testing and analysis with comprehensive output handling.
+### Top 12 Most Used Models:
+1. **OpenAI**
+   - GPT-4o: `openai/gpt-4o-2024-11-20`
+   - GPT-4.5: `openai/gpt-4.5-preview`
+   - o3-mini: `openai/o3-mini`
 
-## File Structure
+2. **Claude (Anthropic)**
+   - Claude 4 Sonnet: `anthropic/claude-4-sonnet-20250522`
+   - Claude 3.7 Sonnet: `anthropic/claude-3.7-sonnet`
+   - Claude 3.5 Sonnet: `anthropic/claude-3.5-sonnet:beta`
 
+3. **Gemini (Google)**
+   - Gemini 2.5 Pro: `google/gemini-2.5-pro-exp-03-25`
+   - Gemini 2.0 Flash: `google/gemini-2.0-flash-experimental`
+   - Gemini Pro: `google/gemini-pro-1.5-latest`
+
+4. **DeepSeek**
+   - DeepSeek R1: `deepseek/deepseek-r1`
+   - DeepSeek V3: `deepseek/deepseek-chat-v3-0324`
+   - DeepSeek Coder: `deepseek/deepseek-coder`
+
+5. **Llama (Meta)**
+   - Llama 4 Maverick: `meta-llama/llama-4-maverick`
+   - Llama 3.3 70B: `meta-llama/llama-3.3-70b-instruct`
+   - Llama 3.1 Nemotron: `nvidia/llama-3.1-nemotron-70b-instruct`
+
+6. **Grok (xAI)**
+   - Grok Beta: `x-ai/grok-beta`
+   - Grok 2: `x-ai/grok-2-1212`
+
+7. **Qwen (Alibaba)**
+   - Qwen 3: `qwen/qwen-3-turbo`
+   - Qwen 2.5 Coder: `qwen/qwen-2.5-coder-32b-instruct`
+   - QwQ: `qwen/qwq-32b-preview`
+
+8. **Mistral**
+   - Mistral Large: `mistralai/mistral-large-2411`
+   - Mistral Small: `mistralai/mistral-small-3.1-24b-instruct`
+   - Pixtral: `mistralai/pixtral-12b-2409`
+
+9. **Cohere**
+   - Command R+: `cohere/command-r-plus`
+   - Command R7B: `cohere/command-r7b-12-2024`
+   - Command R: `cohere/command-r`
+
+10. **Amazon Nova**
+    - Nova Pro: `amazon/nova-pro-v1`
+    - Nova Lite: `amazon/nova-lite-v1`
+    - Nova Micro: `amazon/nova-micro-v1`
+
+11. **Dolphin (Cognitive Computations)**
+    - Dolphin Mixtral 8x7B: `cognitivecomputations/dolphin-mixtral-8x7b`
+    - Dolphin Mixtral 8x22B: `cognitivecomputations/dolphin-mixtral-8x22b`
+    - Dolphin 2.6 Mixtral: `cognitivecomputations/dolphin-2.6-mixtral-8x7b`
+
+12. **Venice.ai Models** (via direct API or OpenRouter)
+    - Venice Large (Qwen3): Use Venice.ai API directly
+    - Venice Medium: Use Venice.ai API directly  
+    - Venice Small: Use Venice.ai API directly
+    - *Note: Venice.ai has its own API separate from OpenRouter*
+    - *Website: https://venice.ai*
+    - *API URL: https://api.venice.ai/api/v1*
+
+### Free Models Available:
+Many models offer free tiers with rate limits. Add `:free` suffix to model names:
+- `deepseek/deepseek-chat:free`
+- `meta-llama/llama-4-maverick:free`
+- `google/gemini-2.5-pro-exp-03-25:free`
+- `mistralai/mistral-small-3.1-24b-instruct:free`
+- `cognitivecomputations/dolphin-mixtral-8x7b:free`
+
+### Using Venice.ai Models:
+Venice.ai provides private, uncensored AI models through their own API. To use Venice models:
+
+1. **Direct Venice API**: Set up a Venice.ai account and use their API directly
+2. **Model Configuration**: Update `api_base_url` to `https://api.venice.ai/api/v1`
+3. **Available Models**: `llama-3.3-70b`, `deepseek-r1-llama-70b`, `qwen32b`, `dolphin-2.9.2-qwen2`
+
+*Note: Venice.ai requires separate API credentials and is not part of OpenRouter*
+
+### Model Selection:
+Configure your preferred model in the web interface at `/config` or by editing `flask_config.yaml`:
+
+```yaml
+model: anthropic/claude-4-sonnet-20250522  # Default model
+temperature: 0.8
+max_tokens: 10000
 ```
-openrouter_interface/
-├── openrouter_editor.py           # Text editor main orchestrator
-├── prompt_runner.py               # Prompt runner main application
-├── config_manager.py              # Configuration handling (shared)
-├── logging_manager.py             # Logging setup and management (shared)
-├── file_handler.py               # File I/O operations (shared)
-├── prompt_builder.py             # API prompt creation (editor)
-├── api_client.py                 # OpenRouter API communication (editor)
-├── prompt_runner_api_client.py   # Prompt runner API client
-├── text_chunker.py               # Large file chunking functionality (editor)
-├── compliance_checker.py         # Output compliance analysis (editor)
-├── prompt_scanner.py             # JSON prompt file scanning (runner)
-├── prompt_handler.py             # Prompt loading and processing (runner)
-├── input_handler.py              # Input file selection (runner)
-├── response_handler.py           # Response output management (runner)
-├── requirements.txt              # Python dependencies
-└── README.md                     # This file
-```
 
-## OpenRouter Text Editor Modules
+## 🚀 Features
 
-### `openrouter_editor.py`
-- Main orchestrator and entry point for text editing operations
-- Coordinates all modules for file processing workflows
+### Core Functionality
+- **Prompt Execution**: Execute JSON prompt files against text or file inputs
+- **Multiple Input Methods**: Support for text input and file uploads
+- **Real-time Processing**: AJAX-based form submission with loading indicators
+- **Session History**: Track all responses within a session with download capability
 
-### `config_manager.py` (Shared)
-- Loads configuration from YAML files
-- Manages default configuration values
-- Handles API key retrieval from environment variables or config files
-- Provides configuration access methods
+### Administration & Management
+- **Configuration Management**: Web-based interface to modify all application settings
+- **Prompts Registry**: Manage available prompts with enable/disable functionality
+- **Live Configuration Reload**: Changes applied immediately without restart
+- **Directory Scanning**: Automatic discovery of JSON prompt files
 
-### `logging_manager.py` (Shared)
-- Sets up logging configuration based on config settings
-- Supports both file and console logging
-- Configurable log levels and formatting
+### User Interface
+- **Modern Design**: Clean, responsive interface with mobile support
+- **Interactive Elements**: Loading spinners, hover effects, and smooth transitions
+- **Navigation**: Intuitive navigation between all application sections
+- **Flash Messages**: User feedback for all operations
 
-### `file_handler.py` (Shared)
-- Handles all file I/O operations
-- Loads input text files and action configurations
-- Saves output files and API payloads
-- Creates directories as needed
+## 📋 Quick Start
 
-### `prompt_builder.py`
-- Creates API prompts based on action configurations
-- Handles different action types (edit, rewrite, summarize, translate)
-- Processes custom instructions and requirements
-- Adds constraints, examples, and formatting instructions
-
-### `api_client.py`
-- Manages OpenRouter API communication for text editing
-- Handles request/response processing
-- Removes AI commentary from responses
-- Provides detailed logging of API interactions
-- Manages error handling and timeouts
-
-### `text_chunker.py`
-- Splits large text files into manageable chunks for processing
-- Maintains paragraph boundaries and preserves document structure
-- Combines processed chunks back into a single output file
-- Configurable chunk size and intelligent text splitting
-- Supports front matter preservation and metadata handling
-- Provides cleanup options for intermediate files
-
-### `compliance_checker.py`
-- Analyzes how well the output conforms to original action specifications
-- Compares processed text against the requirements in action.json
-- Generates detailed compliance reports with scoring and recommendations
-- Uses AI analysis to evaluate specification adherence
-- Provides quality assessment and deviation analysis
-- Supports batch compliance checking for chunked files
-
-## OpenRouter Prompt Runner Modules
-
-### `prompt_runner.py`
-- Main application for interactive prompt execution
-- Orchestrates all prompt runner modules
-- Provides interactive session management with user menus
-- Handles workflow from prompt selection to response output
-
-### `prompt_scanner.py`
-- Scans directories for JSON prompt files
-- Displays interactive menus for prompt selection
-- Provides user-friendly file browsing and selection interface
-- Supports alphabetical sorting and file size display
-
-### `prompt_handler.py`
-- **PromptLoader**: Loads and validates JSON prompt files
-- **PromptProcessor**: Processes complex prompt structures and creates full prompts
-- Handles multiple prompt field formats (instruction, instructions, prompt, etc.)
-- Supports complex JSON structures with nested objects
-- Processes structured fields like persona, evaluation_directives, review_criteria
-- Validates prompt file structure and provides helpful error messages
-
-### `input_handler.py`
-- **InputFileHandler**: Manages input file selection and loading
-- Interactive file path input with validation
-- Handles file existence checking and error reporting
-- Supports quoted paths and various file formats
-- Provides user-friendly error messages and retry logic
-
-### `prompt_runner_api_client.py`
-- **PromptAPIClient**: Handles OpenRouter API communication for prompt runner
-- Preserves all AI commentary and output (unlike the editor's API client)
-- Provides detailed API interaction logging
-- Saves request payloads for debugging and analysis
-- Manages timeouts, error handling, and response processing
-
-### `response_handler.py`
-- **ResponseHandler**: Manages response output to console and files
-- Streams responses to console with formatted headers
-- Optionally appends responses to markdown output files
-- Adds timestamps, prompt file names, and input file references
-- Creates markdown-formatted entries with proper separation
-
-## Installation
-
-1. Install dependencies:
+### 1. Initial Setup
 ```bash
-pip install -r requirements.txt
-```
+# Clone or download the project files
+# Ensure you have Python 3.7+ installed
 
-2. Ensure all module files are in the same directory as the main applications
+# Install required dependencies
+pip install flask pyyaml requests
 
-3. Set your OpenRouter API key:
-```bash
+# Set your OpenRouter API key
 export OPENROUTER_API_KEY="your_api_key_here"
 ```
 
-## Usage
-
-### OpenRouter Text Editor
-
+### 2. Create Templates and Configuration
 ```bash
-# Basic usage with default config
-python openrouter_editor.py
-
-# With custom configuration
-python openrouter_editor.py -c my_config.yaml
+# Run the setup script to create all necessary files
+python create_templates.py
 ```
 
-### OpenRouter Prompt Runner
+This will create:
+- `templates/` directory with all HTML templates
+- `flask_config.yaml` with application configuration
+- `prompts_registry.yaml` with discovered JSON prompts
 
+### 3. Run the Application
 ```bash
-# Basic interactive session
-python prompt_runner.py
+# Start the Flask application
+python prompt_runner_flask.py
 
-# Save responses to markdown file
-python prompt_runner.py -o responses.md
-
-# Save to specific output file
-python prompt_runner.py --output-file analysis_results.md
+# Navigate to http://localhost:5000
 ```
 
-### Prompt Runner Workflow
+## 📁 Project Structure
 
-The prompt runner follows this interactive workflow:
+```
+project/
+├── prompt_runner_flask.py          # Main Flask application
+├── create_templates.py             # Setup script for templates and config
+├── flask_config.yaml              # Application configuration
+├── prompts_registry.yaml          # Registry of available prompts
+├── templates/                      # HTML templates
+│   ├── base.html                  # Base template with shared layout
+│   ├── index.html                 # Main page showing prompts
+│   ├── config.html                # Configuration management
+│   ├── prompts_registry.html      # Prompts registry management
+│   ├── prompt_form.html          # Prompt execution form
+│   └── history.html              # Session history display
+├── *.json                         # Your JSON prompt files
+└── README.md                      # This file
+```
 
-1. **Scan for JSON files**: Automatically finds all .json files in the current directory
-2. **Display menu**: Shows numbered list of available prompt files with file sizes
-3. **Prompt selection**: User selects a prompt file by number or quits with 'q'
-4. **Input file selection**: User provides path to input file for processing
-5. **Validation**: Validates both prompt structure and input file existence
-6. **API execution**: Sends combined prompt and input to OpenRouter API
-7. **Response streaming**: Displays response to console with formatted headers
-8. **File output**: Optionally saves responses to markdown file with timestamps
-9. **Continue option**: Asks user if they want to run another prompt
+## 🔧 Configuration
 
-### JSON Prompt File Structure
+### Application Settings (`flask_config.yaml`)
 
-The prompt runner supports flexible JSON prompt structures. Here are the recognized fields:
+The application can be configured through the web interface at `/config` or by editing the YAML file directly:
 
-#### Primary Prompt Fields (in order of preference):
-- `instruction` / `instructions`
-- `prompt`
-- `message`
-- `content`
-- `text`
-- `system`
-- `user_message`
-- `query`
-- `task`
-- `description`
+```yaml
+# OpenRouter API Settings
+model: anthropic/claude-4-sonnet-20250522
+api_base_url: https://openrouter.ai/api/v1
+temperature: 0.8
+max_tokens: 10000
 
-#### Special Structure Fields:
-- `persona` - Added as role definition at the beginning
-- `instructions` - Can be a complex object with `primary_task`, `evaluation_process`, etc.
-- `evaluation_directives` - Formatted as guidelines
-- `review_criteria` - Structured criteria with explanations
-- `genre_adaptation` - Context-specific adaptations
-- `context`, `requirements`, `constraints`, `examples`, `output_format` - Standard structured fields
+# Application Settings
+log_level: INFO
+log_to_file: false
+max_content_length_mb: 16
+session_timeout_hours: 24
+payload_file: prompt_runner_flask.payload.json
+```
 
-#### Example JSON Prompt Structure:
-```json
-{
-  "title": "Example Prompt",
-  "persona": "You are an expert...",
-  "instructions": {
-    "primary_task": "Analyze the following...",
-    "evaluation_process": "Systematically assess...",
-    "deliverable": "Provide a comprehensive..."
-  },
-  "evaluation_directives": {
-    "tone": "Be honest and incisive...",
-    "output_goal": "Provide clear recommendations..."
-  },
-  "review_criteria": {
-    "1. First Criterion": {
-      "mistake": "Description of what to look for",
-      "why_problematic": "Why this is an issue",
-      "how_to_fix": "How to address it"
-    }
-  }
+### Prompts Registry (`prompts_registry.yaml`)
+
+Manage available prompts through the web interface at `/prompts_registry` or edit the file:
+
+```yaml
+created: '2025-01-07 10:30:00'
+prompts:
+  - name: example_prompt.json
+    path: ./example_prompt.json
+    title: Example Prompt
+    description: A sample prompt for demonstration
+    enabled: true
+```
+
+## 🌐 Web Interface
+
+### Main Pages
+
+- **Home (`/`)**: Browse and select available prompts
+- **Configuration (`/config`)**: Manage application settings
+- **Prompts Registry (`/prompts_registry`)**: Manage prompt files
+- **History (`/history`)**: View session responses and download history
+
+### API Endpoints
+
+- **GET `/api/prompts`**: Get list of available prompts
+- **GET `/api/prompt/<path>`**: Get specific prompt details
+- **POST `/execute`**: Execute a prompt (JSON response)
+
+## 🎯 Usage Examples
+
+### Adding New Prompts
+
+1. **Automatic Discovery**:
+   - Add `.json` files to the project directory
+   - Go to `/prompts_registry` and click "Rescan Directory"
+
+2. **Manual Addition**:
+   - Edit `prompts_registry.yaml` directly
+   - Add prompt entries with required fields
+
+### Executing Prompts
+
+1. **Text Input**:
+   - Select a prompt from the home page
+   - Choose "Text Input" method
+   - Enter your content and click "Execute Prompt"
+
+2. **File Upload**:
+   - Select a prompt from the home page
+   - Choose "File Upload" method
+   - Upload a `.txt`, `.md`, `.json`, or `.csv` file
+
+### Managing Configuration
+
+1. **Web Interface**:
+   - Navigate to `/config`
+   - Modify settings using the form
+   - Click "Save Configuration"
+
+2. **Direct File Editing**:
+   - Edit `flask_config.yaml`
+   - Restart the application
+
+## 🔒 Security Considerations
+
+- **API Key Protection**: Store your OpenRouter API key as an environment variable
+- **File Upload Limits**: Configure appropriate upload size limits
+- **Input Validation**: All form inputs are validated before processing
+- **Session Management**: Sessions are memory-based and cleared on restart
+
+## 🛠️ Development
+
+### Custom Styling
+
+Modify the CSS in `templates/base.html` to customize the appearance:
+
+```css
+/* Example: Change primary color */
+.btn {
+    background: #your-color;
 }
 ```
 
-## Configuration Examples
+### Adding New Features
 
-### Text Editor Configuration
-```yaml
-# openrouter_editor.yaml
-input_file: 'input.md'
-output_file: 'output.md'
-action_file: 'action.json'
-model: 'anthropic/claude-4-sonnet-20250522'
-temperature: 0.8
-max_tokens: 10000
-enable_chunking: true
-chunk_size: 1500
-enable_compliance_check: true
-compliance_output_file: 'quality_report.md'
-```
+1. **New Routes**: Add route handlers in `prompt_runner_flask.py`
+2. **New Templates**: Create HTML templates in the `templates/` directory
+3. **Configuration Options**: Add new settings to the configuration system
 
-### Prompt Runner Configuration
-The prompt runner uses minimal configuration and primarily operates interactively:
-```yaml
-# Not typically needed - prompt runner auto-configures
-model: 'anthropic/claude-4-sonnet-20250522'
-api_base_url: 'https://openrouter.ai/api/v1'
-temperature: 0.8
-max_tokens: 10000
-```
+### Dependencies
 
-## Benefits of Modular Structure
+Required Python packages:
+- `flask` - Web framework
+- `pyyaml` - YAML configuration handling
+- `requests` - HTTP client for API calls
 
-1. **Single Responsibility**: Each module has a clear, focused purpose
-2. **Maintainability**: Easier to modify individual components without affecting others
-3. **Testability**: Each module can be tested independently
-4. **Reusability**: Modules can be shared between applications and reused in other projects
-5. **Readability**: Smaller files are easier to understand and navigate
-6. **Extensibility**: New features can be added by creating new modules or extending existing ones
-7. **Separation of Concerns**: Text editing and prompt running have distinct workflows and requirements
+Additional packages may be required based on your specific prompt handler implementations.
 
-## Dependencies
+## 📈 Monitoring and Logging
 
-### Core Dependencies
-- `requests>=2.25.0` - For API communication
-- `PyYAML>=5.4.0` - For configuration file parsing
+### Log Levels
 
-### Optional Features (Text Editor)
-- **Text Chunking**: Requires `text_chunker.py` for large file processing
-- **Compliance Checking**: Requires `compliance_checker.py` for output analysis
+Configure logging in the web interface or configuration file:
+- **DEBUG**: Detailed debugging information
+- **INFO**: General operational messages
+- **WARNING**: Warning messages for potential issues
+- **ERROR**: Error messages for failed operations
 
-### Shared Modules
-The following modules are shared between both applications:
-- `config_manager.py`
-- `logging_manager.py`
-- `file_handler.py`
+### Session History
 
-## Workflow Examples
+- **In-Memory Storage**: History is stored in memory during the session
+- **Download Feature**: Export session history as Markdown
+- **Automatic Cleanup**: History is cleared when the application restarts
 
-### Text Editor Workflows
+## 🚨 Troubleshooting
 
-#### Basic Processing
-```bash
-python openrouter_editor.py
-```
+### Common Issues
 
-#### Processing with Chunking
-```yaml
-# openrouter_editor.yaml
-enable_chunking: true
-chunk_size: 1500
-input_file: 'large_document.md'
-output_file: 'processed_document.md'
-```
+1. **Templates Not Found**:
+   ```bash
+   # Run the setup script
+   python create_templates.py
+   ```
 
-#### Complete Workflow (Chunking + Compliance)
-```yaml
-# openrouter_editor.yaml
-enable_chunking: true
-enable_compliance_check: true
-chunk_size: 1000
-input_file: 'large_book.md'
-output_file: 'edited_book.md'
-compliance_output_file: 'editing_analysis.md'
-```
+2. **API Key Errors**:
+   ```bash
+   # Set your API key
+   export OPENROUTER_API_KEY="your_key_here"
+   ```
 
-### Prompt Runner Workflows
+3. **No Prompts Visible**:
+   - Check `prompts_registry.yaml` exists
+   - Verify JSON files are in the directory
+   - Use "Rescan Directory" in the prompts registry
 
-#### Interactive Analysis Session
-```bash
-python prompt_runner.py -o session_results.md
-```
+4. **Configuration Not Loading**:
+   - Check `flask_config.yaml` format
+   - Verify file permissions
+   - Check application logs
 
-The system will:
-1. Show available JSON prompt files
-2. Let you select prompts and input files interactively
-3. Execute prompts against inputs
-4. Save all responses with timestamps to `session_results.md`
-5. Allow multiple prompt executions in one session
+### File Permissions
 
-#### Batch Analysis
-You can run multiple different prompts against the same input file in one session, with all results saved to a single output file for comparison.
+Ensure the application has read/write permissions for:
+- Configuration files (`.yaml`)
+- Template directory
+- Temporary upload directory
 
-## Error Handling
+## 🤝 Contributing
 
-Each module handles its own errors and provides meaningful error messages:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-- **Prompt Runner**: Validates JSON structure, checks file existence, provides helpful suggestions for missing fields
-- **Text Editor**: Handles file I/O errors, API timeouts, and configuration issues
-- **Shared Modules**: Provide consistent error reporting and logging across both applications
+## 📄 License
 
-The main orchestrators catch and log any unhandled exceptions while maintaining system stability.
+This project is provided as-is for educational and development purposes. Please ensure compliance with OpenRouter's terms of service when using their API.
 
-## Advanced Features
+## 🆘 Support
 
-### Prompt Runner Features
-- **Complex JSON Support**: Handles nested objects and flexible prompt structures
-- **Preserved Commentary**: Keeps all AI commentary and reasoning in responses
-- **Interactive Workflow**: User-friendly menu system with file validation
-- **Markdown Output**: Formatted output files with timestamps and metadata
-- **Session Management**: Multiple prompts in one session with continue/quit options
+For issues and questions:
+1. Check the troubleshooting section
+2. Review the configuration files
+3. Check application logs
+4. Verify API key and network connectivity
 
-### Text Editor Features
-- **AI Commentary Removal**: Strips non-essential AI commentary for cleaner output
-- **Chunking Support**: Processes large files by splitting into manageable pieces
-- **Compliance Analysis**: Evaluates how well output meets original specifications
-- **Batch Processing**: Handles multiple chunks with automated reassembly
+---
+
+**Happy Prompting!** 🎉
