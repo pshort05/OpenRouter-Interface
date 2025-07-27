@@ -20,6 +20,34 @@ Ideal for interactive use and team collaboration:
 
 ---
 
+---
+
+## 🛠️ Setup and Installation
+
+### Quick Setup (Recommended)
+
+For complete setup instructions, see the **[Setup Guide (README_setup.md)](README_setup.md)**.
+
+**One-command automated setup:**
+```bash
+# Download project files, then run:
+chmod +x setup_prompt_runner.sh
+./setup_prompt_runner.sh
+```
+
+This automated script will:
+- ✅ Check Python 3 installation
+- ✅ Install all required packages
+- ✅ Make files executable
+- ✅ Install to `~/.local/bin` for system-wide access
+- ✅ Verify everything works
+
+### Manual Setup
+
+If you prefer manual installation, see the detailed instructions in [README_setup.md](README_setup.md).
+
+---
+
 ## 📟 Command Line Interface (CLI)
 
 ### 🛠️ CLI Setup
@@ -309,7 +337,63 @@ python -m json.tool broken.json
 
 ### 🛠️ Web Setup
 
-#### 1. Additional Required Files for Web Interface
+#### 1. Quick Start with Shell Script
+
+The easiest way to run the Flask web application:
+
+```bash
+# Make the launcher script executable
+chmod +x prompt_runner_flask.sh
+
+# Run initial setup (creates templates and config)
+./prompt_runner_flask.sh --setup
+
+# Start the web application
+./prompt_runner_flask.sh
+
+# Or start in production mode
+./prompt_runner_flask.sh --production
+```
+
+#### 2. Flask Launcher Script Options
+
+The `prompt_runner_flask.sh` script provides convenient management:
+
+```bash
+# Basic usage
+./prompt_runner_flask.sh                      # Start with defaults (127.0.0.1:5000)
+./prompt_runner_flask.sh -d                   # Debug mode
+./prompt_runner_flask.sh -H 0.0.0.0 -p 8080   # Custom host and port
+
+# Management commands
+./prompt_runner_flask.sh --setup              # Create templates and config
+./prompt_runner_flask.sh --check              # Verify dependencies
+./prompt_runner_flask.sh --background         # Run as daemon
+./prompt_runner_flask.sh --kill               # Stop background instances
+./prompt_runner_flask.sh --logs               # View application logs
+
+# Production deployment
+./prompt_runner_flask.sh --production         # Production settings (0.0.0.0, no debug)
+./prompt_runner_flask.sh --public             # Public access (0.0.0.0)
+```
+
+#### 3. Script Features
+
+- **Dependency checking**: Validates Python, Flask, and required modules
+- **Automatic setup**: Creates templates and configuration files
+- **Process management**: Start, stop, and monitor background processes
+- **Logging**: File and console logging with real-time viewing
+- **Error handling**: Clear error messages and recovery suggestions
+
+#### 4. Manual Flask Setup
+
+If you prefer to run Flask directly:
+
+#### 4. Manual Flask Setup
+
+If you prefer to run Flask directly:
+
+#### Additional Required Files for Web Interface
 ```
 project/
 ├── prompt_runner_flask.py              # Flask web application
@@ -326,7 +410,7 @@ project/
 └── [CLI files from above]             # All CLI files also needed
 ```
 
-#### 2. Web Application Setup
+#### Manual Web Application Setup
 ```bash
 # Install additional web dependencies
 pip install flask
@@ -341,7 +425,7 @@ export OPENROUTER_API_KEY="your_api_key_here"
 python prompt_runner_flask.py
 ```
 
-#### 3. Access Web Interface
+#### Access Web Interface
 Navigate to: `http://localhost:5000`
 
 ## 🤖 Supported AI Models
@@ -465,7 +549,14 @@ max_tokens: 10000
 
 ## 🎯 Choosing the Right Interface
 
-### Use CLI When:
+### Use Flask Launcher When:
+- **Quick setup**: Need to get started fast with minimal configuration
+- **Development**: Testing and debugging with built-in process management
+- **Production deployment**: Running on servers with monitoring needs
+- **Process management**: Need to start/stop/monitor the application
+- **Logging**: Want centralized log management and viewing
+
+### Use Direct Flask When:
 - **Automation**: Integrating with scripts, CI/CD, or batch processing
 - **Performance**: Processing many files efficiently
 - **Scripting**: Building automated workflows
