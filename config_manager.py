@@ -3,6 +3,7 @@
 Configuration Manager
 
 Handles configuration loading and management for OpenRouter Text Editor.
+Updated with higher default max_tokens for better prompt processing.
 """
 
 import logging
@@ -25,7 +26,7 @@ class ConfigManager:
         """Load configuration from YAML file."""
         config_path = Path(self.config_file)
         
-        # Default configuration
+        # Default configuration with updated max_tokens
         default_config = {
             'input_file': 'input.md',
             'output_file': 'output.md',
@@ -37,7 +38,7 @@ class ConfigManager:
             'model': 'anthropic/claude-4-sonnet-20250522',
             'api_base_url': 'https://openrouter.ai/api/v1',
             'temperature': 0.8,
-            'max_tokens': 10000,
+            'max_tokens': 25000,  # Updated from 10000 to 25000
             'enable_compliance_check': True,
             'compliance_output_file': 'compliance_analysis.md',
             'enable_chunking': False,
