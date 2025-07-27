@@ -1,6 +1,348 @@
-# OpenRouter Prompt Runner Flask Application
+# OpenRouter Prompt Runner
 
-A comprehensive Flask web application for managing and executing JSON prompt files using the OpenRouter API. Features include configuration management, prompts registry, session history, and a modern web interface.
+A comprehensive tool for executing JSON prompt files using the OpenRouter API. Available as both a **command-line interface (CLI)** and a **Flask web application**. Choose the interface that best fits your workflow!
+
+## 🚀 Interfaces Available
+
+### 📟 Command Line Interface (CLI)
+Perfect for automation, batch processing, and CI/CD pipelines:
+- **Batch mode**: Process specific files directly
+- **Interactive mode**: Browse and select files interactively
+- **Configuration management**: YAML config files and command-line overrides
+- **Logging**: File and console logging with multiple levels
+
+### 🌐 Web Application
+Ideal for interactive use and team collaboration:
+- **Web interface**: Modern, responsive design
+- **Session management**: Track history and download results
+- **Configuration UI**: Web-based settings management
+- **File uploads**: Drag-and-drop file processing
+
+---
+
+## 📟 Command Line Interface (CLI)
+
+### 🛠️ CLI Setup
+
+#### 1. Required Files
+Ensure you have all necessary Python modules:
+```
+project/
+├── prompt_runner.py                    # Main CLI application
+├── config_manager.py                   # Configuration handling
+├── logging_manager.py                  # Logging setup
+├── prompt_scanner.py                   # JSON prompt discovery
+├── prompt_handler.py                   # Prompt loading and processing
+├── input_handler.py                    # Input file handling
+├── prompt_runner_api_client.py         # OpenRouter API client
+├── response_handler.py                 # Output handling
+├── file_handler.py                     # File operations
+├── *.json                             # Your JSON prompt files
+└── openrouter_editor.yaml             # Optional config file
+```
+
+#### 2. Install Dependencies
+```bash
+pip install requests pyyaml
+```
+
+#### 3. Set API Key
+```bash
+# Set your OpenRouter API key as environment variable
+export OPENROUTER_API_KEY="your_api_key_here"
+
+# Or add it to your config file (not recommended for security)
+echo "api_key: your_api_key_here" >> openrouter_editor.yaml
+```
+
+### 🔧 CLI Configuration
+
+#### Command Line Options
+```bash
+python prompt_runner.py [OPTIONS]
+
+Mode Selection:
+  -p, --prompt PROMPT_FILE     JSON prompt file (enables batch mode)
+  -i, --input INPUT_FILE       Input file to process (requires --prompt)
+
+Configuration Options:
+  -c, --config CONFIG_FILE     Configuration file (YAML format)
+
+Output Options:
+  -o, --output-file OUTPUT     Output file for responses (markdown)
+
+Logging Options:
+  -l, --log-file LOG_FILE      Log file path (enables file logging)
+  -v, --verbose                Enable verbose logging (DEBUG level)
+  -q, --quiet                  Suppress output except errors
+
+Help:
+  -h, --help                   Show help message and examples
+```
+
+#### Configuration File Format
+Create `openrouter_editor.yaml`:
+```yaml
+# OpenRouter API Settings
+model: anthropic/claude-4-sonnet-20250522
+api_base_url: https://openrouter.ai/api/v1
+temperature: 0.8
+max_tokens: 25000
+
+# Application Settings
+log_level: INFO
+log_to_file: false                      # Set true to enable file logging
+log_file: prompt_runner.log             # Automatically enables file logging
+payload_file: prompt_runner.payload.json
+
+# Input/Output Settings
+input_file: input.md
+output_file: output.md
+action_file: action.json
+```
+
+### 📝 CLI Usage Examples
+
+#### Interactive Mode (Default)
+```bash
+# Basic interactive mode - scan directory and select files
+python prompt_runner.py
+
+# Interactive with output file
+python prompt_runner.py -o responses.md
+
+# Interactive with custom config
+python prompt_runner.py -c my_config.yaml -o responses.md
+
+# Interactive with verbose logging to file
+python prompt_runner.py -l debug.log -v -o responses.md
+```
+
+#### Batch Mode
+```bash
+# Basic batch processing
+python prompt_runner.py -p analysis.json -i document.md
+
+# Batch with output file
+python prompt_runner.py -p review.json -i code.py -o results.md
+
+# Batch with custom config
+python prompt_runner.py -p analysis.json -i data.txt -c config.yaml -o analysis.md
+
+# Batch with logging
+python prompt_runner.py -p review.json -i code.py -l batch.log -o results.md
+```
+
+#### Batch Processing Multiple Files
+```bash
+# Process multiple files with same prompt - perfect for automation
+python prompt_runner.py -p review.json -i file1.md -o results.md -l batch.log
+python prompt_runner.py -p review.json -i file2.md -o results.md -l batch.log
+python prompt_runner.py -p review.json -i file3.md -o results.md -l batch.log
+
+# Or use a loop for many files
+for file in *.md; do
+    python prompt_runner.py -p review.json -i "$file" -o results.md -l batch.log
+done
+```
+
+#### Configuration Combinations
+```bash
+# Command line log file overrides config
+python prompt_runner.py -c config.yaml -l custom.log -p analysis.json -i doc.md
+
+# Mix command line and config file settings
+python prompt_runner.py -c base_config.yaml -p custom_prompt.json -i input.txt -l debug.log -v
+```
+
+### 🔍 CLI Workflow Examples
+
+#### Development and Testing
+```bash
+# Debug a specific prompt with verbose logging
+python prompt_runner.py -p debug_prompt.json -i test_input.md -l debug.log -v
+
+# Quick test without saving output
+python prompt_runner.py -p test.json -i sample.md -q
+
+# Test with different models using config
+python prompt_runner.py -c gpt4_config.yaml -p analysis.json -i document.md
+```
+
+#### Production Batch Processing
+```bash
+# Process a batch of documents with consistent logging
+mkdir -p logs outputs
+for doc in inputs/*.md; do
+    filename=$(basename "$doc" .md)
+    python prompt_runner.py \
+        -p production_review.json \
+        -i "$doc" \
+        -o "outputs/${filename}_review.md" \
+        -l "logs/batch_$(date +%Y%m%d).log" \
+        -c production_config.yaml
+done
+```
+
+#### CI/CD Integration
+```bash
+# Automated analysis in CI pipeline
+python prompt_runner.py \
+    -p code_review.json \
+    -i src/main.py \
+    -o reports/code_analysis.md \
+    -l logs/ci_analysis.log \
+    -c ci_config.yaml || exit 1
+
+# Exit code 0 = success, 1 = failure (perfect for scripts)
+```
+
+### 📊 CLI Output and Logging
+
+#### Console Output
+```bash
+# Normal operation shows progress
+$ python prompt_runner.py -p analysis.json -i document.md
+2025-01-26 10:30:15 - INFO - Initializing OpenRouter Prompt Runner
+2025-01-26 10:30:15 - INFO - ✓ Files validated successfully
+2025-01-26 10:30:15 - INFO - ✓ Prompt loaded successfully
+2025-01-26 10:30:15 - INFO - ✓ Input content loaded
+2025-01-26 10:30:16 - INFO - ✓ API call successful
+✓ Successfully processed document.md with analysis.json
+```
+
+#### Log File Contents
+When using `-l` or config file logging:
+```
+================================================================================
+NEW SESSION STARTED
+================================================================================
+2025-01-26 10:30:15 - INFO - Initializing OpenRouter Prompt Runner
+2025-01-26 10:30:15 - INFO - Command line log file specified: batch.log
+2025-01-26 10:30:15 - INFO - ✓ Logging to file: batch.log
+2025-01-26 10:30:15 - INFO - Model: anthropic/claude-4-sonnet-20250522
+2025-01-26 10:30:15 - INFO - API call completed in 1.23 seconds
+2025-01-26 10:30:15 - INFO - ✓ Batch processing completed successfully
+```
+
+#### Output File Format
+When using `-o output.md`:
+```markdown
+## Prompt Response - 2025-01-26 10:30:16
+
+**Prompt File:** `analysis.json`  
+**Input File:** `document.md`  
+**Timestamp:** 2025-01-26 10:30:16
+
+---
+
+[AI Response Content Here]
+
+---
+```
+
+### ⚙️ CLI Advanced Features
+
+#### File Validation
+```bash
+# CLI validates files at startup
+$ python prompt_runner.py -p missing.json -i document.md
+ERROR: Prompt file not found: missing.json
+
+$ python prompt_runner.py -p analysis.json -i missing.md
+ERROR: Input file not found: missing.md
+```
+
+#### Configuration Priority
+1. **Command line options** (highest priority)
+2. **Config file settings** (`-c config.yaml`)
+3. **Default configuration**
+
+#### Auto-Detection Features
+- **File logging**: Automatically enabled when log file specified
+- **Batch mode**: Triggered when both `-p` and `-i` provided
+- **Directory creation**: Log and output directories created automatically
+
+### 🚨 CLI Troubleshooting
+
+#### Common Issues and Solutions
+
+**1. API Key Not Found**
+```bash
+$ python prompt_runner.py -p test.json -i input.md
+ERROR: API key not found
+
+# Solution:
+export OPENROUTER_API_KEY="your_key_here"
+```
+
+**2. Missing Dependencies**
+```bash
+$ python prompt_runner.py
+ModuleNotFoundError: No module named 'yaml'
+
+# Solution:
+pip install pyyaml requests
+```
+
+**3. File Permission Errors**
+```bash
+$ python prompt_runner.py -p test.json -i input.md -l /restricted/log.log
+ERROR: Failed to save payload
+
+# Solution:
+python prompt_runner.py -p test.json -i input.md -l ./log.log
+```
+
+**4. Invalid JSON Prompts**
+```bash
+$ python prompt_runner.py -p broken.json -i input.md
+ERROR: Invalid JSON in prompt file broken.json
+
+# Solution: Validate JSON format
+python -m json.tool broken.json
+```
+
+---
+
+## 🌐 Web Application Interface
+
+### 🛠️ Web Setup
+
+#### 1. Additional Required Files for Web Interface
+```
+project/
+├── prompt_runner_flask.py              # Flask web application
+├── create_templates.py                 # Template setup script
+├── flask_config.yaml                   # Web app configuration
+├── prompts_registry.yaml               # Prompt registry
+├── templates/                          # HTML templates directory
+│   ├── base.html                      # Base template
+│   ├── index.html                     # Main page
+│   ├── config.html                    # Configuration page
+│   ├── prompts_registry.html          # Registry management
+│   ├── prompt_form.html              # Prompt execution form
+│   └── history.html                  # Session history
+└── [CLI files from above]             # All CLI files also needed
+```
+
+#### 2. Web Application Setup
+```bash
+# Install additional web dependencies
+pip install flask
+
+# Create templates and configuration
+python create_templates.py
+
+# Set API key
+export OPENROUTER_API_KEY="your_api_key_here"
+
+# Start web application
+python prompt_runner_flask.py
+```
+
+#### 3. Access Web Interface
+Navigate to: `http://localhost:5000`
 
 ## 🤖 Supported AI Models
 
@@ -87,8 +429,16 @@ Venice.ai provides private, uncensored AI models through their own API. To use V
 *Note: Venice.ai requires separate API credentials and is not part of OpenRouter*
 
 ### Model Selection:
-Configure your preferred model in the web interface at `/config` or by editing `flask_config.yaml`:
+Configure your preferred model in the configuration file or web interface:
 
+**CLI Configuration (`openrouter_editor.yaml`):**
+```yaml
+model: anthropic/claude-4-sonnet-20250522  # Default model
+temperature: 0.8
+max_tokens: 25000
+```
+
+**Web Configuration (`flask_config.yaml`):**
 ```yaml
 model: anthropic/claude-4-sonnet-20250522  # Default model
 temperature: 0.8
@@ -97,252 +447,143 @@ max_tokens: 10000
 
 ## 🚀 Features
 
-### Core Functionality
-- **Prompt Execution**: Execute JSON prompt files against text or file inputs
-- **Multiple Input Methods**: Support for text input and file uploads
-- **Real-time Processing**: AJAX-based form submission with loading indicators
-- **Session History**: Track all responses within a session with download capability
+### CLI Features
+- **Batch Processing**: Automated file processing for CI/CD pipelines
+- **Interactive Mode**: Browse and select files with guided prompts
+- **Configuration Management**: YAML config files with command-line overrides
+- **Flexible Logging**: Console and file logging with multiple levels
+- **File Validation**: Comprehensive input validation and error handling
+- **Session Persistence**: Append logging for batch processing workflows
 
-### Administration & Management
-- **Configuration Management**: Web-based interface to modify all application settings
-- **Prompts Registry**: Manage available prompts with enable/disable functionality
-- **Live Configuration Reload**: Changes applied immediately without restart
-- **Directory Scanning**: Automatic discovery of JSON prompt files
+### Web Features
+- **Modern Interface**: Clean, responsive design with mobile support
+- **Session History**: Track all responses with download capability
+- **Configuration UI**: Web-based settings management
+- **File Uploads**: Support for text input and file uploads
+- **Live Updates**: Real-time processing with AJAX
+- **Prompts Registry**: Web-based prompt management
 
-### User Interface
-- **Modern Design**: Clean, responsive interface with mobile support
-- **Interactive Elements**: Loading spinners, hover effects, and smooth transitions
-- **Navigation**: Intuitive navigation between all application sections
-- **Flash Messages**: User feedback for all operations
+## 🎯 Choosing the Right Interface
 
-## 📋 Quick Start
+### Use CLI When:
+- **Automation**: Integrating with scripts, CI/CD, or batch processing
+- **Performance**: Processing many files efficiently
+- **Scripting**: Building automated workflows
+- **Headless**: Running on servers without GUI
+- **Version Control**: Configuration files can be tracked in git
 
-### 1. Initial Setup
-```bash
-# Clone or download the project files
-# Ensure you have Python 3.7+ installed
-
-# Install required dependencies
-pip install flask pyyaml requests
-
-# Set your OpenRouter API key
-export OPENROUTER_API_KEY="your_api_key_here"
-```
-
-### 2. Create Templates and Configuration
-```bash
-# Run the setup script to create all necessary files
-python create_templates.py
-```
-
-This will create:
-- `templates/` directory with all HTML templates
-- `flask_config.yaml` with application configuration
-- `prompts_registry.yaml` with discovered JSON prompts
-
-### 3. Run the Application
-```bash
-# Start the Flask application
-python prompt_runner_flask.py
-
-# Navigate to http://localhost:5000
-```
-
-## 📁 Project Structure
-
-```
-project/
-├── prompt_runner_flask.py          # Main Flask application
-├── create_templates.py             # Setup script for templates and config
-├── flask_config.yaml              # Application configuration
-├── prompts_registry.yaml          # Registry of available prompts
-├── templates/                      # HTML templates
-│   ├── base.html                  # Base template with shared layout
-│   ├── index.html                 # Main page showing prompts
-│   ├── config.html                # Configuration management
-│   ├── prompts_registry.html      # Prompts registry management
-│   ├── prompt_form.html          # Prompt execution form
-│   └── history.html              # Session history display
-├── *.json                         # Your JSON prompt files
-└── README.md                      # This file
-```
-
-## 🔧 Configuration
-
-### Application Settings (`flask_config.yaml`)
-
-The application can be configured through the web interface at `/config` or by editing the YAML file directly:
-
-```yaml
-# OpenRouter API Settings
-model: anthropic/claude-4-sonnet-20250522
-api_base_url: https://openrouter.ai/api/v1
-temperature: 0.8
-max_tokens: 10000
-
-# Application Settings
-log_level: INFO
-log_to_file: false
-max_content_length_mb: 16
-session_timeout_hours: 24
-payload_file: prompt_runner_flask.payload.json
-```
-
-### Prompts Registry (`prompts_registry.yaml`)
-
-Manage available prompts through the web interface at `/prompts_registry` or edit the file:
-
-```yaml
-created: '2025-01-07 10:30:00'
-prompts:
-  - name: example_prompt.json
-    path: ./example_prompt.json
-    title: Example Prompt
-    description: A sample prompt for demonstration
-    enabled: true
-```
-
-## 🌐 Web Interface
-
-### Main Pages
-
-- **Home (`/`)**: Browse and select available prompts
-- **Configuration (`/config`)**: Manage application settings
-- **Prompts Registry (`/prompts_registry`)**: Manage prompt files
-- **History (`/history`)**: View session responses and download history
-
-### API Endpoints
-
-- **GET `/api/prompts`**: Get list of available prompts
-- **GET `/api/prompt/<path>`**: Get specific prompt details
-- **POST `/execute`**: Execute a prompt (JSON response)
-
-## 🎯 Usage Examples
-
-### Adding New Prompts
-
-1. **Automatic Discovery**:
-   - Add `.json` files to the project directory
-   - Go to `/prompts_registry` and click "Rescan Directory"
-
-2. **Manual Addition**:
-   - Edit `prompts_registry.yaml` directly
-   - Add prompt entries with required fields
-
-### Executing Prompts
-
-1. **Text Input**:
-   - Select a prompt from the home page
-   - Choose "Text Input" method
-   - Enter your content and click "Execute Prompt"
-
-2. **File Upload**:
-   - Select a prompt from the home page
-   - Choose "File Upload" method
-   - Upload a `.txt`, `.md`, `.json`, or `.csv` file
-
-### Managing Configuration
-
-1. **Web Interface**:
-   - Navigate to `/config`
-   - Modify settings using the form
-   - Click "Save Configuration"
-
-2. **Direct File Editing**:
-   - Edit `flask_config.yaml`
-   - Restart the application
+### Use Web Interface When:
+- **Interactive Use**: Exploring prompts and experimenting
+- **Team Collaboration**: Sharing access with multiple users
+- **File Uploads**: Processing files through web interface
+- **Visual Feedback**: Need immediate visual feedback
+- **Session Management**: Tracking history within sessions
 
 ## 🔒 Security Considerations
 
 - **API Key Protection**: Store your OpenRouter API key as an environment variable
-- **File Upload Limits**: Configure appropriate upload size limits
-- **Input Validation**: All form inputs are validated before processing
-- **Session Management**: Sessions are memory-based and cleared on restart
+- **File Upload Limits**: Configure appropriate upload size limits (web interface)
+- **Input Validation**: All inputs are validated before processing
+- **File Permissions**: Ensure proper read/write permissions for config and log files
+- **Session Management**: Web sessions are memory-based and cleared on restart
 
 ## 🛠️ Development
 
-### Custom Styling
-
-Modify the CSS in `templates/base.html` to customize the appearance:
-
-```css
-/* Example: Change primary color */
-.btn {
-    background: #your-color;
+### Custom JSON Prompts
+Create custom prompts in JSON format:
+```json
+{
+  "instruction": "Analyze the following text for sentiment",
+  "type": "analysis",
+  "requirements": [
+    "Identify overall sentiment (positive/negative/neutral)",
+    "Highlight key emotional indicators",
+    "Provide confidence score"
+  ],
+  "output_format": "structured analysis with clear sections"
 }
 ```
 
 ### Adding New Features
 
-1. **New Routes**: Add route handlers in `prompt_runner_flask.py`
-2. **New Templates**: Create HTML templates in the `templates/` directory
-3. **Configuration Options**: Add new settings to the configuration system
+1. **CLI Features**: Modify `prompt_runner.py` and related modules
+2. **Web Features**: Add routes to `prompt_runner_flask.py` and create templates
+3. **Configuration**: Add new settings to config management system
+4. **API Integration**: Extend API client for new functionality
 
 ### Dependencies
 
-Required Python packages:
-- `flask` - Web framework
-- `pyyaml` - YAML configuration handling
+**Core Requirements:**
 - `requests` - HTTP client for API calls
+- `pyyaml` - YAML configuration handling
+- `pathlib` - File path handling (built-in)
+- `json` - JSON processing (built-in)
+- `logging` - Logging system (built-in)
 
-Additional packages may be required based on your specific prompt handler implementations.
+**Web Interface Additional:**
+- `flask` - Web framework for GUI
 
 ## 📈 Monitoring and Logging
 
 ### Log Levels
-
-Configure logging in the web interface or configuration file:
 - **DEBUG**: Detailed debugging information
-- **INFO**: General operational messages
+- **INFO**: General operational messages  
 - **WARNING**: Warning messages for potential issues
 - **ERROR**: Error messages for failed operations
 
-### Session History
+### CLI Logging Options
+```bash
+# Console logging (default)
+python prompt_runner.py -p test.json -i input.md
 
-- **In-Memory Storage**: History is stored in memory during the session
-- **Download Feature**: Export session history as Markdown
-- **Automatic Cleanup**: History is cleared when the application restarts
+# File logging
+python prompt_runner.py -p test.json -i input.md -l debug.log
+
+# Verbose console logging
+python prompt_runner.py -p test.json -i input.md -v
+
+# Quiet mode (errors only)
+python prompt_runner.py -p test.json -i input.md -q
+```
 
 ## 🚨 Troubleshooting
 
-### Common Issues
+### CLI Issues
+1. **Missing Files**: Ensure all required Python modules are present
+2. **API Key**: Set `OPENROUTER_API_KEY` environment variable
+3. **Dependencies**: Install required packages with `pip install requests pyyaml`
+4. **Permissions**: Check file read/write permissions
+5. **JSON Format**: Validate prompt files with `python -m json.tool file.json`
 
-1. **Templates Not Found**:
-   ```bash
-   # Run the setup script
-   python create_templates.py
-   ```
+### Web Interface Issues
+1. **Templates Missing**: Run `python create_templates.py`
+2. **Config Missing**: Check `flask_config.yaml` exists
+3. **Port Conflicts**: Flask runs on port 5000 by default
+4. **File Uploads**: Check upload size limits in configuration
 
-2. **API Key Errors**:
-   ```bash
-   # Set your API key
-   export OPENROUTER_API_KEY="your_key_here"
-   ```
+### Common Solutions
+```bash
+# Reinstall dependencies
+pip install --upgrade requests pyyaml flask
 
-3. **No Prompts Visible**:
-   - Check `prompts_registry.yaml` exists
-   - Verify JSON files are in the directory
-   - Use "Rescan Directory" in the prompts registry
+# Check file permissions
+ls -la *.py *.yaml *.json
 
-4. **Configuration Not Loading**:
-   - Check `flask_config.yaml` format
-   - Verify file permissions
-   - Check application logs
+# Validate JSON prompts
+for file in *.json; do python -m json.tool "$file" >/dev/null && echo "$file: OK" || echo "$file: ERROR"; done
 
-### File Permissions
-
-Ensure the application has read/write permissions for:
-- Configuration files (`.yaml`)
-- Template directory
-- Temporary upload directory
+# Test API key
+echo $OPENROUTER_API_KEY
+```
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+3. Make your changes with appropriate tests
+4. Update documentation for new features
+5. Test both CLI and web interfaces
+6. Submit a pull request
 
 ## 📄 License
 
@@ -351,11 +592,12 @@ This project is provided as-is for educational and development purposes. Please 
 ## 🆘 Support
 
 For issues and questions:
-1. Check the troubleshooting section
-2. Review the configuration files
-3. Check application logs
-4. Verify API key and network connectivity
+1. Check the troubleshooting section above
+2. Review configuration files and logs
+3. Verify API key and network connectivity
+4. Test with simple prompts first
+5. Check file permissions and dependencies
 
 ---
 
-**Happy Prompting!** 🎉
+**Happy Prompting with CLI and Web!** 🎉
