@@ -70,20 +70,23 @@ class PromptRunner:
             self.config.config['log_to_file'] = True
             logging.info(f"Config file log file specified: {self.config.config['log_file']}")
         
-        # Override with runtime settings, preserving user config where possible
-        runtime_overrides = {
-            'log_level': self.config.get('log_level', 'INFO'),
-            'payload_file': self.config.get('payload_file', 'prompt_runner.payload.json'),
-            'model': self.config.get('model', 'anthropic/claude-4-sonnet-20250522'),
-            'api_base_url': self.config.get('api_base_url', 'https://openrouter.ai/api/v1'),
-            'temperature': self.config.get('temperature', 0.8),
-            'max_tokens': self.config.get('max_tokens', 25000)  # Updated default
+        # FIXED: Only set defaults for missing values, don't override config file values
+        config_defaults = {
+            'log_level': 'INFO',
+            'payload_file': 'prompt_runner.payload.json',
+            'model': 'anthropic/claude-4-sonnet-20250522',
+            'api_base_url': 'https://openrouter.ai/api/v1',
+            'temperature': 0.8,
+            'max_tokens': 25000
         }
         
-        # Update config with runtime overrides (but preserve log settings)
-        for key, value in runtime_overrides.items():
-            if key not in ['log_file', 'log_to_file']:  # Don't override log settings
-                self.config.config[key] = value
+        # Only set defaults for missing keys, preserve config file values
+        for key, default_value in config_defaults.items():
+            if key not in self.config.config or self.config.config[key] is None:
+                self.config.config[key] = default_value
+                logging.debug(f"Set default value for {key}: {default_value}")
+            else:
+                logging.debug(f"Using config value for {key}: {self.config.config[key]}")
         
         # Initialize logging manager (this will handle log file appending)
         self.logging_manager = LoggingManager(self.config)
