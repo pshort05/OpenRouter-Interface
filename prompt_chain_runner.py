@@ -12,6 +12,7 @@ Usage:
 import argparse
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -46,34 +47,57 @@ class PromptChainRunner:
         
         # Create unique identifiers for this run
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.execution_id = str(uuid.uuid4())[:8]
+        self.process_id = os.getpid()
         
-        # Create unique log file
+        # Load configuration first to determine input file
+        self.config = self._load_config()
+        
+        # Create temp directory (requires input file to be known)
+        self.temp_dir = self._create_temp_dir()
+        
+        # Create log file in temp directory
         self.log_file = self._create_log_file()
         self._setup_logging()
         
-        # Load configuration
-        self.config = self._load_config()
-        
-        # Create temp directory for intermediate files
-        self.temp_dir = self._create_temp_dir()
-        
-        logging.info(f"Prompt Chain Runner initialized - Execution ID: {self.execution_id}")
+        logging.info(f"Prompt Chain Runner initialized - Process ID: {self.process_id}")
         logging.info(f"Configuration file: {self.config_file}")
         logging.info(f"Temp directory: {self.temp_dir}")
+        logging.info(f"Log file: {self.log_file}")
         logging.info(f"Total prompts loaded: {self.total_prompts}")
         if hasattr(self, 'config'):
             logging.info(f"Config prompts keys: {list(self.config.get('prompts', {}).keys())}")
         else:
             logging.warning("Config not yet loaded during initialization")
     
+    def _create_temp_dir(self) -> Path:
+        """Create temporary directory using new naming convention: <input_filename>_<date>_<pid>"""
+        # Get input file name (without extension)
+        input_file = self._get_input_file()
+        input_basename = input_file.stem  # filename without extension
+        
+        # Create temp directory name: inputname_date_pid
+        temp_dirname = f"{input_basename}_{self.timestamp}_{self.process_id}"
+        
+        temp_base = Path.cwd() / "temp"
+        temp_base.mkdir(exist_ok=True)
+        
+        temp_subdir = temp_base / temp_dirname
+        temp_subdir.mkdir(exist_ok=True)
+        
+        return temp_subdir
+    
     def _create_log_file(self) -> Path:
-        """Create a unique log file name using timestamp and execution ID."""
-        log_filename = f"prompt_chain_{self.timestamp}_{self.execution_id}.log"
-        return Path.cwd() / log_filename
+        """Create log file in temp directory using same naming convention."""
+        # Get input file name (without extension)
+        input_file = self._get_input_file()
+        input_basename = input_file.stem
+        
+        # Create log filename using same convention as directory
+        log_filename = f"{input_basename}_{self.timestamp}_{self.process_id}.log"
+        return self.temp_dir / log_filename
     
     def _setup_logging(self):
-        """Setup logging to the unique log file."""
+        """Setup logging to the log file in temp directory."""
         # Remove any existing handlers to avoid duplicates
         for handler in logging.root.handlers[:]:
             logging.root.removeHandler(handler)
@@ -84,7 +108,7 @@ class PromptChainRunner:
             datefmt='%Y-%m-%d %H:%M:%S'
         )
         
-        # File handler
+        # File handler (now in temp directory)
         file_handler = logging.FileHandler(self.log_file, encoding='utf-8')
         file_handler.setFormatter(formatter)
         file_handler.setLevel(logging.DEBUG)
@@ -106,17 +130,12 @@ class PromptChainRunner:
         if not self.config_file.exists():
             raise FileNotFoundError(f"Configuration file not found: {self.config_file}")
         
-        logging.info(f"Loading configuration from: {self.config_file}")
-        
         try:
             with open(self.config_file, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f)
             
             # Validate configuration structure
             self._validate_config(config)
-            
-            logging.info(f"Configuration loaded successfully")
-            logging.debug(f"Configuration: {config}")
             
             return config
             
@@ -127,19 +146,14 @@ class PromptChainRunner:
     
     def _validate_config(self, config: Dict[str, Any]):
         """Validate configuration structure and prompt file existence."""
-        logging.debug("Starting configuration validation")
-        
         required_fields = ['input_file', 'output_file', 'prompts']
         
         for field in required_fields:
             if field not in config:
                 raise ValueError(f"Missing required field in configuration: {field}")
         
-        logging.debug(f"Required fields validated: {required_fields}")
-        
         # Validate prompts section
         prompts = config['prompts']
-        logging.debug(f"Found prompts section: {prompts}")
         
         if not isinstance(prompts, dict):
             raise ValueError("'prompts' must be a dictionary")
@@ -147,34 +161,25 @@ class PromptChainRunner:
         if not prompts:
             raise ValueError("At least one prompt must be specified")
         
-        logging.debug(f"Prompts is dictionary with {len(prompts)} entries")
-        
         # Validate prompt numbering (1-99)
         valid_numbers = set(range(1, 100))
         prompt_numbers = set()
         
         for key in prompts.keys():
-            logging.debug(f"Validating prompt key: {key}")
             if not key.startswith('prompt '):
                 raise ValueError(f"Invalid prompt key format: {key}. Expected 'prompt N' where N is 1-99")
             
             try:
                 number = int(key.split()[1])
-                logging.debug(f"Extracted number {number} from key {key}")
                 if number not in valid_numbers:
                     raise ValueError(f"Prompt number must be 1-99, got: {number}")
                 prompt_numbers.add(number)
             except (IndexError, ValueError) as e:
                 raise ValueError(f"Invalid prompt key format: {key}. Expected 'prompt N' where N is 1-99")
         
-        logging.debug(f"Prompt numbers found: {sorted(prompt_numbers)}")
-        
         # Check for sequential numbering starting from 1
         sorted_numbers = sorted(prompt_numbers)
         expected_numbers = list(range(1, len(sorted_numbers) + 1))
-        
-        logging.debug(f"Expected numbers: {expected_numbers}")
-        logging.debug(f"Found numbers: {sorted_numbers}")
         
         if sorted_numbers != expected_numbers:
             raise ValueError(f"Prompts must be numbered sequentially starting from 1. Found: {sorted_numbers}")
@@ -182,16 +187,11 @@ class PromptChainRunner:
         # Validate ALL prompt files exist before any execution
         missing_prompts = []
         for prompt_key, prompt_file in prompts.items():
-            logging.debug(f"Checking existence of {prompt_key}: {prompt_file}")
             prompt_path = Path(prompt_file)
             if not prompt_path.exists():
                 missing_prompts.append(f"{prompt_key}: {prompt_file}")
-                logging.debug(f"Missing: {prompt_file}")
             elif not prompt_path.is_file():
                 missing_prompts.append(f"{prompt_key}: {prompt_file} (exists but is not a file)")
-                logging.debug(f"Not a file: {prompt_file}")
-            else:
-                logging.debug(f"Verified: {prompt_file}")
         
         if missing_prompts:
             error_msg = "Missing or invalid prompt files:\n"
@@ -200,23 +200,8 @@ class PromptChainRunner:
             error_msg += "\nAll prompt files must exist before execution can begin."
             raise FileNotFoundError(error_msg)
         
-        # FIX: Set total_prompts AFTER validation passes
+        # Set total_prompts AFTER validation passes
         self.total_prompts = len(prompts)
-        logging.info(f"Configuration validation passed - {self.total_prompts} prompts found")
-        logging.info("All prompt files verified to exist")
-        logging.debug(f"Prompts: {list(prompts.keys())}")
-        logging.debug(f"self.total_prompts set to: {self.total_prompts}")
-    
-    def _create_temp_dir(self) -> Path:
-        """Create temporary directory for intermediate files using unique naming."""
-        temp_base = Path.cwd() / "temp"
-        temp_base.mkdir(exist_ok=True)
-        
-        # Create unique subdirectory using same naming convention as log file
-        temp_subdir = temp_base / f"prompt_chain_{self.timestamp}_{self.execution_id}"
-        temp_subdir.mkdir(exist_ok=True)
-        
-        return temp_subdir
     
     def _validate_input_file(self) -> Path:
         """Validate that the input file exists before starting execution."""
@@ -268,7 +253,7 @@ class PromptChainRunner:
     
     def _get_temp_file(self, step: int, prompt_name: str = None) -> Path:
         """
-        Generate temporary file path for intermediate steps with unique naming.
+        Generate temporary file path for intermediate steps.
         
         Args:
             step: Current step number
@@ -283,12 +268,30 @@ class PromptChainRunner:
             clean_name = Path(prompt_name).stem
             # Replace spaces and special characters with underscores
             clean_name = "".join(c if c.isalnum() else "_" for c in clean_name)
-            temp_filename = f"step{step:02d}_{clean_name}_{self.timestamp}_{self.execution_id}.tmp"
+            temp_filename = f"step{step:02d}_{clean_name}.tmp"
         else:
-            temp_filename = f"step{step:02d}_{self.timestamp}_{self.execution_id}.tmp"
+            temp_filename = f"step{step:02d}.tmp"
         
         temp_file = self.temp_dir / temp_filename
         return temp_file.resolve()
+    
+    def _copy_input_to_temp(self, input_file: Path):
+        """Copy the original input file to temp directory for reference."""
+        input_copy = self.temp_dir / f"original_input_{input_file.name}"
+        try:
+            shutil.copy2(input_file, input_copy)
+            logging.info(f"Original input file copied to temp directory: {input_copy.name}")
+        except Exception as e:
+            logging.warning(f"Failed to copy input file to temp directory: {e}")
+    
+    def _copy_output_to_temp(self, output_file: Path):
+        """Copy the final output file to temp directory for reference."""
+        output_copy = self.temp_dir / f"final_output_{output_file.name}"
+        try:
+            shutil.copy2(output_file, output_copy)
+            logging.info(f"Final output file copied to temp directory: {output_copy.name}")
+        except Exception as e:
+            logging.warning(f"Failed to copy output file to temp directory: {e}")
     
     def _run_prompt_runner(self, prompt_file: str, input_file: Path, output_file: Path, step: int) -> bool:
         """
@@ -303,10 +306,9 @@ class PromptChainRunner:
         Returns:
             True if successful, False otherwise
         """
-        # Build command
+        # Build command - use prompt_runner.py directly from PATH
         cmd = [
-            sys.executable,  # Use same Python interpreter
-            "prompt_runner.py",
+            "prompt_runner.py",  # This will use the system PATH
             "-p", prompt_file,
             "-i", str(input_file),
             "-o", str(output_file),
@@ -345,6 +347,10 @@ class PromptChainRunner:
         except subprocess.TimeoutExpired:
             logging.error(f"Step {step}: TIMEOUT - prompt_runner.py timed out after 5 minutes")
             return False
+        except FileNotFoundError:
+            logging.error(f"Step {step}: ERROR - prompt_runner.py not found in PATH")
+            logging.error("Make sure prompt_runner.py is installed and accessible in your system PATH")
+            return False
         except Exception as e:
             logging.error(f"Step {step}: ERROR - Failed to execute prompt_runner.py: {e}")
             return False
@@ -379,6 +385,9 @@ class PromptChainRunner:
             initial_input = self._validate_input_file()
             final_output = self._get_output_file()
             
+            # Copy original input file to temp directory
+            self._copy_input_to_temp(initial_input)
+            
             logging.info(f"Pre-execution validation completed successfully")
             logging.info(f"Initial input: {initial_input}")
             logging.info(f"Final output: {final_output}")
@@ -386,10 +395,8 @@ class PromptChainRunner:
             # Get sorted prompt list
             prompts = self.config['prompts']
             logging.info(f"Processing {len(prompts)} prompts from config")
-            logging.debug(f"Available prompts: {list(prompts.keys())}")
-            logging.debug(f"Total prompts from validation: {self.total_prompts}")
             
-            # FIX: Check if we have prompts to execute
+            # Check if we have prompts to execute
             if self.total_prompts == 0:
                 logging.error("No prompts found to execute!")
                 logging.error(f"Config prompts section: {prompts}")
@@ -398,10 +405,8 @@ class PromptChainRunner:
             sorted_prompts = []
             for i in range(1, self.total_prompts + 1):
                 prompt_key = f"prompt {i}"
-                logging.debug(f"Looking for {prompt_key} in prompts")
                 if prompt_key in prompts:
                     sorted_prompts.append((i, prompts[prompt_key]))
-                    logging.debug(f"Added {prompt_key}: {prompts[prompt_key]}")
                 else:
                     logging.error(f"Missing {prompt_key} in prompts configuration")
                     logging.error(f"Available keys: {list(prompts.keys())}")
@@ -452,9 +457,13 @@ class PromptChainRunner:
                 
                 logging.info(f"Step {step} completed successfully")
             
+            # Copy final output to temp directory for reference
+            self._copy_output_to_temp(final_output)
+            
             logging.info("=" * 80)
             logging.info(f"Prompt chain execution completed successfully!")
-            logging.info(f"Final output: {final_output}")
+            logging.info(f"Final output (working directory): {final_output}")
+            logging.info(f"Final output (temp directory): {self.temp_dir / f'final_output_{final_output.name}'}")
             logging.info(f"Temporary files preserved in: {self.temp_dir}")
             logging.info(f"Log file: {self.log_file}")
             logging.info("=" * 80)
@@ -475,22 +484,28 @@ class PromptChainRunner:
         """
         if keep_temp:
             logging.info(f"Preserving temporary files in: {self.temp_dir}")
-            temp_files = list(self.temp_dir.glob("*.tmp"))
+            temp_files = list(self.temp_dir.glob("*"))
             if temp_files:
-                logging.info("Temporary files created:")
+                logging.info("Files in temp directory:")
                 for temp_file in temp_files:
-                    file_size = temp_file.stat().st_size
-                    logging.info(f"  - {temp_file.name} ({file_size} bytes)")
+                    if temp_file.is_file():
+                        file_size = temp_file.stat().st_size
+                        logging.info(f"  - {temp_file.name} ({file_size} bytes)")
+                    else:
+                        logging.info(f"  - {temp_file.name} (directory)")
             return
         
         try:
             # Remove temporary files
-            temp_files = list(self.temp_dir.glob("*.tmp"))
+            temp_files = list(self.temp_dir.glob("*"))
+            files_removed = 0
             for temp_file in temp_files:
-                temp_file.unlink()
-                logging.debug(f"Removed temp file: {temp_file}")
+                if temp_file.is_file():
+                    temp_file.unlink()
+                    files_removed += 1
+                    logging.debug(f"Removed temp file: {temp_file}")
             
-            logging.info(f"Cleaned up {len(temp_files)} temporary files")
+            logging.info(f"Cleaned up {files_removed} temporary files")
             
             # Remove temp directory if empty
             if not any(self.temp_dir.iterdir()):
@@ -556,17 +571,19 @@ Configuration File Format (YAML):
         prompt 3: step3_finalization.json
 
 Execution Flow:
-    1. input_document.md -> step1_analysis.json -> temp/step01_analysis_20250126_154530_a1b2c3d4.tmp
-    2. temp/step01_analysis_20250126_154530_a1b2c3d4.tmp -> step2_refinement.json -> temp/step02_refinement_20250126_154530_a1b2c3d4.tmp
-    3. temp/step02_refinement_20250126_154530_a1b2c3d4.tmp -> step3_finalization.json -> final_output.md
+    1. input_document.md -> step1_analysis.json -> temp/input_document_20250131_12345/step01_analysis.tmp
+    2. temp/.../step01_analysis.tmp -> step2_refinement.json -> temp/.../step02_refinement.tmp
+    3. temp/.../step02_refinement.tmp -> step3_finalization.json -> final_output.md
 
-File Naming Convention:
-    Log file: prompt_chain_20250126_154530_a1b2c3d4.log
-    Temp dir: temp/prompt_chain_20250126_154530_a1b2c3d4/
-    Temp files: step01_promptname_20250126_154530_a1b2c3d4.tmp
+New File Organization:
+    Temp directory: temp/input_document_20250131_12345/
+    Log file: temp/input_document_20250131_12345/input_document_20250131_12345.log
+    Original input: temp/input_document_20250131_12345/original_input_input_document.md
+    Final output copy: temp/input_document_20250131_12345/final_output_final_output.md
+    Intermediate files: temp/input_document_20250131_12345/step01_analysis.tmp, etc.
 
 Requirements:
-    - prompt_runner.py must be in PATH or current directory
+    - prompt_runner.py must be installed and available in your system PATH
     - All prompt JSON files must exist
     - Input file must exist
     - OpenRouter API key must be set (OPENROUTER_API_KEY)
@@ -655,3 +672,4 @@ Requirements:
 
 if __name__ == "__main__":
     exit(main())
+    
