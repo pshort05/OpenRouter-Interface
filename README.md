@@ -18,6 +18,14 @@ Ideal for interactive use and team collaboration:
 - **Configuration UI**: Web-based settings management
 - **File uploads**: Drag-and-drop file processing
 
+### ⛓️ Prompt Chain Runner
+Advanced automation for multi-step AI workflows:
+- **Sequential Processing**: Execute 1-99 prompts in sequence
+- **Multi-File Support**: Process multiple files through the same prompt chain
+- **Per-Prompt Configuration**: Use different LLMs for each step (Claude, GPT-4, DeepSeek, etc.)
+- **Advanced File Management**: Organized temp directories with full traceability
+- **Flexible Output**: Pattern-based naming for batch processing
+
 ---
 
 ---
@@ -103,6 +111,7 @@ Logging Options:
   -l, --log-file LOG_FILE      Log file path (enables file logging)
   -v, --verbose                Enable verbose logging (DEBUG level)
   -q, --quiet                  Suppress output except errors
+  --temp-dir TEMP_DIR          Temporary directory for logs and payload files
 
 Help:
   -h, --help                   Show help message and examples
@@ -181,6 +190,9 @@ python prompt_runner.py -c config.yaml -l custom.log -p analysis.json -i doc.md
 
 # Mix command line and config file settings
 python prompt_runner.py -c base_config.yaml -p custom_prompt.json -i input.txt -l debug.log -v
+
+# Use custom temp directory for organized file management
+python prompt_runner.py -p analysis.json -i document.md --temp-dir temp/analysis_run
 ```
 
 ### 🔍 CLI Workflow Examples
@@ -290,6 +302,12 @@ ERROR: Input file not found: missing.md
 - **File logging**: Automatically enabled when log file specified
 - **Batch mode**: Triggered when both `-p` and `-i` provided
 - **Directory creation**: Log and output directories created automatically
+
+#### File Management Features
+- **Unique payload files**: Each execution creates timestamped payload files (`prompt_runner_20250131_143052_12345.payload.json`)
+- **Temporary directory support**: Use `--temp-dir` to organize all files in one location
+- **Shared temp directories**: When used with prompt chains, all files stored in the same temp directory
+- **File preservation**: Payload files preserved after execution for debugging and review
 
 ### 🚨 CLI Troubleshooting
 
@@ -427,6 +445,113 @@ python prompt_runner_flask.py
 
 #### Access Web Interface
 Navigate to: `http://localhost:5000`
+
+---
+
+## ⛓️ Prompt Chain Runner
+
+The **Prompt Chain Runner** (`prompt_chain_runner.py`) enables advanced automation workflows by executing multiple prompts in sequence. Perfect for complex document processing pipelines that require multiple AI processing steps.
+
+### 🚀 New Enhanced Features
+
+#### Multi-File Processing
+Process multiple files through the same prompt chain:
+```bash
+# Process 3 files through the same 3-step prompt chain
+python prompt_chain_runner.py -c multi_file_config.yaml
+```
+
+**Configuration Example:**
+```yaml
+input_files:
+  - "document1.md"
+  - "document2.md" 
+  - "document3.txt"
+output_pattern: "processed_{input_name}_final{input_ext}"
+prompts:
+  prompt 1: "analysis.json"
+  prompt 2: "refinement.json"
+  prompt 3: "polish.json"
+```
+
+#### Per-Prompt Configuration (Different LLMs)
+Use different AI models optimized for each step:
+```bash
+# Use Claude for creative tasks, GPT-4 for technical analysis
+python prompt_chain_runner.py -c multi_llm_config.yaml
+```
+
+**Configuration Example:**
+```yaml
+input_file: "document.md"
+output_file: "processed_document.md"
+prompts:
+  prompt 1:
+    prompt_file: "creative_brainstorm.json"
+    config_file: "claude_config.yaml"      # Claude for creativity
+  prompt 2:
+    prompt_file: "technical_analysis.json"
+    config_file: "gpt4_config.yaml"       # GPT-4 for technical work
+  prompt 3:
+    prompt_file: "final_polish.json"
+    config_file: "deepseek_config.yaml"   # DeepSeek for final review
+```
+
+### 📊 Execution Workflows
+
+**Single File Processing:**
+```
+input.md → Analysis → Refinement → Polish → output.md
+```
+
+**Multi-File Processing:**
+```
+doc1.md → Analysis → Refinement → Polish → processed_doc1_final.md
+doc2.md → Analysis → Refinement → Polish → processed_doc2_final.md  
+doc3.txt → Analysis → Refinement → Polish → processed_doc3_final.txt
+```
+
+### 🗂️ Advanced File Organization
+
+All execution artifacts are preserved in organized temp directories:
+```
+temp/input_document_20250131_143052_12345/
+├── input_document_20250131_143052_12345.log           # Execution log
+├── original_input_document.md                         # Original input
+├── file01_step01_analysis.tmp                         # Intermediate files
+├── file01_step02_refinement.tmp
+├── prompt_runner_20250131_143053_12346.payload.json   # API payloads
+├── prompt_runner_20250131_143054_12347.payload.json
+└── processed_document_final.md                        # Final output copy
+```
+
+### 🛠️ Quick Start
+
+**1. Create Configuration:**
+```bash
+# Generate sample config
+python prompt_chain_runner.py --create-sample
+```
+
+**2. Run Single File Chain:**
+```bash
+python prompt_chain_runner.py -c my_chain.yaml
+```
+
+**3. Run Multi-File Processing:**
+```bash
+python prompt_chain_runner.py -c multi_file_config.yaml
+```
+
+**4. Debug with Verbose Logging:**
+```bash
+python prompt_chain_runner.py -c config.yaml --debug
+```
+
+### 📖 Full Documentation
+For complete details, see [prompt_chain_readme.md](prompt_chain_readme.md)
+
+---
 
 ## 🤖 Supported AI Models
 

@@ -26,19 +26,22 @@ from typing import Dict, Any, List, Optional
 class PromptChainRunner:
     """Manages sequential execution of multiple prompts."""
     
-    def __init__(self, config_file: str, input_file: str = None, output_file: str = None, debug: bool = False):
+    def __init__(self, config_file: str, input_file: str = None, output_file: str = None, 
+                 prompt_runner_config: str = None, debug: bool = False):
         """
         Initialize the prompt chain runner.
         
         Args:
-            config_file: Path to YAML configuration file
+            config_file: Path to YAML configuration file for the chain
             input_file: Override input file from command line
             output_file: Override output file from command line
+            prompt_runner_config: Configuration file to pass to prompt_runner.py
             debug: Enable debug logging
         """
         self.config_file = Path(config_file)
         self.input_file_override = input_file
         self.output_file_override = output_file
+        self.prompt_runner_config = prompt_runner_config
         self.debug = debug
         
         # Track execution state - Initialize before config loading
@@ -146,13 +149,30 @@ class PromptChainRunner:
     
     def _validate_config(self, config: Dict[str, Any]):
         """Validate configuration structure and prompt file existence."""
-        required_fields = ['input_file', 'output_file', 'prompts']
+        # Support both single file and multiple files
+        if 'input_file' not in config and 'input_files' not in config:
+            raise ValueError("Either 'input_file' or 'input_files' must be specified")
         
-        for field in required_fields:
-            if field not in config:
-                raise ValueError(f"Missing required field in configuration: {field}")
+        if 'input_file' in config and 'input_files' in config:
+            raise ValueError("Cannot specify both 'input_file' and 'input_files'")
         
-        # Validate prompts section
+        # Validate output configuration
+        if 'output_file' not in config and 'output_pattern' not in config:
+            raise ValueError("Either 'output_file' or 'output_pattern' must be specified")
+        
+        if 'prompts' not in config:
+            raise ValueError("Missing required field 'prompts' in configuration")
+        
+        # Validate input files
+        if 'input_files' in config:
+            self._validate_input_files(config['input_files'])
+        else:
+            # Single input file
+            input_file = Path(config['input_file'])
+            if not input_file.exists():
+                raise FileNotFoundError(f"Input file not found: {input_file}")
+        
+        # Validate prompts section  
         prompts = config['prompts']
         
         if not isinstance(prompts, dict):
@@ -165,7 +185,7 @@ class PromptChainRunner:
         valid_numbers = set(range(1, 100))
         prompt_numbers = set()
         
-        for key in prompts.keys():
+        for key, prompt_config in prompts.items():
             if not key.startswith('prompt '):
                 raise ValueError(f"Invalid prompt key format: {key}. Expected 'prompt N' where N is 1-99")
             
@@ -176,6 +196,9 @@ class PromptChainRunner:
                 prompt_numbers.add(number)
             except (IndexError, ValueError) as e:
                 raise ValueError(f"Invalid prompt key format: {key}. Expected 'prompt N' where N is 1-99")
+            
+            # Validate prompt configuration (can be string or dict)
+            self._validate_prompt_config(prompt_config, key)
         
         # Check for sequential numbering starting from 1
         sorted_numbers = sorted(prompt_numbers)
@@ -186,22 +209,79 @@ class PromptChainRunner:
         
         # Validate ALL prompt files exist before any execution
         missing_prompts = []
-        for prompt_key, prompt_file in prompts.items():
+        for prompt_key, prompt_config in prompts.items():
+            # Extract prompt file path (handle both string and dict formats)
+            prompt_file = self._get_prompt_file(prompt_config)
             prompt_path = Path(prompt_file)
             if not prompt_path.exists():
                 missing_prompts.append(f"{prompt_key}: {prompt_file}")
             elif not prompt_path.is_file():
                 missing_prompts.append(f"{prompt_key}: {prompt_file} (exists but is not a file)")
+                
+            # Validate config file if specified
+            config_file = self._get_prompt_config_file(prompt_config)
+            if config_file:
+                config_path = Path(config_file)
+                if not config_path.exists():
+                    missing_prompts.append(f"{prompt_key} config: {config_file}")
+                elif not config_path.is_file():
+                    missing_prompts.append(f"{prompt_key} config: {config_file} (exists but is not a file)")
         
         if missing_prompts:
-            error_msg = "Missing or invalid prompt files:\n"
+            error_msg = "Missing or invalid prompt files and configs:\n"
             for missing in missing_prompts:
                 error_msg += f"  - {missing}\n"
-            error_msg += "\nAll prompt files must exist before execution can begin."
+            error_msg += "\nAll prompt files and config files must exist before execution can begin."
             raise FileNotFoundError(error_msg)
         
         # Set total_prompts AFTER validation passes
         self.total_prompts = len(prompts)
+    
+    def _validate_input_files(self, input_files: List[str]):
+        """Validate multiple input files configuration."""
+        if not isinstance(input_files, list):
+            raise ValueError("'input_files' must be a list")
+        
+        if not input_files:
+            raise ValueError("'input_files' cannot be empty")
+        
+        for i, file_path in enumerate(input_files):
+            input_file = Path(file_path)
+            if not input_file.exists():
+                raise FileNotFoundError(f"Input file {i+1} not found: {input_file}")
+            if not input_file.is_file():
+                raise ValueError(f"Input file {i+1} exists but is not a file: {input_file}")
+    
+    def _validate_prompt_config(self, prompt_config, prompt_key: str):
+        """Validate individual prompt configuration (string or dict)."""
+        if isinstance(prompt_config, str):
+            # Simple format: just the prompt file path
+            return
+        elif isinstance(prompt_config, dict):
+            # Extended format with prompt file and optional config
+            if 'prompt_file' not in prompt_config:
+                raise ValueError(f"'{prompt_key}' dict format must include 'prompt_file'")
+            
+            # Config file is optional
+            if 'config_file' in prompt_config:
+                logging.debug(f"Prompt {prompt_key} has custom config: {prompt_config['config_file']}")
+        else:
+            raise ValueError(f"'{prompt_key}' must be a string or dict, got {type(prompt_config)}")
+    
+    def _get_prompt_file(self, prompt_config) -> str:
+        """Extract prompt file path from config (handles both string and dict formats)."""
+        if isinstance(prompt_config, str):
+            return prompt_config
+        elif isinstance(prompt_config, dict):
+            return prompt_config['prompt_file']
+        else:
+            raise ValueError(f"Invalid prompt config type: {type(prompt_config)}")
+    
+    def _get_prompt_config_file(self, prompt_config) -> Optional[str]:
+        """Extract config file path from prompt config (returns None if not specified)."""
+        if isinstance(prompt_config, dict):
+            return prompt_config.get('config_file')
+        return None
     
     def _validate_input_file(self) -> Path:
         """Validate that the input file exists before starting execution."""
@@ -227,7 +307,7 @@ class PromptChainRunner:
         return input_file
     
     def _get_input_file(self) -> Path:
-        """Get the input file path (command line override or config)."""
+        """Get the input file path (command line override or config) - for single file mode."""
         if self.input_file_override:
             input_file = Path(self.input_file_override)
             logging.info(f"Using command line input file: {input_file}")
@@ -237,19 +317,61 @@ class PromptChainRunner:
         
         return input_file.resolve()
     
-    def _get_output_file(self) -> Path:
+    def _get_input_files(self) -> List[Path]:
+        """Get the input files list for multiple file processing."""
+        if 'input_files' in self.config:
+            input_files = [Path(f).resolve() for f in self.config['input_files']]
+            logging.info(f"Using config input files: {len(input_files)} files")
+            return input_files
+        else:
+            # Single file mode - return as list
+            return [self._get_input_file()]
+    
+    def _is_multiple_file_mode(self) -> bool:
+        """Check if we're in multiple file processing mode."""
+        return 'input_files' in self.config
+    
+    def _get_output_file(self, input_file: Path = None) -> Path:
         """Get the output file (command line override or config)."""
         if self.output_file_override:
             output_file = Path(self.output_file_override)
             logging.info(f"Using command line output file: {output_file}")
-        else:
+        elif 'output_file' in self.config:
             output_file = Path(self.config['output_file'])
             logging.info(f"Using config output file: {output_file}")
+        elif 'output_pattern' in self.config and input_file:
+            # Generate output filename from pattern
+            output_file = self._generate_output_filename(input_file, self.config['output_pattern'])
+            logging.info(f"Generated output file: {output_file}")
+        else:
+            raise ValueError("No output file or pattern specified")
         
         # Create parent directory if it doesn't exist
         output_file.parent.mkdir(parents=True, exist_ok=True)
         
         return output_file.resolve()
+    
+    def _generate_output_filename(self, input_file: Path, pattern: str) -> Path:
+        """Generate output filename using pattern substitution."""
+        # Available substitutions:
+        # {input_name} - input filename without extension
+        # {input_ext} - input file extension
+        # {timestamp} - current timestamp
+        # {process_id} - process ID
+        
+        input_name = input_file.stem
+        input_ext = input_file.suffix
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        process_id = os.getpid()
+        
+        output_filename = pattern.format(
+            input_name=input_name,
+            input_ext=input_ext,
+            timestamp=timestamp,
+            process_id=process_id
+        )
+        
+        return Path(output_filename)
     
     def _get_temp_file(self, step: int, prompt_name: str = None) -> Path:
         """
@@ -293,12 +415,12 @@ class PromptChainRunner:
         except Exception as e:
             logging.warning(f"Failed to copy output file to temp directory: {e}")
     
-    def _run_prompt_runner(self, prompt_file: str, input_file: Path, output_file: Path, step: int) -> bool:
+    def _run_prompt_runner(self, prompt_config, input_file: Path, output_file: Path, step: int) -> bool:
         """
         Run prompt_runner.py with specified parameters.
         
         Args:
-            prompt_file: Path to JSON prompt file
+            prompt_config: Prompt configuration (string or dict with prompt_file and optional config_file)
             input_file: Input file for this step
             output_file: Output file for this step
             step: Current step number for logging
@@ -306,14 +428,29 @@ class PromptChainRunner:
         Returns:
             True if successful, False otherwise
         """
+        # Extract prompt file and config from prompt_config
+        prompt_file = self._get_prompt_file(prompt_config)
+        step_config_file = self._get_prompt_config_file(prompt_config)
+        
         # Build command - use prompt_runner.py directly from PATH
         cmd = [
-            "prompt_runner.py",  # This will use the system PATH
+            "python", "prompt_runner.py",  # Use python to execute the script
             "-p", prompt_file,
             "-i", str(input_file),
             "-o", str(output_file),
             "-l", str(self.log_file)  # Use same log file
         ]
+        
+        # Add config file (priority: step-specific > global > none)
+        if step_config_file:
+            cmd.extend(["-c", step_config_file])
+            logging.info(f"Step {step}: Using step-specific config: {step_config_file}")
+        elif self.prompt_runner_config:
+            cmd.extend(["-c", self.prompt_runner_config])
+            logging.info(f"Step {step}: Using global config: {self.prompt_runner_config}")
+        
+        # Add temp directory to keep all files organized
+        cmd.extend(["--temp-dir", str(self.temp_dir)])
         
         logging.info(f"Step {step}: Executing prompt_runner.py")
         logging.info(f"Full command: {' '.join(cmd)}")
@@ -371,27 +508,22 @@ class PromptChainRunner:
     
     def run_chain(self) -> bool:
         """
-        Execute the prompt chain.
+        Execute the prompt chain - supports both single file and multiple files.
         
         Returns:
             True if all steps completed successfully, False otherwise
         """
         logging.info("=" * 80)
-        logging.info(f"Starting prompt chain execution - {self.total_prompts} prompts")
+        multiple_files = self._is_multiple_file_mode()
+        if multiple_files:
+            input_files = self._get_input_files()
+            logging.info(f"Starting MULTI-FILE prompt chain execution - {len(input_files)} files, {self.total_prompts} prompts each")
+        else:
+            input_files = self._get_input_files()  # Returns single file as list
+            logging.info(f"Starting prompt chain execution - {self.total_prompts} prompts")
         logging.info("=" * 80)
         
         try:
-            # Validate all files exist before starting execution
-            initial_input = self._validate_input_file()
-            final_output = self._get_output_file()
-            
-            # Copy original input file to temp directory
-            self._copy_input_to_temp(initial_input)
-            
-            logging.info(f"Pre-execution validation completed successfully")
-            logging.info(f"Initial input: {initial_input}")
-            logging.info(f"Final output: {final_output}")
-            
             # Get sorted prompt list
             prompts = self.config['prompts']
             logging.info(f"Processing {len(prompts)} prompts from config")
@@ -417,58 +549,100 @@ class PromptChainRunner:
                 logging.error("No prompts to execute - this should not happen after validation")
                 return False
             
-            # Execute prompts in sequence
-            current_input = initial_input
+            # Process each input file through the entire prompt chain
+            all_successful = True
+            total_files_processed = 0
             
-            for step, prompt_file in sorted_prompts:
-                logging.info(f"\n--- Step {step}/{self.total_prompts} ---")
-                logging.info(f"Executing prompt: {prompt_file}")
-                
-                # Determine output file for this step
-                if step == self.total_prompts:
-                    # Last step - use final output file
-                    current_output = final_output
-                    logging.info(f"Final step - output to: {current_output}")
+            for file_index, input_file in enumerate(input_files, 1):
+                logging.info(f"\n{'='*60}")
+                if multiple_files:
+                    logging.info(f"PROCESSING FILE {file_index}/{len(input_files)}: {input_file.name}")
                 else:
-                    # Intermediate step - use temp file with descriptive naming
-                    current_output = self._get_temp_file(step, prompt_file)
-                    logging.info(f"Intermediate step - temp output: {current_output.name}")
+                    logging.info(f"PROCESSING FILE: {input_file.name}")
+                logging.info(f"{'='*60}")
                 
-                # Run prompt_runner.py
-                success = self._run_prompt_runner(prompt_file, current_input, current_output, step)
+                # Copy original input file to temp directory
+                self._copy_input_to_temp(input_file)
                 
-                if not success:
-                    logging.error(f"Chain execution failed at step {step}")
-                    return False
+                # Get output file for this input
+                final_output = self._get_output_file(input_file)
+                logging.info(f"Final output for this file: {final_output}")
                 
-                # Verify output file
-                if not self._verify_output_file(current_output, step):
-                    logging.error(f"Output verification failed at step {step}")
-                    return False
+                # Execute prompts in sequence for this input file
+                current_input = input_file
+                file_successful = True
                 
-                # Log temp file details for tracking
-                if step < self.total_prompts:
-                    logging.info(f"Step {step} temp file created: {current_output}")
-                    logging.info(f"Temp file size: {current_output.stat().st_size} bytes")
+                for step, prompt_config in sorted_prompts:
+                    prompt_file = self._get_prompt_file(prompt_config)
+                    step_config = self._get_prompt_config_file(prompt_config)
+                    
+                    logging.info(f"\n--- File {file_index}, Step {step}/{self.total_prompts} ---")
+                    logging.info(f"Executing prompt: {prompt_file}")
+                    if step_config:
+                        logging.info(f"Using step-specific config: {step_config}")
+                    
+                    # Determine output file for this step
+                    if step == self.total_prompts:
+                        # Last step - use final output file
+                        current_output = final_output
+                        logging.info(f"Final step - output to: {current_output}")
+                    else:
+                        # Intermediate step - use temp file with file-specific naming
+                        temp_file_name = f"file{file_index:02d}_step{step:02d}_{Path(prompt_file).stem}.tmp"
+                        current_output = self.temp_dir / temp_file_name
+                        logging.info(f"Intermediate step - temp output: {current_output.name}")
+                    
+                    # Run prompt_runner.py
+                    success = self._run_prompt_runner(prompt_config, current_input, current_output, step)
+                    
+                    if not success:
+                        logging.error(f"Chain execution failed at File {file_index}, Step {step}")
+                        file_successful = False
+                        all_successful = False
+                        break
+                    
+                    # Verify output file
+                    if not self._verify_output_file(current_output, step):
+                        logging.error(f"Output verification failed at File {file_index}, Step {step}")
+                        file_successful = False
+                        all_successful = False
+                        break
+                    
+                    # Log temp file details for tracking
+                    if step < self.total_prompts:
+                        logging.info(f"Step {step} temp file created: {current_output}")
+                        logging.info(f"Temp file size: {current_output.stat().st_size} bytes")
+                    
+                    # Update input for next iteration
+                    current_input = current_output
+                    self.prompts_executed += 1
+                    
+                    logging.info(f"File {file_index}, Step {step} completed successfully")
                 
-                # Update input for next iteration
-                current_input = current_output
-                self.prompts_executed += 1
-                
-                logging.info(f"Step {step} completed successfully")
+                if file_successful:
+                    # Copy final output to temp directory for reference
+                    self._copy_output_to_temp(final_output)
+                    total_files_processed += 1
+                    logging.info(f"✓ File {file_index} processing completed successfully")
+                else:
+                    logging.error(f"❌ File {file_index} processing failed")
             
-            # Copy final output to temp directory for reference
-            self._copy_output_to_temp(final_output)
-            
+            # Final summary
             logging.info("=" * 80)
-            logging.info(f"Prompt chain execution completed successfully!")
-            logging.info(f"Final output (working directory): {final_output}")
-            logging.info(f"Final output (temp directory): {self.temp_dir / f'final_output_{final_output.name}'}")
+            if all_successful:
+                logging.info(f"✓ ALL FILES PROCESSED SUCCESSFULLY!")
+                logging.info(f"Files processed: {total_files_processed}/{len(input_files)}")
+                logging.info(f"Total prompt executions: {self.prompts_executed}")
+            else:
+                logging.error(f"❌ SOME FILES FAILED PROCESSING")
+                logging.info(f"Files processed successfully: {total_files_processed}/{len(input_files)}")
+                logging.info(f"Total prompt executions: {self.prompts_executed}")
+            
             logging.info(f"Temporary files preserved in: {self.temp_dir}")
             logging.info(f"Log file: {self.log_file}")
             logging.info("=" * 80)
             
-            return True
+            return all_successful
             
         except Exception as e:
             logging.error(f"Prompt chain execution failed: {e}")
@@ -553,6 +727,15 @@ Examples:
     # Override input and output files
     python prompt_chain_runner.py -c my_chain.yaml -i input.md -o output.md
     
+    # Pass config file to prompt_runner.py executions
+    python prompt_chain_runner.py -c my_chain.yaml --prompt-runner-config openrouter_editor.yaml
+    
+    # Multi-file processing with output pattern
+    python prompt_chain_runner.py -c multi_file_config.yaml
+    
+    # Multi-LLM chain with different configs per step  
+    python prompt_chain_runner.py -c multi_llm_config.yaml
+    
     # Keep temporary files for debugging (default behavior)
     python prompt_chain_runner.py -c my_chain.yaml
     
@@ -562,7 +745,9 @@ Examples:
     # Create sample configuration
     python prompt_chain_runner.py --create-sample
 
-Configuration File Format (YAML):
+Configuration File Formats (YAML):
+
+Single File Processing:
     input_file: input_document.md
     output_file: final_output.md
     prompts:
@@ -570,10 +755,41 @@ Configuration File Format (YAML):
         prompt 2: step2_refinement.json
         prompt 3: step3_finalization.json
 
-Execution Flow:
-    1. input_document.md -> step1_analysis.json -> temp/input_document_20250131_12345/step01_analysis.tmp
-    2. temp/.../step01_analysis.tmp -> step2_refinement.json -> temp/.../step02_refinement.tmp
-    3. temp/.../step02_refinement.tmp -> step3_finalization.json -> final_output.md
+Multiple Files Processing:
+    input_files:
+        - document1.md
+        - document2.md  
+        - document3.txt
+    output_pattern: "processed_{input_name}_output{input_ext}"
+    prompts:
+        prompt 1: analysis.json
+        prompt 2: refinement.json
+        prompt 3: polish.json
+
+Per-Prompt Configuration (Different LLMs):
+    input_file: input_document.md
+    output_file: final_output.md
+    prompts:
+        prompt 1:
+            prompt_file: creative_task.json
+            config_file: claude_config.yaml
+        prompt 2:
+            prompt_file: technical_task.json
+            config_file: gpt4_config.yaml
+        prompt 3: final_edit.json  # Uses global config
+
+Execution Flow Examples:
+
+Single File:
+    1. input_document.md -> analysis.json -> temp/input_document_20250131_12345/step01_analysis.tmp
+    2. temp/.../step01_analysis.tmp -> refinement.json -> temp/.../step02_refinement.tmp  
+    3. temp/.../step02_refinement.tmp -> polish.json -> final_output.md
+
+Multiple Files:
+    For each file (document1.md, document2.md, document3.txt):
+    1. documentN.md -> analysis.json -> temp/.../file01_step01_analysis.tmp
+    2. temp/.../file01_step01_analysis.tmp -> refinement.json -> temp/.../file01_step02_refinement.tmp
+    3. temp/.../file01_step02_refinement.tmp -> polish.json -> processed_documentN_output.md
 
 New File Organization:
     Temp directory: temp/input_document_20250131_12345/
@@ -587,6 +803,11 @@ Requirements:
     - All prompt JSON files must exist
     - Input file must exist
     - OpenRouter API key must be set (OPENROUTER_API_KEY)
+
+File Organization:
+    All temporary files, logs, and intermediate outputs are stored in the same
+    temporary directory (temp/input_filename_date_pid/) for easy management and
+    debugging. Each prompt_runner.py execution will use this shared temp directory.
         """
     )
     
@@ -607,6 +828,12 @@ Requirements:
         '-o', '--output',
         help='Output file (overrides config file)',
         metavar='OUTPUT_FILE'
+    )
+    
+    parser.add_argument(
+        '--prompt-runner-config',
+        help='Configuration file to pass to each prompt_runner.py execution',
+        metavar='CONFIG_FILE'
     )
     
     parser.add_argument(
@@ -639,7 +866,8 @@ Requirements:
     
     try:
         # Initialize runner
-        runner = PromptChainRunner(args.config, args.input, args.output, args.debug)
+        runner = PromptChainRunner(args.config, args.input, args.output, 
+                                 args.prompt_runner_config, args.debug)
         
         # Execute chain
         success = runner.run_chain()

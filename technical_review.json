@@ -1,0 +1,11 @@
+{
+  "instruction": "Perform technical review focusing on accuracy, completeness, and adherence to technical standards.",
+  "criteria": [
+    "Technical accuracy and correctness",
+    "Completeness of coverage",
+    "Appropriate use of technical terminology", 
+    "Compliance with industry standards",
+    "Clarity of technical explanations"
+  ],
+  "output_format": "Structured technical assessment with specific findings and recommendations"
+}

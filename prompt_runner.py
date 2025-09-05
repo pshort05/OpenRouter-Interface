@@ -36,7 +36,9 @@ Usage:
 
 import argparse
 import logging
+import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -52,9 +54,12 @@ from response_handler import ResponseHandler
 class PromptRunner:
     """Main application class."""
     
-    def __init__(self, output_file: str = None, config_file: str = None, log_file: str = None):
+    def __init__(self, output_file: str = None, config_file: str = None, log_file: str = None, temp_dir: str = None):
         """Initialize the prompt runner."""
         logging.info("Initializing OpenRouter Prompt Runner")
+        
+        # Store temp directory
+        self.temp_dir = temp_dir
         
         # Initialize configuration manager with optional config file
         self.config = ConfigManager(config_file)
@@ -62,18 +67,44 @@ class PromptRunner:
         # Handle log file specification and auto-enable file logging
         if log_file:
             # Command line log file takes precedence
-            self.config.config['log_file'] = log_file
+            # If temp_dir is provided and log_file is not absolute, put log in temp_dir
+            if temp_dir and not Path(log_file).is_absolute():
+                temp_log_path = Path(temp_dir) / log_file
+                self.config.config['log_file'] = str(temp_log_path)
+                logging.info(f"Using temp directory for log file: {temp_log_path}")
+            else:
+                self.config.config['log_file'] = log_file
+                logging.info(f"Command line log file specified: {log_file}")
             self.config.config['log_to_file'] = True
-            logging.info(f"Command line log file specified: {log_file}")
         elif 'log_file' in self.config.config and self.config.config['log_file']:
             # Config file has log_file specified, enable file logging
+            # If temp_dir is provided and log_file is not absolute, put log in temp_dir  
+            config_log_file = self.config.config['log_file']
+            if temp_dir and not Path(config_log_file).is_absolute():
+                temp_log_path = Path(temp_dir) / config_log_file
+                self.config.config['log_file'] = str(temp_log_path)
+                logging.info(f"Using temp directory for config log file: {temp_log_path}")
+            else:
+                logging.info(f"Config file log file specified: {config_log_file}")
             self.config.config['log_to_file'] = True
-            logging.info(f"Config file log file specified: {self.config.config['log_file']}")
         
         # FIXED: Only set defaults for missing values, don't override config file values
+        # Create unique payload file name with timestamp and process ID
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        process_id = os.getpid()
+        unique_payload_name = f'prompt_runner_{timestamp}_{process_id}.payload.json'
+        
+        # Set payload file location based on temp_dir
+        default_payload_file = unique_payload_name
+        if temp_dir:
+            default_payload_file = str(Path(temp_dir) / unique_payload_name)
+            logging.info(f"Using unique payload file in temp directory: {unique_payload_name}")
+        else:
+            logging.info(f"Using unique payload file: {unique_payload_name}")
+        
         config_defaults = {
             'log_level': 'INFO',
-            'payload_file': 'prompt_runner.payload.json',
+            'payload_file': default_payload_file,
             'model': 'anthropic/claude-4-sonnet-20250522',
             'api_base_url': 'https://openrouter.ai/api/v1',
             'temperature': 0.8,
@@ -407,6 +438,13 @@ The program will:
         help='Suppress all output except errors'
     )
     
+    # Temporary directory option
+    logging_group.add_argument(
+        '--temp-dir',
+        help='Temporary directory for logs and intermediate files',
+        metavar='TEMP_DIR'
+    )
+    
     args = parser.parse_args()
     
     # Validate argument combinations
@@ -423,8 +461,8 @@ The program will:
     batch_mode = args.prompt is not None and args.input is not None
     
     try:
-        # Initialize runner with output file, config file, and log file
-        runner = PromptRunner(args.output_file, args.config, args.log_file)
+        # Initialize runner with output file, config file, log file, and temp directory
+        runner = PromptRunner(args.output_file, args.config, args.log_file, args.temp_dir)
         
         # Adjust logging level if requested
         if args.verbose:

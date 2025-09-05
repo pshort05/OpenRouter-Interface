@@ -169,3 +169,44 @@ The system supports 400+ AI models via OpenRouter.ai, including Claude, GPT-4, G
 - Session history tracking (web interface)
 - Comprehensive logging with timestamps
 - Configurable output file naming
+
+## Development Best Practices
+
+### Testing and Validation Commands
+```bash
+# Validate JSON prompt files before using
+python -m json.tool [prompt_file].json
+
+# Test API connectivity
+python api_client.py
+
+# Validate configuration files
+python config_manager.py
+
+# Test prompt chain configurations
+python prompt_chain_runner.py -c chain_config.yaml --validate
+```
+
+### Debugging Commands
+```bash
+# Debug API issues with verbose logging
+python prompt_runner.py -p debug_prompt.json -i test.md -l debug.log -v
+
+# Check Flask template setup
+python create_templates.py --verify
+
+# Monitor Flask app in development
+./prompt_runner_flask.sh -d -l
+```
+
+### Security Requirements
+- **API Keys**: Always use environment variables (`OPENROUTER_API_KEY`), never store in config files
+- **File Permissions**: Ensure proper read/write permissions for logs and output directories
+- **Input Validation**: All JSON prompts and input files are validated before processing
+
+### Development Workflow
+1. **Always validate JSON prompts** before testing with `python -m json.tool`
+2. **Use verbose logging** (`-v` flag) when debugging API issues
+3. **Test configuration changes** with `config_manager.py` before deployment
+4. **Prefer editing existing files** over creating new ones
+5. **Run setup scripts** (`./setup_prompt_runner.sh`) after major changes

@@ -34,10 +34,27 @@ The Prompt Chain Runner takes a single input document and processes it through 1
 - **Comprehensive Logging**: Detailed execution logs with step-by-step tracking
 
 ### File Management
-- **Isolated Execution**: Each run gets unique temporary directory
+- **Isolated Execution**: Each run gets unique temporary directory (`temp/inputname_date_pid/`)
+- **Shared Temp Directory**: All prompt_runner.py executions use the same temp directory
+- **Unique Payload Files**: Each step creates timestamped payload files for debugging
 - **Intermediate Files**: All intermediate outputs preserved with descriptive names
+- **Complete File History**: Original input, all steps, final output, logs, and API payloads preserved
 - **Clean Output**: Final output contains only the result (no metadata)
 - **Smart Cleanup**: Optional temporary file cleanup with debug support
+
+### 🆕 Enhanced Features (New!)
+
+#### Multi-File Processing
+- **Batch Operations**: Process multiple input files through the same prompt chain
+- **Pattern-Based Output**: Generate organized output files using naming patterns
+- **Efficient Execution**: Each file processes through all prompts before moving to the next
+- **Organized Results**: All files maintained in the same temp directory with clear naming
+
+#### Per-Prompt Configuration
+- **Different LLMs per Step**: Use optimal AI model for each processing step
+- **Flexible Model Selection**: Claude for creative tasks, GPT-4 for technical, DeepSeek for analysis
+- **Configuration Priority**: Step-specific > Global > Default configuration
+- **Cost Optimization**: Use appropriate model pricing for each task type
 
 ### Error Handling & Monitoring
 - **Step Validation**: Each step verified before proceeding to next
@@ -263,14 +280,26 @@ All files use timestamp + execution ID for uniqueness:
 
 ```
 project/
-├── prompt_chain_20250126_154530_a1b2c3d4.log          # Execution log
 ├── temp/
-│   └── prompt_chain_20250126_154530_a1b2c3d4/         # Temp directory
-│       ├── step01_grammar_check_20250126_154530_a1b2c3d4.tmp
-│       ├── step02_style_improvement_20250126_154530_a1b2c3d4.tmp
-│       └── step03_content_enhancement_20250126_154530_a1b2c3d4.tmp
-├── input_document.md                                   # Your input
-└── final_output.md                                     # Final result
+│   └── input_document_20250126_154530_12345/          # Shared temp directory
+│       ├── input_document_20250126_154530_12345.log   # Chain runner log
+│       ├── original_input_input_document.md           # Original input copy
+│       ├── step01_grammar_check.tmp                   # Single file intermediates
+│       ├── step02_style_improvement.tmp
+│       ├── file01_step01_analysis.tmp                 # Multi-file intermediates
+│       ├── file01_step02_refinement.tmp               # (when using multi-file mode)
+│       ├── file02_step01_analysis.tmp
+│       ├── file02_step02_refinement.tmp
+│       ├── final_output_final_output.md               # Final output copy
+│       ├── prompt_runner_20250126_154531_12346.payload.json  # API payloads
+│       ├── prompt_runner_20250126_154532_12347.payload.json  # (one per execution)
+│       └── prompt_runner_20250126_154533_12348.payload.json
+├── input_document.md                                   # Your input(s)
+├── document2.md                                        # (multi-file mode)
+├── document3.txt
+├── final_output.md                                     # Final result(s)
+├── processed_document2_output.md                      # (multi-file mode)
+└── processed_document3_output.txt
 ```
 
 ### Temporary File Management
@@ -296,6 +325,112 @@ cat temp/prompt_chain_20250126_154530_a1b2c3d4/step02_style_improvement_20250126
 
 # Compare steps
 diff temp/*/step01_*.tmp temp/*/step02_*.tmp
+
+# View API payload for debugging
+cat temp/input_document_*/prompt_runner_*.payload.json
+```
+
+## ⚙️ Command Line Options
+
+### New Features
+
+#### Configuration Passing
+Pass configuration files to each `prompt_runner.py` execution:
+```bash
+# Use specific model, temperature, etc. for all prompts in the chain
+python prompt_chain_runner.py -c chain_config.yaml --prompt-runner-config openrouter_editor.yaml
+```
+
+#### File Organization
+All files are automatically organized in a shared temporary directory:
+```bash
+# Standard execution - creates temp/inputname_date_pid/ directory
+python prompt_chain_runner.py -c my_chain.yaml -i document.md -o result.md
+
+# Files will be organized as:
+# temp/document_20250131_143052_12345/
+# ├── document_20250131_143052_12345.log           # Chain log
+# ├── original_input_document.md                   # Input copy
+# ├── prompt_runner_20250131_143053_12346.payload.json  # Step 1 API payload
+# ├── step01_analysis.tmp                          # Step 1 output
+# └── final_output_result.md                       # Final output copy
+```
+
+#### Debug and Review
+Each execution creates unique payload files for debugging:
+```bash
+# After execution, review what was sent to the API for each step
+ls temp/input_*/prompt_runner_*.payload.json
+jq . temp/input_*/prompt_runner_20250131_143053_12346.payload.json
+```
+
+### 🆕 Enhanced Configuration Examples
+
+#### Multi-File Processing Configuration
+Process multiple files through the same prompt sequence:
+```yaml
+# multi_file_config.yaml
+input_files:
+  - "document1.md"
+  - "document2.md"
+  - "document3.txt"
+output_pattern: "processed_{input_name}_output{input_ext}"
+prompts:
+  prompt 1: "analysis.json"
+  prompt 2: "refinement.json"
+  prompt 3: "polish.json"
+```
+
+#### Multi-LLM Configuration
+Use different AI models for each processing step:
+```yaml
+# multi_llm_config.yaml
+input_file: "input_document.md"
+output_file: "final_processed_document.md"
+prompts:
+  prompt 1:
+    prompt_file: "creative_brainstorm.json"
+    config_file: "claude_config.yaml"     # Claude for creative tasks
+  prompt 2:
+    prompt_file: "technical_analysis.json"
+    config_file: "gpt4_config.yaml"      # GPT-4 for technical analysis
+  prompt 3:
+    prompt_file: "fact_checking.json"
+    config_file: "deepseek_config.yaml"  # DeepSeek for fact checking
+  prompt 4: "final_editing.json"         # Uses global/default config
+```
+
+#### Model Configuration Files
+```yaml
+# claude_config.yaml
+model: anthropic/claude-4-sonnet-20250522
+temperature: 0.8
+max_tokens: 25000
+
+# gpt4_config.yaml  
+model: openai/gpt-4o-2024-11-20
+temperature: 0.7
+max_tokens: 20000
+
+# deepseek_config.yaml
+model: deepseek/deepseek-r1
+temperature: 0.5
+max_tokens: 15000
+```
+
+#### Usage Examples
+```bash
+# Multi-file processing
+python prompt_chain_runner.py -c multi_file_config.yaml
+
+# Multi-LLM single file processing
+python prompt_chain_runner.py -c multi_llm_config.yaml
+
+# Combine with global config fallback
+python prompt_chain_runner.py -c multi_file_config.yaml --prompt-runner-config default_config.yaml
+
+# Debug multi-file execution
+python prompt_chain_runner.py -c multi_file_config.yaml --debug
 ```
 
 ## 🔧 Advanced Usage
