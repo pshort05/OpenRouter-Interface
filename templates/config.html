@@ -9,11 +9,11 @@
 <form method="POST" action="{{ url_for('update_config') }}">
     <div class="config-section">
         <h3>OpenRouter API Settings</h3>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="model">Model:</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <select name="model" id="model" required style="flex: 1;">
+        <div class="form-group">
+            <label for="model">Model:</label>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+                <div style="flex: 1;">
+                    <select name="model" id="model" required style="width: 100%;">
                         {% if models %}
                             {% for model in models %}
                                 <option value="{{ model.id }}" 
@@ -28,26 +28,28 @@
                             <option value="{{ config.model }}" selected>{{ config.model }} (Current)</option>
                         {% endif %}
                     </select>
-                    <form method="POST" action="{{ url_for('refresh_models') }}" style="margin: 0;">
-                        <button type="submit" class="btn" style="padding: 8px 12px; font-size: 0.9em;" 
-                                title="Refresh model list from OpenRouter">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                    </form>
-                </div>
-                <small class="form-text">
-                    {% if cache_info %}
-                        Models loaded from cache ({{ cache_info.last_updated }}, {{ cache_info.age_days }} days old)
-                        {% if cache_info.is_stale %}
-                            <span style="color: #856404;">⚠️ Cache is stale, consider refreshing</span>
+                    <small class="form-text" style="margin-top: 5px;">
+                        {% if cache_info %}
+                            Models loaded from cache ({{ cache_info.last_updated }}, {{ cache_info.age_days }} days old)
+                            {% if cache_info.is_stale %}
+                                <span style="color: #856404;">⚠️ Cache is stale, consider refreshing</span>
+                            {% endif %}
+                        {% elif model_count > 0 %}
+                            {{ model_count }} models available
+                        {% else %}
+                            No models loaded - check API key and refresh
                         {% endif %}
-                    {% elif model_count > 0 %}
-                        {{ model_count }} models available
-                    {% else %}
-                        No models loaded - check API key and refresh
-                    {% endif %}
-                </small>
+                    </small>
+                </div>
+                <form method="POST" action="{{ url_for('refresh_models') }}" style="margin: 0;">
+                    <button type="submit" class="btn" style="padding: 10px 15px; white-space: nowrap;" 
+                            title="Refresh model list from OpenRouter">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </form>
             </div>
+        </div>
+        <div class="form-row">
             <div class="form-group">
                 <label for="api_base_url">API Base URL:</label>
                 <input type="url" name="api_base_url" id="api_base_url" value="{{ config.api_base_url }}" required>
