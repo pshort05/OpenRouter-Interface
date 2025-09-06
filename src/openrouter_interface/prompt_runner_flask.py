@@ -20,7 +20,8 @@ import subprocess
 import threading
 import time
 import uuid
-from datetime import datetime
+import requests
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from werkzeug.utils import secure_filename
@@ -54,6 +55,11 @@ class FlaskPromptRunner:
         # Configuration file paths - look in parent directory (project root)
         self.config_file = 'flask_config.yaml'
         self.prompts_registry_file = os.path.join(self.project_root, 'prompts_registry.yaml')
+        
+        # Model cache setup
+        self.cache_dir = os.path.join(self.project_root, 'cache')
+        self.models_cache_file = os.path.join(self.cache_dir, 'openrouter_models.json')
+        os.makedirs(self.cache_dir, exist_ok=True)
         
         # Initialize components
         self._init_components()
@@ -204,7 +210,36 @@ class FlaskPromptRunner:
         @self.app.route('/config')
         def show_config():
             """Show configuration page."""
-            return render_template('config.html', config=self.flask_config)
+            try:
+                # Get available models (cached if available)
+                models = self._get_available_models()
+                model_count = len(models)
+                
+                # Get cache info
+                cache_info = None
+                if os.path.exists(self.models_cache_file):
+                    cache_time = datetime.fromtimestamp(os.path.getmtime(self.models_cache_file))
+                    cache_age_days = (datetime.now() - cache_time).days
+                    cache_info = {
+                        'last_updated': cache_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        'age_days': cache_age_days,
+                        'is_stale': cache_age_days >= 7
+                    }
+                
+                return render_template('config.html', 
+                                     config=self.flask_config, 
+                                     models=models,
+                                     model_count=model_count,
+                                     cache_info=cache_info)
+                                     
+            except Exception as e:
+                logging.error(f"Error loading models for config: {e}")
+                flash(f'Warning: Could not load models - {str(e)}', 'warning')
+                return render_template('config.html', 
+                                     config=self.flask_config, 
+                                     models=[],
+                                     model_count=0,
+                                     cache_info=None)
         
         @self.app.route('/config', methods=['POST'])
         def update_config():
@@ -242,6 +277,16 @@ class FlaskPromptRunner:
                 if not 1 <= new_config['max_tokens'] <= 100000:
                     flash('Max tokens must be between 1 and 100,000', 'error')
                     return redirect(url_for('show_config'))
+                
+                # Validate selected model (optional but helpful)
+                if 'model' in new_config:
+                    try:
+                        available_models = self._get_available_models()
+                        model_ids = [model['id'] for model in available_models]
+                        if model_ids and new_config['model'] not in model_ids:
+                            flash(f'Warning: Selected model "{new_config["model"]}" not found in available models. You may need to refresh the model cache.', 'warning')
+                    except Exception as e:
+                        logging.warning(f"Could not validate model selection: {e}")
                 
                 # Update and save configuration
                 self.flask_config.update(new_config)
@@ -757,6 +802,28 @@ class FlaskPromptRunner:
             except Exception as e:
                 return jsonify({'error': f'Failed to download results: {str(e)}'}), 500
 
+        @self.app.route('/api/models')
+        def api_get_models():
+            """API endpoint to get available OpenRouter models."""
+            try:
+                force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+                models = self._get_available_models(force_refresh=force_refresh)
+                return jsonify({'models': models, 'count': len(models)})
+            except Exception as e:
+                logging.error(f"Error fetching models: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/refresh_models', methods=['POST'])
+        def refresh_models():
+            """Refresh the model cache."""
+            try:
+                models = self._get_available_models(force_refresh=True)
+                flash(f'Model cache refreshed! Loaded {len(models)} models from OpenRouter.', 'success')
+                return redirect(url_for('show_config'))
+            except Exception as e:
+                flash(f'Error refreshing models: {str(e)}', 'error')
+                return redirect(url_for('show_config'))
+
         @self.app.route('/shutdown', methods=['POST'])
         def shutdown_server():
             """Shutdown the Flask development server."""
@@ -835,6 +902,98 @@ class FlaskPromptRunner:
         enhanced_prompt += full_prompt
         
         return enhanced_prompt
+    
+    def _get_cached_models(self) -> Optional[List[Dict[str, Any]]]:
+        """Get cached OpenRouter models if cache is valid (less than 7 days old)."""
+        try:
+            if not os.path.exists(self.models_cache_file):
+                return None
+                
+            # Check cache age
+            cache_time = datetime.fromtimestamp(os.path.getmtime(self.models_cache_file))
+            if datetime.now() - cache_time > timedelta(days=7):
+                logging.info("Model cache is older than 7 days, will refresh")
+                return None
+                
+            # Load cached models
+            with open(self.models_cache_file, 'r', encoding='utf-8') as f:
+                cache_data = json.load(f)
+                
+            logging.info(f"Loaded {len(cache_data.get('models', []))} models from cache")
+            return cache_data.get('models', [])
+            
+        except Exception as e:
+            logging.warning(f"Error reading model cache: {e}")
+            return None
+    
+    def _fetch_openrouter_models(self) -> List[Dict[str, Any]]:
+        """Fetch available models from OpenRouter API."""
+        try:
+            logging.info("Fetching models from OpenRouter API...")
+            
+            headers = {
+                'Authorization': f'Bearer {os.environ.get("OPENROUTER_API_KEY", "")}',
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.get(
+                'https://openrouter.ai/api/v1/models',
+                headers=headers,
+                timeout=30
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            models = data.get('data', [])
+            
+            # Filter and format models for display
+            formatted_models = []
+            for model in models:
+                # Skip models that are not active or have issues
+                if model.get('pricing', {}).get('prompt', 0) == -1:
+                    continue
+                    
+                formatted_models.append({
+                    'id': model['id'],
+                    'name': model.get('name', model['id']),
+                    'description': model.get('description', ''),
+                    'context_length': model.get('context_length', 0),
+                    'pricing': model.get('pricing', {}),
+                    'owned_by': model.get('owned_by', ''),
+                    'architecture': model.get('architecture', {})
+                })
+            
+            # Sort by name for better UX
+            formatted_models.sort(key=lambda x: x['name'].lower())
+            
+            # Cache the results
+            cache_data = {
+                'timestamp': datetime.now().isoformat(),
+                'models': formatted_models
+            }
+            
+            with open(self.models_cache_file, 'w', encoding='utf-8') as f:
+                json.dump(cache_data, f, indent=2)
+                
+            logging.info(f"Fetched and cached {len(formatted_models)} models from OpenRouter")
+            return formatted_models
+            
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Network error fetching models: {e}")
+            raise Exception(f"Failed to fetch models from OpenRouter: {str(e)}")
+        except Exception as e:
+            logging.error(f"Error fetching models: {e}")
+            raise Exception(f"Error processing models: {str(e)}")
+    
+    def _get_available_models(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
+        """Get available OpenRouter models, using cache when possible."""
+        if not force_refresh:
+            cached_models = self._get_cached_models()
+            if cached_models is not None:
+                return cached_models
+        
+        # Fetch fresh models if no cache or force refresh
+        return self._fetch_openrouter_models()
     
     def _get_available_prompts(self) -> List[Dict[str, Any]]:
         """Get list of available prompt files."""

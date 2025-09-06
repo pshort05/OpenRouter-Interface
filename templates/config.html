@@ -12,7 +12,41 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="model">Model:</label>
-                <input type="text" name="model" id="model" value="{{ config.model }}" required>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select name="model" id="model" required style="flex: 1;">
+                        {% if models %}
+                            {% for model in models %}
+                                <option value="{{ model.id }}" 
+                                        {{ 'selected' if config.model == model.id }}
+                                        title="{{ model.description }}">
+                                    {{ model.name }} 
+                                    ({{ model.owned_by }})
+                                    {% if model.context_length %}- {{ model.context_length }} tokens{% endif %}
+                                </option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="{{ config.model }}" selected>{{ config.model }} (Current)</option>
+                        {% endif %}
+                    </select>
+                    <form method="POST" action="{{ url_for('refresh_models') }}" style="margin: 0;">
+                        <button type="submit" class="btn" style="padding: 8px 12px; font-size: 0.9em;" 
+                                title="Refresh model list from OpenRouter">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </form>
+                </div>
+                <small class="form-text">
+                    {% if cache_info %}
+                        Models loaded from cache ({{ cache_info.last_updated }}, {{ cache_info.age_days }} days old)
+                        {% if cache_info.is_stale %}
+                            <span style="color: #856404;">⚠️ Cache is stale, consider refreshing</span>
+                        {% endif %}
+                    {% elif model_count > 0 %}
+                        {{ model_count }} models available
+                    {% else %}
+                        No models loaded - check API key and refresh
+                    {% endif %}
+                </small>
             </div>
             <div class="form-group">
                 <label for="api_base_url">API Base URL:</label>
@@ -83,4 +117,46 @@
     <p><strong>Location:</strong> flask_config.yaml</p>
     <p><em>Note: You can also edit the configuration file directly and restart the application.</em></p>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Add model search functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const modelSelect = document.getElementById('model');
+    const refreshBtn = document.querySelector('button[title*="Refresh model list"]');
+    
+    // Add loading state for refresh button
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function(e) {
+            const icon = this.querySelector('i');
+            if (icon) {
+                icon.classList.add('fa-spin');
+                this.disabled = true;
+            }
+        });
+    }
+    
+    // Show model details on selection
+    if (modelSelect) {
+        modelSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.title) {
+                // Could show model details in a tooltip or info box
+                console.log('Selected model:', selectedOption.value, selectedOption.title);
+            }
+        });
+    }
+    
+    // Add model count info
+    {% if model_count > 0 %}
+        const modelInfo = document.createElement('div');
+        modelInfo.style.cssText = 'font-size: 0.85em; color: #666; margin-top: 5px;';
+        modelInfo.innerHTML = '<i class="fas fa-info-circle"></i> {{ model_count }} models available from OpenRouter';
+        if (modelSelect && modelSelect.parentNode) {
+            modelSelect.parentNode.appendChild(modelInfo);
+        }
+    {% endif %}
+});
+</script>
 {% endblock %}
