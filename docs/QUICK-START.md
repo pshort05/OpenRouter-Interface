@@ -15,14 +15,19 @@ Get started with OpenRouter Interface in just a few simple steps. No complex con
    git clone <repository-url>
    cd openrouter-interface
    
-   # Basic installation
-   pip install -e .
+   # Method 1: User installation (recommended)
+   pip install --user -e .
    
-   # Or with web interface
+   # Method 2: With web interface
+   pip install --user -e ".[web]"
+   
+   # Method 3: With all features  
+   pip install --user -e ".[all]"
+   
+   # Alternative: Use virtual environment (best practice)
+   python3 -m venv venv
+   source venv/bin/activate
    pip install -e ".[web]"
-   
-   # Or with all features
-   pip install -e ".[all]"
    ```
 
 Done! You're ready to run prompts.
@@ -187,6 +192,17 @@ python prompt_runner.py -p prompt.json -i input.md -c config.yaml
 
 ## 🆘 Quick Troubleshooting
 
+**Installation Permission Errors**
+```bash
+# Use --user flag to install to user directory
+pip install --user -e .
+
+# Or use virtual environment (recommended)
+python3 -m venv venv
+source venv/bin/activate
+pip install -e ".[web]"
+```
+
 **"No API key found"**
 ```bash
 export OPENROUTER_API_KEY="your-actual-key-here"
@@ -199,6 +215,11 @@ export OPENROUTER_API_KEY="your-actual-key-here"
 **"File not found"**
 - Check file paths are correct
 - Use absolute paths if needed: `/full/path/to/file.md`
+
+**"Command not found" after installation**
+- Add user bin to PATH: `export PATH="$HOME/.local/bin:$PATH"`
+- Or use full path: `~/.local/bin/openrouter-runner`
+- In virtual environment, commands should work directly
 
 ## 🎓 What's Next?
 

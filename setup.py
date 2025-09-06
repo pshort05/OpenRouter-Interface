@@ -73,7 +73,7 @@ setup(
             "openrouter-runner=openrouter_interface.cli:main",
             "openrouter-web=openrouter_interface.web:main",
             "openrouter-chain=openrouter_interface.chain:main",
-            "bookgen=openrouter_interface.bookgen:main",
+            "bookgen=openrouter_interface.bookGen:main",
         ],
     },
     
