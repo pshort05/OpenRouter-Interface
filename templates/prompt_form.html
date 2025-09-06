@@ -24,6 +24,25 @@
         </select>
     </div>
     
+    <!-- System Prompt Editor -->
+    <div class="form-group">
+        <label for="system_prompt">System Prompt (Optional):</label>
+        <textarea name="system_prompt" id="system_prompt" placeholder="Enter custom system prompt to guide the AI's behavior and response style..." rows="3"></textarea>
+        <small class="form-text">Leave blank to use the default system prompt. This will be prepended to your main prompt.</small>
+    </div>
+    
+    <!-- Output Format Selector -->
+    <div class="form-group">
+        <label for="output_format">Output Format:</label>
+        <select name="output_format" id="output_format">
+            <option value="markdown" selected>📝 Markdown (Default)</option>
+            <option value="text">📄 Plain Text</option>
+            <option value="json">🔗 JSON</option>
+            <option value="xml">📋 XML</option>
+        </select>
+        <small class="form-text">Choose how you want the AI to format its response for better readability.</small>
+    </div>
+    
     <div id="text_input" class="form-group">
         <label for="input_text">Input Content:</label>
         <textarea name="input_text" id="input_text" placeholder="Enter the content you want to analyze with this prompt..."></textarea>
@@ -51,6 +70,18 @@
 
 {% block scripts %}
 <script>
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
 function toggleInputMethod() {
     const method = document.getElementById('input_method').value;
     const textInput = document.getElementById('text_input');
@@ -91,12 +122,33 @@ document.getElementById('promptForm').onsubmit = function(e) {
             responseMeta.innerHTML = `
                 <strong>Prompt:</strong> ${data.metadata.prompt_name}<br>
                 <strong>Input:</strong> ${data.metadata.input_name}<br>
+                <strong>Output Format:</strong> ${data.metadata.output_format}<br>
+                <strong>System Prompt:</strong> ${data.metadata.system_prompt}<br>
                 <strong>Timestamp:</strong> ${data.metadata.timestamp}<br>
                 <strong>Input Length:</strong> ${data.metadata.input_length} characters<br>
                 <strong>Response Length:</strong> ${data.metadata.response_length} characters
             `;
             
-            responseContent.textContent = data.response;
+            // Display response based on format
+            if (data.metadata.output_format === 'Markdown') {
+                // For Markdown, we'll show it as formatted text (could add markdown rendering later)
+                responseContent.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${escapeHtml(data.response)}</pre>`;
+            } else if (data.metadata.output_format === 'Json') {
+                // For JSON, format with syntax highlighting
+                try {
+                    const formatted = JSON.stringify(JSON.parse(data.response), null, 2);
+                    responseContent.innerHTML = `<pre style="background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto;"><code>${escapeHtml(formatted)}</code></pre>`;
+                } catch (e) {
+                    // If not valid JSON, show as plain text
+                    responseContent.innerHTML = `<pre style="background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto;"><code>${escapeHtml(data.response)}</code></pre>`;
+                }
+            } else if (data.metadata.output_format === 'Xml') {
+                // For XML, format with indentation
+                responseContent.innerHTML = `<pre style="background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto;"><code>${escapeHtml(data.response)}</code></pre>`;
+            } else {
+                // For plain text
+                responseContent.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${escapeHtml(data.response)}</pre>`;
+            }
             document.getElementById('response').style.display = 'block';
         } else {
             alert('Error: ' + data.error);

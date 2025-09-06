@@ -371,6 +371,8 @@ class FlaskPromptRunner:
             try:
                 prompt_file = request.form.get('prompt_file')
                 input_method = request.form.get('input_method', 'text')
+                system_prompt = request.form.get('system_prompt', '').strip()
+                output_format = request.form.get('output_format', 'markdown')
                 
                 if not prompt_file:
                     return jsonify({'error': 'No prompt file specified'}), 400
@@ -407,8 +409,12 @@ class FlaskPromptRunner:
                 # Load prompt
                 prompt_data = self.prompt_loader.load_prompt(prompt_path)
                 
-                # Create full prompt
+                # Create full prompt with system prompt and output format
                 full_prompt = self.processor.create_full_prompt(prompt_data, input_content)
+                
+                # Add system prompt and output format instructions
+                full_prompt = self._enhance_prompt_with_system_and_format(
+                    full_prompt, system_prompt, output_format)
                 
                 # Call API
                 response = self.api_client.call_api(full_prompt)
@@ -420,7 +426,9 @@ class FlaskPromptRunner:
                     'input_name': input_name,
                     'response': response,
                     'input_length': len(input_content),
-                    'response_length': len(response)
+                    'response_length': len(response),
+                    'system_prompt': system_prompt if system_prompt else 'None',
+                    'output_format': output_format.title()
                 }
                 
                 self.session_responses.append(response_data)
@@ -433,7 +441,9 @@ class FlaskPromptRunner:
                         'input_name': input_name,
                         'timestamp': response_data['timestamp'],
                         'input_length': len(input_content),
-                        'response_length': len(response)
+                        'response_length': len(response),
+                        'system_prompt': response_data['system_prompt'],
+                        'output_format': response_data['output_format']
                     }
                 })
                 
@@ -801,6 +811,30 @@ class FlaskPromptRunner:
             i += 1
         
         return f"{size_bytes:.1f} {size_names[i]}"
+    
+    def _enhance_prompt_with_system_and_format(self, full_prompt: str, system_prompt: str, output_format: str) -> str:
+        """Enhance the prompt with system prompt and output format instructions."""
+        enhanced_prompt = ""
+        
+        # Add system prompt if provided
+        if system_prompt:
+            enhanced_prompt += f"SYSTEM: {system_prompt}\n\n"
+        
+        # Add output format instructions
+        format_instructions = {
+            'markdown': "Please format your response in clear, well-structured Markdown with appropriate headers, lists, and formatting for readability.",
+            'json': "Please format your response as valid JSON. Use appropriate keys and structure the data logically.",
+            'xml': "Please format your response as well-formed XML with appropriate tags and structure.",
+            'text': "Please format your response as plain text with clear paragraphs and structure."
+        }
+        
+        if output_format in format_instructions:
+            enhanced_prompt += f"OUTPUT FORMAT: {format_instructions[output_format]}\n\n"
+        
+        # Add the original prompt
+        enhanced_prompt += full_prompt
+        
+        return enhanced_prompt
     
     def _get_available_prompts(self) -> List[Dict[str, Any]]:
         """Get list of available prompt files."""
