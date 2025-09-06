@@ -4,19 +4,22 @@ Get started with OpenRouter Interface in just a few simple steps. No complex con
 
 ## ⚡ Super Quick Setup (30 seconds)
 
-1. **Get your API key** from [OpenRouter.ai](https://openrouter.ai/keys)
-2. **Clone and install:**
+1. **Clone and install:**
    ```bash
    git clone <repository-url>
    cd openrouter-interface
    ./install.sh web
    ```
-3. **Set environment variable:**
+2. **Set up your API key:**
    ```bash
-   export OPENROUTER_API_KEY="your-key-here"
+   ./setup-api-key.sh
+   ```
+3. **Start the web interface:**
+   ```bash
+   ./start-web.sh
    ```
 
-Done! You're ready to run prompts.
+Done! The web interface will start automatically and show you the access URLs.
 
 ### Alternative Installation Methods
 

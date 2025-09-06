@@ -957,13 +957,84 @@ class FlaskPromptRunner:
         except Exception as e:
             logging.warning(f"Error cleaning up chain files: {e}")
 
-    def run(self, host='127.0.0.1', port=5000, debug=False):
+    def run(self, host='127.0.0.1', port=5000, debug=False, foreground=False):
         """Run the Flask application."""
-        print(f"Starting OpenRouter Prompt Runner Flask App...")
-        print(f"Navigate to http://{host}:{port} in your browser")
-        print("Press Ctrl+C to stop the server")
+        import socket
+        import subprocess
+        import sys
         
+        # Get local IP address
+        local_ip = self._get_local_ip()
+        
+        print(f"🚀 Starting OpenRouter Prompt Runner Web Interface...")
+        print(f"📊 Mode: {'Development' if debug else 'Production'}")
+        print(f"🌐 Access URLs:")
+        print(f"   • Local:    http://127.0.0.1:{port}")
+        print(f"   • Network:  http://{local_ip}:{port}")
+        print(f"")
+        
+        if not debug and not foreground:
+            print("🔧 Running in background mode...")
+            print("   • Web server will continue running after terminal closes")
+            print("   • To stop: kill the process or restart your system")
+            print("   • Logs will be written to flask_app.log")
+            print(f"")
+            
+            # Run in background using nohup
+            try:
+                # Create a command to run the app
+                cmd = [
+                    sys.executable, '-c',
+                    f"""
+import sys
+sys.path.insert(0, '{os.path.dirname(__file__)}')
+from prompt_runner_flask import FlaskPromptRunner
+app_runner = FlaskPromptRunner()
+app_runner.app.run(host='{host}', port={port}, debug=False)
+"""
+                ]
+                
+                # Start the process in background
+                with open('flask_app.log', 'w') as log_file:
+                    process = subprocess.Popen(
+                        ['nohup'] + cmd,
+                        stdout=log_file,
+                        stderr=subprocess.STDOUT,
+                        preexec_fn=os.setsid
+                    )
+                
+                # Give it a moment to start
+                import time
+                time.sleep(2)
+                
+                print(f"✅ Web server started successfully!")
+                print(f"📝 Process ID: {process.pid}")
+                print(f"📄 Logs: flask_app.log")
+                print(f"")
+                print("🌐 Open your browser and navigate to:")
+                print(f"   http://{local_ip}:{port}")
+                
+                return
+                
+            except Exception as e:
+                print(f"❌ Failed to start in background mode: {e}")
+                print("🔄 Falling back to foreground mode...")
+                
+        print("Press Ctrl+C to stop the server")
+        print("="*50)
         self.app.run(host=host, port=port, debug=debug)
+    
+    def _get_local_ip(self):
+        """Get the local IP address."""
+        try:
+            # Connect to a remote address to determine local IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+            return local_ip
+        except Exception:
+            return "127.0.0.1"
 
 
 def main():
@@ -997,8 +1068,8 @@ Note: Ensure the templates/ directory exists with the required HTML template fil
     
     parser.add_argument(
         '--host',
-        default='127.0.0.1',
-        help='Host to bind the server to (default: 127.0.0.1)'
+        default='0.0.0.0',
+        help='Host to bind the server to (default: 0.0.0.0 - all interfaces)'
     )
     
     parser.add_argument(
@@ -1011,7 +1082,13 @@ Note: Ensure the templates/ directory exists with the required HTML template fil
     parser.add_argument(
         '--debug',
         action='store_true',
-        help='Run in debug mode'
+        help='Run in debug mode (default: production mode)'
+    )
+    
+    parser.add_argument(
+        '--foreground',
+        action='store_true',
+        help='Run in foreground mode (default: background in production)'
     )
     
     args = parser.parse_args()
@@ -1027,7 +1104,7 @@ Note: Ensure the templates/ directory exists with the required HTML template fil
         
         # Initialize and run the Flask app
         flask_runner = FlaskPromptRunner()
-        flask_runner.run(host=args.host, port=args.port, debug=args.debug)
+        flask_runner.run(host=args.host, port=args.port, debug=args.debug, foreground=args.foreground)
         
     except Exception as e:
         logging.error(f"Failed to start Flask application: {e}")

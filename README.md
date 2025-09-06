@@ -12,15 +12,19 @@ A comprehensive Python package for executing JSON prompts using the OpenRouter A
 ### 🚀 Super Easy Installation
 
 ```bash
-# 1. Clone and navigate
+# 1. Clone and install
 git clone <repository-url>
 cd openrouter-interface
-
-# 2. Run the installer (handles all permission issues automatically)
 ./install.sh web
+
+# 2. Set up API key  
+./setup-api-key.sh
+
+# 3. Start web interface
+./start-web.sh
 ```
 
-That's it! The installer creates a virtual environment and installs everything for you.
+That's it! Three simple commands and you're running a full AI processing web interface.
 
 ### Manual Installation (Alternative)
 
