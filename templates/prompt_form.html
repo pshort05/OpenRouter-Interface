@@ -11,6 +11,7 @@
     <strong>Fields:</strong> {{ prompt.field_count }}<br>
     {% if prompt.has_instructions %}<strong>Has Instructions:</strong> Yes<br>{% endif %}
     {% if prompt.has_criteria %}<strong>Has Review Criteria:</strong> Yes<br>{% endif %}
+    <strong>Model:</strong> {{ config.model }}<br>
 </div>
 
 <form id="promptForm" method="POST" action="{{ url_for('execute_prompt') }}" enctype="multipart/form-data">
