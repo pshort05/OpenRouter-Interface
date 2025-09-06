@@ -5,19 +5,27 @@ A comprehensive Python package for executing JSON prompts using the OpenRouter A
 [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+> **🚀 New Easy Installation**: Just run `./install.sh web` after cloning - handles all permission issues automatically!
+
 ## ⚡ Quick Start
 
-### Installation
+### 🚀 Super Easy Installation
 
 ```bash
-# Install from source (recommended for development)
+# 1. Clone and navigate
 git clone <repository-url>
 cd openrouter-interface
 
-# Easy installation (handles permission issues)
-./install.sh web           # Options: basic, web, dev, all
+# 2. Run the installer (handles all permission issues automatically)
+./install.sh web
+```
 
-# Or use virtual environment manually
+That's it! The installer creates a virtual environment and installs everything for you.
+
+### Manual Installation (Alternative)
+
+```bash
+# Use virtual environment manually
 python3 -m venv openrouter-venv
 source openrouter-venv/bin/activate
 pip install -e ".[web]"     # Include web interface

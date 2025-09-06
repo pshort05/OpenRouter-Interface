@@ -5,30 +5,32 @@ Get started with OpenRouter Interface in just a few simple steps. No complex con
 ## ⚡ Super Quick Setup (30 seconds)
 
 1. **Get your API key** from [OpenRouter.ai](https://openrouter.ai/keys)
-2. **Set environment variable:**
+2. **Clone and install:**
+   ```bash
+   git clone <repository-url>
+   cd openrouter-interface
+   ./install.sh web
+   ```
+3. **Set environment variable:**
    ```bash
    export OPENROUTER_API_KEY="your-key-here"
    ```
-3. **Install the package:**
-   ```bash
-   # From source (recommended)
-   git clone <repository-url>
-   cd openrouter-interface
-   
-   # Method 1: Easy installation script (recommended)
-   chmod +x install.sh
-   ./install.sh web    # Options: basic, web, dev, all
-   
-   # Method 2: Manual virtual environment
-   python3 -m venv openrouter-venv
-   source openrouter-venv/bin/activate
-   pip install -e ".[web]"
-   
-   # Method 3: If user site-packages enabled
-   pip install --user -e ".[web]"
-   ```
 
 Done! You're ready to run prompts.
+
+### Alternative Installation Methods
+
+If you prefer manual control:
+
+```bash
+# Manual virtual environment
+python3 -m venv openrouter-venv
+source openrouter-venv/bin/activate
+pip install -e ".[web]"
+
+# User installation (if site-packages enabled)
+pip install --user -e ".[web]"
+```
 
 ## 🚀 Choose Your Interface
 
