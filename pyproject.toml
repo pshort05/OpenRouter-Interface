@@ -92,16 +92,16 @@ openrouter_interface = [
 [tool.black]
 line-length = 88
 target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
-include = '\.pyi?$'
+include = '\\.pyi?$'
 extend-exclude = '''
 /(
   # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
+  \\.eggs
+  | \\.git
+  | \\.hg
+  | \\.mypy_cache
+  | \\.tox
+  | \\.venv
   | build
   | dist
 )/
@@ -157,6 +157,6 @@ exclude_lines = [
     "raise NotImplementedError",
     "if 0:",
     "if __name__ == .__main__.:",
-    "class .*\bProtocol\):",
-    "@(abc\.)?abstractmethod",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
 ]

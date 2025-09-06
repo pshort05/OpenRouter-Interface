@@ -14,7 +14,15 @@ Get started with OpenRouter Interface in just a few simple steps. No complex con
    # From source (recommended)
    git clone <repository-url>
    cd openrouter-interface
-   pip install -e ".[web]"  # Include web interface
+   
+   # Basic installation
+   pip install -e .
+   
+   # Or with web interface
+   pip install -e ".[web]"
+   
+   # Or with all features
+   pip install -e ".[all]"
    ```
 
 Done! You're ready to run prompts.
