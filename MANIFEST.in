@@ -1,0 +1,44 @@
+# MANIFEST.in - Include additional files in the package
+
+# Documentation
+include README.md
+include LICENSE
+recursive-include docs *.md *.rst *.txt
+prune docs/_build
+
+# Configuration
+recursive-include config *.yaml *.yml *.json
+include pyproject.toml
+include setup.py
+
+# Scripts
+recursive-include scripts *.sh *.py
+
+# Templates and static files for Flask app
+recursive-include src/openrouter_interface/templates *.html
+recursive-include src/openrouter_interface/static *.css *.js *.png *.jpg *.ico
+
+# Example files
+recursive-include examples *.py *.md *.json *.yaml
+recursive-include prompts *.json
+
+# Test files
+recursive-include tests *.py
+
+# Development tools
+include tox.ini
+include .pre-commit-config.yaml
+include requirements*.txt
+
+# Exclude development artifacts
+global-exclude *.pyc __pycache__ *.pyo *.pyd .Python
+global-exclude *.so *.egg *.egg-info
+prune build
+prune dist
+prune *.egg-info
+prune .git
+prune .tox
+prune venv
+prune .venv
+global-exclude .DS_Store
+global-exclude Thumbs.db

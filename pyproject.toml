@@ -1,0 +1,162 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openrouter-interface"
+version = "1.0.0"
+description = "A comprehensive tool for executing JSON prompts using the OpenRouter API"
+readme = "docs/README.md"
+requires-python = ">=3.7"
+license = {text = "MIT"}
+authors = [
+    {name = "OpenRouter Interface Team"},
+]
+keywords = [
+    "openrouter", "ai", "llm", "prompt", "cli", "web", "automation",
+    "claude", "gpt", "gemini", "api", "processing"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8", 
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "requests>=2.25.0",
+    "PyYAML>=5.4.0",
+    "pathlib2; python_version<'3.4'",
+]
+
+[project.optional-dependencies]
+web = [
+    "flask>=2.0.0",
+    "werkzeug>=2.0.0",
+]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "flake8",
+    "mypy",
+    "tox",
+]
+all = [
+    "flask>=2.0.0",
+    "werkzeug>=2.0.0",
+    "pytest>=6.0", 
+    "pytest-cov",
+    "black",
+    "flake8",
+    "mypy",
+    "tox",
+]
+
+[project.urls]
+Homepage = "https://github.com/openrouter-interface/openrouter-interface"
+Documentation = "https://github.com/openrouter-interface/openrouter-interface/blob/main/docs/README.md"
+Repository = "https://github.com/openrouter-interface/openrouter-interface"
+Issues = "https://github.com/openrouter-interface/openrouter-interface/issues"
+
+[project.scripts]
+openrouter-runner = "openrouter_interface.cli:main"
+openrouter-web = "openrouter_interface.web:main"
+openrouter-chain = "openrouter_interface.chain:main"
+bookgen = "openrouter_interface.bookgen:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+openrouter_interface = [
+    "templates/*.html",
+    "static/*.css",
+    "static/*.js",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg",
+]
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers --cov=openrouter_interface --cov-report=term-missing"
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+    "*_test.py",
+]
+python_classes = [
+    "Test*",
+]
+python_functions = [
+    "test_*",
+]
+
+[tool.coverage.run]
+source = ["src/openrouter_interface"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\bProtocol\):",
+    "@(abc\.)?abstractmethod",
+]

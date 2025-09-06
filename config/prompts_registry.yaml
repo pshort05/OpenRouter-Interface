@@ -1,0 +1,178 @@
+created: '2025-07-11 22:46:12'
+prompts:
+- name: 7-point character review.json
+  path: 7-point character review.json
+  title: Full-Length Novel Character Evaluation Prompt (7-Point Genre-Aware Audit)
+  description: ''
+  enabled: true
+- name: action.json
+  path: action.json
+  title: copy editor
+  description: ''
+  enabled: true
+- name: action_prompt.json
+  path: action_prompt.json
+  title: copy editor
+  description: ''
+  enabled: true
+- name: adult_scene_generator.json
+  path: adult_scene_generator.json
+  title: Adult Scene Generator
+  description: ''
+  enabled: true
+- name: advanced_dialogue_prompt.json
+  path: advanced_dialogue_prompt.json
+  title: Expert Fiction Dialogue Writing Assistant
+  description: A comprehensive prompt system for creating authentic, character-driven
+    dialogue in fiction scenes across all genres. Incorporates professional screenwriting
+    principles, agent-based persistence, and anti-hallucination safeguards to ensure
+    high-quality, purposeful dialogue that serves both character development and plot
+    advancement.
+  enabled: true
+- name: APIpayload.json
+  path: APIpayload.json
+  title: APIpayload
+  description: 'Error loading: Prompt file APIpayload.json must contain a prompt field.
+    Available fields: [''model'', ''messages'', ''temperature'', ''max_tokens''].
+    Expected one of: [''instruction'', ''instructions'', ''prompt'', ''message'',
+    ''content'', ''text'', ''system'', ''user_message'', ''query'', ''task'', ''description'']'
+  enabled: false
+- name: bad chapter ending checker.json
+  path: bad chapter ending checker.json
+  title: bad chapter ending checker
+  description: ''
+  enabled: true
+- name: bad ending checker.json
+  path: bad ending checker.json
+  title: Avoiding Bad Endings in Fiction
+  description: ''
+  enabled: true
+- name: compliance_checker.payload.json
+  path: compliance_checker.payload.json
+  title: compliance_checker.payload
+  description: 'Error loading: Prompt file compliance_checker.payload.json must contain
+    a prompt field. Available fields: [''model'', ''messages'', ''temperature'', ''max_tokens''].
+    Expected one of: [''instruction'', ''instructions'', ''prompt'', ''message'',
+    ''content'', ''text'', ''system'', ''user_message'', ''query'', ''task'', ''description'']'
+  enabled: false
+- name: copy_editor_prompt_v1.3.json
+  path: copy_editor_prompt_v1.3.json
+  title: copy editor
+  description: ''
+  enabled: true
+- name: dialogue_editor.json
+  path: dialogue_editor.json
+  title: Expert Dialogue Editor & Improver
+  description: Professional dialogue revision system that analyzes existing scenes
+    and applies core screenwriting principles to enhance authenticity, character voice,
+    and story impact across all fiction genres.
+  enabled: true
+- name: engagement checker.json
+  path: engagement checker.json
+  title: Reader Engagement and Chapter Strategy Evaluation Prompt
+  description: ''
+  enabled: true
+- name: Female Character Evaluation Against 8 Key Mistakes.json
+  path: Female Character Evaluation Against 8 Key Mistakes.json
+  title: "Female Character Evaluation \u2013 Against 8 Key Mistakes"
+  description: ''
+  enabled: true
+- name: first chapter checker - scfi and fantasy.json
+  path: first chapter checker - scfi and fantasy.json
+  title: 'First Chapter Improvement: Hooking Readers Through Oriented Emotion'
+  description: "Analyze the first chapter of a novel to identify and resolve five\
+    \ common failures that often cause readers to disengage early. Your goal is to\
+    \ help the author create a gripping opening that hooks the reader through oriented\
+    \ emotion\u2014anchoring the speculative or unfamiliar within a named protagonist's\
+    \ emotional context."
+  enabled: true
+- name: improving the middle third of a novel.json
+  path: improving the middle third of a novel.json
+  title: Developmental Editor Agent for Novel Midpoint Enhancement
+  description: "You are a developmental editor at a major publishing house. Your job\
+    \ is to help authors improve the middle section of their novels by identifying\
+    \ weaknesses and suggesting targeted revisions. Use the following 9-point strategy\
+    \ to guide your feedback. Always begin by asking the author what genre their book\
+    \ is targeting. Use this information to tailor your analysis and suggestions to\
+    \ fit genre conventions and reader expectations. You are an agent \u2014 continue\
+    \ interacting until the user\u2019s query is fully resolved. Only yield control\
+    \ when the problem is completely solved."
+  enabled: true
+- name: Male Character Quality Audit Avoiding the 13 Common Mistakes.json
+  path: Male Character Quality Audit Avoiding the 13 Common Mistakes.json
+  title: "Male Character Quality Audit \u2013 Avoiding the 13 Common Mistakes in Writing\
+    \ Men"
+  description: ''
+  enabled: true
+- name: models.json
+  path: models.json
+  title: models
+  description: 'Error loading: Prompt file models.json must contain a prompt field.
+    Available fields: [''data'']. Expected one of: [''instruction'', ''instructions'',
+    ''prompt'', ''message'', ''content'', ''text'', ''system'', ''user_message'',
+    ''query'', ''task'', ''description'']'
+  enabled: false
+- name: openrouter_editor.payload.json
+  path: openrouter_editor.payload.json
+  title: openrouter_editor.payload
+  description: 'Error loading: Prompt file openrouter_editor.payload.json must contain
+    a prompt field. Available fields: [''model'', ''messages'', ''temperature'', ''max_tokens''].
+    Expected one of: [''instruction'', ''instructions'', ''prompt'', ''message'',
+    ''content'', ''text'', ''system'', ''user_message'', ''query'', ''task'', ''description'']'
+  enabled: false
+- name: optimized_dialogue_prompt.json
+  path: optimized_dialogue_prompt.json
+  title: Expert Dialogue Writer
+  description: Professional dialogue creation system applying core screenwriting principles
+    for authentic character voices across all fiction genres.
+  enabled: true
+- name: prompt.json
+  path: prompt.json
+  title: prompt
+  description: 'Error loading: Prompt file prompt.json must contain a prompt field.
+    Available fields: [''model'', ''messages'', ''temperature'', ''max_tokens''].
+    Expected one of: [''instruction'', ''instructions'', ''prompt'', ''message'',
+    ''content'', ''text'', ''system'', ''user_message'', ''query'', ''task'', ''description'']'
+  enabled: false
+- name: prompt_runner.payload.json
+  path: prompt_runner.payload.json
+  title: prompt_runner.payload
+  description: 'Error loading: Prompt file prompt_runner.payload.json must contain
+    a prompt field. Available fields: [''model'', ''messages'', ''temperature'', ''max_tokens''].
+    Expected one of: [''instruction'', ''instructions'', ''prompt'', ''message'',
+    ''content'', ''text'', ''system'', ''user_message'', ''query'', ''task'', ''description'']'
+  enabled: false
+- name: prompt_runner_flask.payload.json
+  path: prompt_runner_flask.payload.json
+  title: prompt_runner_flask.payload
+  description: 'Error loading: Prompt file prompt_runner_flask.payload.json must contain
+    a prompt field. Available fields: [''model'', ''messages'', ''temperature'', ''max_tokens''].
+    Expected one of: [''instruction'', ''instructions'', ''prompt'', ''message'',
+    ''content'', ''text'', ''system'', ''user_message'', ''query'', ''task'', ''description'']'
+  enabled: false
+- name: romance_editor.json
+  path: romance_editor.json
+  title: romance_editor
+  description: 'Error loading: Extra data: line 155 column 4 (char 7794)'
+  enabled: false
+- name: silent_dialogue_editor.json
+  path: silent_dialogue_editor.json
+  title: Silent Dialogue Editor
+  description: Automated dialogue revision system that silently improves dialogue
+    within scenes or chapters by applying core screenwriting principles. Edits only
+    dialogue lines while preserving all narrative text, action lines, and story structure
+    exactly as written.
+  enabled: true
+- name: silent_dialogue_editor_prompt.json
+  path: silent_dialogue_editor_prompt.json
+  title: Silent Dialogue Editor
+  description: Automated dialogue revision system that silently improves dialogue
+    within scenes or chapters by applying core screenwriting principles. Edits only
+    dialogue lines while preserving all narrative text, action lines, and story structure
+    exactly as written.
+  enabled: true
+- name: spicy scene checker.json
+  path: spicy scene checker.json
+  title: Spicy Scene Quality Audit
+  description: ''
+  enabled: true

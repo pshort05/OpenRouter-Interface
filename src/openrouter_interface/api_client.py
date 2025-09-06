@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+"""
+API Client
+
+Handles OpenRouter API communication for OpenRouter Text Editor.
+"""
+
+import logging
+import re
+import time
+from typing import Dict, Any
+
+import requests
+
+from .config_manager import ConfigManager
+from .file_handler import FileHandler
+
+
+class APIClient:
+    """Handles OpenRouter API communication."""
+    
+    def __init__(self, config: ConfigManager):
+        """Initialize API client with configuration."""
+        self.config = config
+        self.api_key = config.get_api_key()
+    
+    def _process_api_response(self, content: str) -> str:
+        """Process API response to remove AI commentary and log it to console."""
+        original_content = content.strip()
+        processed_content = original_content
+        
+        # Remove editorial notes at the beginning (like the one in your example)
+        editorial_patterns = [
+            r'^\*\*Editorial Note:\*\*.*?\n\n',
+            r'^\*Editorial Note:\*.*?\n\n',
+            r'^\[Editorial Note\].*?\n\n',
+            r'^\*\*Note:\*\*.*?\n\n',
+            r'^\*Note:\*.*?\n\n',
+            r'^\[Note\].*?\n\n',
+        ]
+        
+        for pattern in editorial_patterns:
+            match = re.search(pattern, processed_content, re.DOTALL | re.IGNORECASE)
+            if match:
+                removed_text = match.group(0).strip()
+                logging.info("🤖 AI COMMENTARY - Editorial note removed: " + removed_text[:100] + "...")
+                processed_content = re.sub(pattern, '', processed_content, flags=re.DOTALL | re.IGNORECASE)
+                break
+        
+        # List of common AI response prefixes to remove
+        prefixes_to_remove = [
+            "Here's the edited version with improvements to flow, dialogue, and narrative structure:",
+            "Here's the edited version:",
+            "Here's the improved text:",
+            "Here's the rewritten text:",
+            "Here's the revised version:",
+            "Here is the edited text:",
+            "Here is the improved version:",
+            "Here's the text with improvements:",
+            "Here's your edited text:",
+            "Here's the enhanced version:",
+            "I'll help you edit this text.",
+            "I've made several improvements:",
+            "I've edited the text to improve:",
+            "The edited version is below:",
+            "Here's a revised version:",
+        ]
+        
+        # Remove prefix if found and log it
+        for prefix in prefixes_to_remove:
+            if processed_content.startswith(prefix):
+                logging.info("🤖 AI COMMENTARY - Prefix: " + prefix)
+                processed_content = processed_content[len(prefix):].lstrip()
+                break
+        
+        # Look for and remove summary/commentary sections at the end
+        summary_markers = [
+            "Key improvements made:",
+            "Key changes made:",
+            "Summary of changes:",
+            "Changes made:",
+            "Improvements include:",
+            "Main improvements:",
+            "Notable changes:",
+            "Key edits:",
+            "Summary of edits:",
+            "Primary changes:",
+            "The main changes include:",
+            "I've made the following improvements:",
+            "Notable improvements:",
+            "Key modifications:",
+            "Primary edits:",
+            "Main edits:",
+            "Significant changes:",
+            "Important changes:",
+            "**Key Edits Made:**",
+            "**Changes Made:**",
+            "**Summary:**",
+            "**Improvements:**",
+        ]
+        
+        # Find the last occurrence of any summary marker
+        last_summary_pos = -1
+        found_marker = None
+        
+        for marker in summary_markers:
+            marker_pos = processed_content.rfind(marker)
+            if marker_pos > last_summary_pos:
+                last_summary_pos = marker_pos
+                found_marker = marker
+        
+        # If we found a summary section, remove it and log it
+        if last_summary_pos != -1:
+            summary_section = processed_content[last_summary_pos:].strip()
+            
+            # Log the summary to console (truncated for readability)
+            logging.info("🤖 AI COMMENTARY - Summary section removed:")
+            summary_lines = summary_section.split('\n')[:10]  # Show first 10 lines
+            for line in summary_lines:
+                if line.strip():
+                    logging.info("    " + line.strip())
+            if len(summary_section.split('\n')) > 10:
+                logging.info("    ... (truncated)")
+            
+            # Remove the summary from the content
+            processed_content = processed_content[:last_summary_pos].rstrip()
+        
+        # Remove any trailing "---" separators that might be left over
+        processed_content = re.sub(r'\n---\s*$', '', processed_content)
+        
+        # Look for obvious commentary at the very end (last 1-2 lines only)
+        lines = processed_content.split('\n')
+        if len(lines) > 1:
+            # Check only the last line or two for commentary patterns
+            last_line = lines[-1].strip()
+            second_to_last = lines[-2].strip() if len(lines) > 1 else ""
+            
+            # Check last line for commentary patterns
+            if (last_line.startswith('*') and last_line.endswith('*') and len(last_line) > 2) or \
+               (last_line.startswith('(') and last_line.endswith(')')) or \
+               last_line.startswith('Note:'):
+                logging.info("🤖 AI COMMENTARY - End note: " + last_line)
+                lines = lines[:-1]  # Remove last line
+                processed_content = '\n'.join(lines).rstrip()
+            
+            # Check second to last line if it looks like commentary
+            elif (second_to_last.startswith('*') and second_to_last.endswith('*') and len(second_to_last) > 2) or \
+                 (second_to_last.startswith('(') and second_to_last.endswith(')')):
+                logging.info("🤖 AI COMMENTARY - End note: " + second_to_last)
+                lines = lines[:-2] + lines[-1:]  # Remove second to last line
+                processed_content = '\n'.join(lines).rstrip()
+        
+        # Log processing results
+        if processed_content != original_content:
+            chars_removed = len(original_content) - len(processed_content)
+            logging.info("📝 Removed " + str(chars_removed) + " characters of AI commentary from output")
+        else:
+            logging.info("✅ No AI commentary detected in response")
+        
+        return processed_content
+    
+    def call_api(self, prompt: str) -> str:
+        """Make API call to OpenRouter."""
+        url = self.config.get('api_base_url') + "/chat/completions"
+        
+        headers = {
+            'Authorization': 'Bearer ' + self.api_key,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://github.com/your-repo',  # Optional: for tracking
+            'X-Title': 'OpenRouter Text Editor'  # Optional: for tracking
+        }
+        
+        data = {
+            'model': self.config.get('model'),
+            'messages': [
+                {
+                    'role': 'user',
+                    'content': prompt
+                }
+            ],
+            'temperature': self.config.get('temperature', 0.8),
+            'max_tokens': self.config.get('max_tokens', 10000)
+        }
+        
+        logging.info("Making API call to OpenRouter")
+        logging.info("Model: " + str(self.config.get('model')))
+        logging.info("Temperature: " + str(self.config.get('temperature', 0.8)))
+        logging.info("Max tokens: " + str(self.config.get('max_tokens', 10000)))
+        logging.debug("Prompt length: " + str(len(prompt)) + " characters")
+        logging.debug("API URL: " + url)
+        
+        # Save payload before making the call
+        file_handler = FileHandler(self.config)
+        file_handler.save_payload(data)
+        
+        start_time = time.time()
+        
+        try:
+            logging.debug("Sending request to OpenRouter API...")
+            response = requests.post(url, headers=headers, json=data, timeout=30)
+            response.raise_for_status()
+            
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            
+            logging.debug("HTTP response status: " + str(response.status_code))
+            
+            result = response.json()
+            
+            if 'error' in result:
+                logging.error("API returned error: " + str(result['error']))
+                raise Exception("API Error: " + str(result['error']))
+            
+            raw_content = result['choices'][0]['message']['content']
+            
+            logging.info("API call completed in " + "{:.2f}".format(elapsed_time) + " seconds")
+            logging.info("Raw response length: " + str(len(raw_content)) + " characters")
+            
+            # Check for and remove common AI response prefixes
+            processed_content = self._process_api_response(raw_content)
+            
+            if processed_content != raw_content:
+                logging.info("Processed response length: " + str(len(processed_content)) + " characters")
+            
+            return processed_content
+            
+        except requests.exceptions.Timeout as e:
+            logging.error("API request timed out after 30 seconds: " + str(e))
+            raise
+        except requests.exceptions.ConnectionError as e:
+            logging.error("API connection error: " + str(e))
+            raise
+        except requests.exceptions.HTTPError as e:
+            logging.error("API HTTP error " + str(response.status_code) + ": " + str(e))
+            raise
+        except requests.exceptions.RequestException as e:
+            logging.error("API request failed: " + str(e))
+            raise
+        except (KeyError, IndexError) as e:
+            logging.error("Unexpected API response format: " + str(e))
+            logging.debug("Response content: " + str(result))
+            raise

@@ -1,0 +1,24 @@
+# Multi-LLM Prompt Chain Configuration Example  
+# This config uses different LLMs for each step
+
+# Single input file
+input_file: "input_document.md"
+output_file: "final_processed_document.md"
+
+# Prompts with different LLM configs for each step
+prompts:
+  prompt 1:
+    prompt_file: "creative_brainstorm.json"
+    config_file: "claude_config.yaml"     # Use Claude for creative tasks
+  
+  prompt 2:
+    prompt_file: "technical_analysis.json" 
+    config_file: "gpt4_config.yaml"      # Use GPT-4 for technical analysis
+  
+  prompt 3:
+    prompt_file: "fact_checking.json"
+    config_file: "deepseek_config.yaml"  # Use DeepSeek for fact checking
+  
+  prompt 4:
+    prompt_file: "final_editing.json"
+    config_file: "claude_config.yaml"    # Back to Claude for final editing

@@ -1,0 +1,22 @@
+# Sample configuration for the OpenRouter API client script
+
+# Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+logging_level: INFO
+
+# Model name to use for the API call
+# Default to Claude Sonnet 4 if not specified
+model_name: anthropic/claude-4-sonnet-20250522
+
+# Alternative output filename (e.g., "my_prose_output.md")
+# If not specified, the output filename will be derived from the payload file name
+# with a .md extension (e.g., "prompt.json" -> "prompt.md")
+output_filename: null
+
+# API Key for OpenRouter
+# If not specified here, the script will look for the OPENROUTER_API_KEY environment variable.
+api_key: null
+
+# Path to the JSON file containing the API request payload (e.g., with your prompt)
+# This file is now read directly from the configuration.
+payload_file: prompt.json
+max_tokens: 25000
