@@ -41,7 +41,9 @@ class FlaskPromptRunner:
     
     def __init__(self):
         """Initialize the Flask application."""
-        self.app = Flask(__name__)
+        # Set template folder to the working directory's templates folder
+        template_folder = os.path.join(os.getcwd(), 'templates')
+        self.app = Flask(__name__, template_folder=template_folder)
         self.app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-key-change-in-production')
         
         # Configure upload settings

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Execute Prompt - {{ prompt.name }}{% endblock %}
+
+{% block content %}
+<h1>Execute Prompt</h1>
+<h2>{{ prompt.title or prompt.name }}</h2>
+
+<div class="response-meta">
+    <strong>Prompt File:</strong> {{ prompt.name }}<br>
+    <strong>Fields:</strong> {{ prompt.field_count }}<br>
+    {% if prompt.has_instructions %}<strong>Has Instructions:</strong> Yes<br>{% endif %}
+    {% if prompt.has_criteria %}<strong>Has Review Criteria:</strong> Yes<br>{% endif %}
+</div>
+
+<form id="promptForm" method="POST" action="{{ url_for('execute_prompt') }}" enctype="multipart/form-data">
+    <input type="hidden" name="prompt_file" value="{{ prompt.path }}">
+    
+    <div class="form-group">
+        <label for="input_method">Input Method:</label>
+        <select name="input_method" id="input_method" onchange="toggleInputMethod()">
+            <option value="text">Text Input</option>
+            <option value="file">File Upload</option>
+        </select>
+    </div>
+    
+    <div id="text_input" class="form-group">
+        <label for="input_text">Input Content:</label>
+        <textarea name="input_text" id="input_text" placeholder="Enter the content you want to analyze with this prompt..."></textarea>
+    </div>
+    
+    <div id="file_input" class="form-group" style="display: none;">
+        <label for="input_file">Upload Input File:</label>
+        <input type="file" name="input_file" id="input_file" accept=".txt,.md,.json,.csv">
+    </div>
+    
+    <button type="submit" class="btn">Execute Prompt</button>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Prompts</a>
+</form>
+
+<div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Processing your request...</p>
+</div>
+
+<div id="response" class="response-container" style="display: none;">
+    <div id="response-meta" class="response-meta"></div>
+    <div id="response-content" class="response-content"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleInputMethod() {
+    const method = document.getElementById('input_method').value;
+    const textInput = document.getElementById('text_input');
+    const fileInput = document.getElementById('file_input');
+    
+    if (method === 'file') {
+        textInput.style.display = 'none';
+        fileInput.style.display = 'block';
+    } else {
+        textInput.style.display = 'block';
+        fileInput.style.display = 'none';
+    }
+}
+
+document.getElementById('promptForm').onsubmit = function(e) {
+    e.preventDefault();
+    
+    const loading = document.getElementById('loading');
+    const response = document.getElementById('response');
+    
+    loading.style.display = 'block';
+    response.style.display = 'none';
+    
+    const formData = new FormData(this);
+    
+    fetch('{{ url_for("execute_prompt") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        loading.style.display = 'none';
+        
+        if (data.success) {
+            const responseMeta = document.getElementById('response-meta');
+            const responseContent = document.getElementById('response-content');
+            
+            responseMeta.innerHTML = `
+                <strong>Prompt:</strong> ${data.metadata.prompt_name}<br>
+                <strong>Input:</strong> ${data.metadata.input_name}<br>
+                <strong>Timestamp:</strong> ${data.metadata.timestamp}<br>
+                <strong>Input Length:</strong> ${data.metadata.input_length} characters<br>
+                <strong>Response Length:</strong> ${data.metadata.response_length} characters
+            `;
+            
+            responseContent.textContent = data.response;
+            document.getElementById('response').style.display = 'block';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        loading.style.display = 'none';
+        alert('Error: ' + error.message);
+    });
+};
+</script>
+{% endblock %}

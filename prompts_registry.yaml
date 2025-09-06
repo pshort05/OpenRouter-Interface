@@ -1,0 +1,60 @@
+# OpenRouter Interface Prompts Registry
+# This file defines which prompts are available in the web interface
+
+prompts:
+  - name: "Creative Writing Assistant"
+    file: "creative_writing_assistant.json"
+    category: "Writing"
+    description: "General purpose creative writing assistance"
+    enabled: true
+    
+  - name: "Dialogue Editor"
+    file: "dialogue_editor.json" 
+    category: "Editing"
+    description: "Improve dialogue in your writing"
+    enabled: true
+    
+  - name: "Copy Editor"
+    file: "copy_editor_prompt_v1.3.json"
+    category: "Editing" 
+    description: "Professional copy editing and proofreading"
+    enabled: true
+    
+  - name: "Engagement Checker"
+    file: "engagement_checker.json"
+    category: "Analysis"
+    description: "Check if your writing is engaging"
+    enabled: true
+    
+  - name: "Character Review"
+    file: "7-point character review.json"
+    category: "Analysis"
+    description: "7-point character development analysis"
+    enabled: true
+    
+  - name: "Content Quality"
+    file: "content_quality.json"
+    category: "Analysis"
+    description: "Assess overall content quality"
+    enabled: true
+    
+  - name: "First Chapter Checker"
+    file: "first_chapter_checker.json"
+    category: "Analysis"
+    description: "Analyze first chapters for hooks and engagement"
+    enabled: true
+
+categories:
+  - name: "Writing"
+    description: "Creative writing and composition"
+    
+  - name: "Editing" 
+    description: "Text editing and improvement"
+    
+  - name: "Analysis"
+    description: "Content analysis and feedback"
+
+settings:
+  default_category: "Writing"
+  show_disabled: false
+  max_prompts_per_page: 20

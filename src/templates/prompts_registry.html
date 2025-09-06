@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Prompts Registry{% endblock %}
+
+{% block content %}
+<h1>Prompts Registry</h1>
+<p>Manage the registry of available prompt files. You can rescan the directory or manually edit the registry.</p>
+
+<div class="registry-controls">
+    <form method="POST" action="{{ url_for('update_prompts_registry') }}" style="display: inline;">
+        <input type="hidden" name="action" value="rescan">
+        <button type="submit" class="btn btn-success">Rescan Directory</button>
+    </form>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+</div>
+
+<form method="POST" action="{{ url_for('update_prompts_registry') }}">
+    <input type="hidden" name="action" value="save">
+    <input type="hidden" name="prompt_count" value="{{ prompts|length }}">
+    
+    {% if prompts %}
+        {% for prompt in prompts %}
+        <div class="registry-item {{ 'disabled' if not prompt.enabled }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="prompt_{{ loop.index0 }}_name">File Name:</label>
+                    <input type="text" name="prompt_{{ loop.index0 }}_name" 
+                           value="{{ prompt.name }}" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="prompt_{{ loop.index0 }}_path">File Path:</label>
+                    <input type="text" name="prompt_{{ loop.index0 }}_path" 
+                           value="{{ prompt.path }}" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="prompt_{{ loop.index0 }}_title">Title:</label>
+                    <input type="text" name="prompt_{{ loop.index0 }}_title" 
+                           value="{{ prompt.title }}" required>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group" style="margin-top: 30px;">
+                        <input type="checkbox" name="prompt_{{ loop.index0 }}_enabled" 
+                               id="prompt_{{ loop.index0 }}_enabled" 
+                               {{ 'checked' if prompt.enabled }}>
+                        <label for="prompt_{{ loop.index0 }}_enabled">Enabled</label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="prompt_{{ loop.index0 }}_description">Description:</label>
+                <textarea name="prompt_{{ loop.index0 }}_description" 
+                          style="min-height: 60px;">{{ prompt.description }}</textarea>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <div style="margin-top: 30px;">
+            <button type="submit" class="btn btn-success">Save Registry</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <strong>No prompts in registry</strong><br>
+            Click "Rescan Directory" to scan for JSON files in the current directory.
+        </div>
+    {% endif %}
+</form>
+
+<div class="config-section" style="margin-top: 30px;">
+    <h3>Registry Information</h3>
+    <p><strong>Registry File:</strong> prompts_registry.yaml</p>
+    <p><strong>Prompts Count:</strong> {{ prompts|length }}</p>
+    <p><em>The registry file can also be edited directly with a text editor.</em></p>
+</div>
+{% endblock %}

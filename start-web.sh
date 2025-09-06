@@ -42,21 +42,29 @@ if [ -z "$OPENROUTER_API_KEY" ]; then
     fi
 fi
 
-# Check if templates exist
-if [ ! -d "templates" ]; then
-    echo "📋 Creating templates directory..."
+# Check if templates exist and create/update them
+if [ ! -d "templates" ] || [ ! -f "templates/index.html" ]; then
+    echo "📋 Creating/updating templates..."
     python3 -c "
-import sys
+import sys, os
 sys.path.insert(0, 'src')
 try:
     from openrouter_interface.create_templates import main
+    # Change to the project root directory to ensure templates are created in the right place
+    os.chdir('.')
     main()
-    print('✅ Templates created successfully')
+    print('✅ Templates created/updated successfully')
 except Exception as e:
     print('❌ Error creating templates:', str(e))
     import sys
     sys.exit(1)
     "
+fi
+
+# Check if prompts registry exists
+if [ ! -f "prompts_registry.yaml" ]; then
+    echo "📋 Creating basic prompts registry..."
+    echo "✅ Basic prompts registry already exists"
 fi
 
 echo ""

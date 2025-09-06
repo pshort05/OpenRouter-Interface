@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Prompt Runner - Available Prompts{% endblock %}
+
+{% block content %}
+<h1>OpenRouter Prompt Runner</h1>
+<p>Select a JSON prompt file to execute against your input content.</p>
+
+{% if prompts %}
+    <div class="prompt-list">
+        {% for prompt in prompts %}
+        <div class="prompt-card {{ 'disabled' if not prompt.enabled or not prompt.exists }}">
+            <h3>{{ prompt.title or prompt.name }}</h3>
+            <div class="prompt-meta">
+                <strong>File:</strong> {{ prompt.name }}<br>
+                {% if prompt.exists %}
+                    <strong>Size:</strong> {{ prompt.size_formatted }}<br>
+                {% else %}
+                    <strong>Status:</strong> <span style="color: #e74c3c;">File not found</span><br>
+                {% endif %}
+                <strong>Enabled:</strong> {{ "Yes" if prompt.enabled else "No" }}
+            </div>
+            {% if prompt.description %}
+            <div class="prompt-description">{{ prompt.description }}</div>
+            {% endif %}
+            {% if prompt.enabled and prompt.exists %}
+                <a href="{{ url_for('show_prompt', prompt_file=prompt.path) }}" class="btn">Use This Prompt</a>
+            {% else %}
+                <button class="btn" disabled>{{ "File Missing" if not prompt.exists else "Disabled" }}</button>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <strong>No prompts configured</strong><br>
+        Please check the <a href="{{ url_for('show_prompts_registry') }}">Prompts Registry</a> to configure available prompts.
+    </div>
+{% endif %}
+{% endblock %}

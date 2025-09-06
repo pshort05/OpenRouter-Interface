@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration{% endblock %}
+
+{% block content %}
+<h1>Configuration</h1>
+<p>Modify application settings. Changes will be saved and the application configuration will be reloaded.</p>
+
+<form method="POST" action="{{ url_for('update_config') }}">
+    <div class="config-section">
+        <h3>OpenRouter API Settings</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="model">Model:</label>
+                <input type="text" name="model" id="model" value="{{ config.model }}" required>
+            </div>
+            <div class="form-group">
+                <label for="api_base_url">API Base URL:</label>
+                <input type="url" name="api_base_url" id="api_base_url" value="{{ config.api_base_url }}" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="temperature">Temperature (0.0 - 2.0):</label>
+                <input type="number" name="temperature" id="temperature" value="{{ config.temperature }}" 
+                       min="0" max="2" step="0.1" required>
+            </div>
+            <div class="form-group">
+                <label for="max_tokens">Max Tokens (1 - 100,000):</label>
+                <input type="number" name="max_tokens" id="max_tokens" value="{{ config.max_tokens }}" 
+                       min="1" max="100000" required>
+            </div>
+        </div>
+    </div>
+    
+    <div class="config-section">
+        <h3>Application Settings</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="log_level">Log Level:</label>
+                <select name="log_level" id="log_level">
+                    <option value="DEBUG" {{ 'selected' if config.log_level == 'DEBUG' }}>DEBUG</option>
+                    <option value="INFO" {{ 'selected' if config.log_level == 'INFO' }}>INFO</option>
+                    <option value="WARNING" {{ 'selected' if config.log_level == 'WARNING' }}>WARNING</option>
+                    <option value="ERROR" {{ 'selected' if config.log_level == 'ERROR' }}>ERROR</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" name="log_to_file" id="log_to_file" 
+                           {{ 'checked' if config.log_to_file }}>
+                    <label for="log_to_file">Log to File</label>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="max_content_length_mb">Max Upload Size (MB):</label>
+                <input type="number" name="max_content_length_mb" id="max_content_length_mb" 
+                       value="{{ config.max_content_length_mb }}" min="1" max="100" required>
+            </div>
+            <div class="form-group">
+                <label for="session_timeout_hours">Session Timeout (Hours):</label>
+                <input type="number" name="session_timeout_hours" id="session_timeout_hours" 
+                       value="{{ config.session_timeout_hours }}" min="1" max="168" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="payload_file">Payload File:</label>
+            <input type="text" name="payload_file" id="payload_file" 
+                   value="{{ config.payload_file }}" required>
+        </div>
+    </div>
+    
+    <div style="margin-top: 30px;">
+        <button type="submit" class="btn btn-success">Save Configuration</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<div class="config-section" style="margin-top: 30px;">
+    <h3>Current Configuration File</h3>
+    <p><strong>Location:</strong> flask_config.yaml</p>
+    <p><em>Note: You can also edit the configuration file directly and restart the application.</em></p>
+</div>
+{% endblock %}
