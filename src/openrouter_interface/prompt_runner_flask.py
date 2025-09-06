@@ -41,8 +41,9 @@ class FlaskPromptRunner:
     
     def __init__(self):
         """Initialize the Flask application."""
-        # Set template folder to the working directory's templates folder
-        template_folder = os.path.join(os.getcwd(), 'templates')
+        # Set template folder to the project root's templates folder
+        self.project_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
+        template_folder = os.path.join(self.project_root, 'templates')
         self.app = Flask(__name__, template_folder=template_folder)
         self.app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-key-change-in-production')
         
@@ -50,9 +51,9 @@ class FlaskPromptRunner:
         self.app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
         self.app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
         
-        # Configuration file paths
+        # Configuration file paths - look in parent directory (project root)
         self.config_file = 'flask_config.yaml'
-        self.prompts_registry_file = 'prompts_registry.yaml'
+        self.prompts_registry_file = os.path.join(self.project_root, 'prompts_registry.yaml')
         
         # Initialize components
         self._init_components()
@@ -71,8 +72,9 @@ class FlaskPromptRunner:
         self.logging_manager = LoggingManager(self.config)
         self.api_client = PromptAPIClient(self.config)
         
-        # Initialize other components
-        self.scanner = PromptScanner()
+        # Initialize other components - point scanner to prompts directory in project root
+        prompts_dir = os.path.join(self.project_root, 'prompts')
+        self.scanner = PromptScanner(prompts_dir)
         self.prompt_loader = PromptLoader()
         self.processor = PromptProcessor()
         
