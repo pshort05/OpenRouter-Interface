@@ -172,18 +172,27 @@ class FlaskPromptRunner:
                 # Verify prompt files still exist and add metadata
                 verified_prompts = []
                 for prompt in prompts:
-                    prompt_path = Path(prompt['path'])
-                    if prompt_path.exists():
-                        file_size = prompt_path.stat().st_size
-                        prompt.update({
-                            'size': file_size,
-                            'size_formatted': self._format_file_size(file_size),
-                            'exists': True
-                        })
+                    # Build full path from project root + prompts directory + file name
+                    if 'file' in prompt:
+                        prompt_file_path = os.path.join(self.project_root, 'prompts', prompt['file'])
+                        prompt_path = Path(prompt_file_path)
+                        # Use relative path for URL routing (prompts/filename.json)
+                        prompt['path'] = f"prompts/{prompt['file']}" 
+                        prompt['full_path'] = str(prompt_path)  # Keep full path for file operations
+                        
+                        if prompt_path.exists():
+                            file_size = prompt_path.stat().st_size
+                            prompt.update({
+                                'size': file_size,
+                                'size_formatted': self._format_file_size(file_size),
+                                'exists': True
+                            })
+                        else:
+                            prompt['exists'] = False
                         verified_prompts.append(prompt)
                     else:
-                        prompt['exists'] = False
-                        verified_prompts.append(prompt)
+                        # Skip prompts without file reference
+                        continue
                 
                 return render_template('index.html', prompts=verified_prompts)
                 
@@ -325,7 +334,11 @@ class FlaskPromptRunner:
         def show_prompt(prompt_file):
             """Show prompt details and input form."""
             try:
-                prompt_path = Path(prompt_file)
+                # If prompt_file is relative (e.g., "prompts/file.json"), resolve it to project root
+                if not os.path.isabs(prompt_file):
+                    prompt_path = Path(os.path.join(self.project_root, prompt_file))
+                else:
+                    prompt_path = Path(prompt_file)
                 
                 if not prompt_path.exists():
                     flash(f"Prompt file not found: {prompt_file}", 'error')
@@ -362,7 +375,12 @@ class FlaskPromptRunner:
                 if not prompt_file:
                     return jsonify({'error': 'No prompt file specified'}), 400
                 
-                prompt_path = Path(prompt_file)
+                # If prompt_file is relative, resolve it to project root
+                if not os.path.isabs(prompt_file):
+                    prompt_path = Path(os.path.join(self.project_root, prompt_file))
+                else:
+                    prompt_path = Path(prompt_file)
+                    
                 if not prompt_path.exists():
                     return jsonify({'error': f'Prompt file not found: {prompt_file}'}), 404
                 
@@ -485,7 +503,12 @@ class FlaskPromptRunner:
         def api_get_prompt(prompt_file):
             """API endpoint to get prompt details."""
             try:
-                prompt_path = Path(prompt_file)
+                # If prompt_file is relative, resolve it to project root
+                if not os.path.isabs(prompt_file):
+                    prompt_path = Path(os.path.join(self.project_root, prompt_file))
+                else:
+                    prompt_path = Path(prompt_file)
+                    
                 if not prompt_path.exists():
                     return jsonify({'error': 'Prompt file not found'}), 404
                 
