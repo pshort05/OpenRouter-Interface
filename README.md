@@ -26,6 +26,11 @@ cd openrouter-interface
 
 That's it! Three simple commands and you're running a full AI processing web interface.
 
+**🌐 Network Features:**
+- **Multi-device Access**: Use from phones, tablets, and other computers on your network
+- **Background Operation**: Server continues running after closing terminal
+- **Production Ready**: Optimized for performance and reliability
+
 ### Manual Installation (Alternative)
 
 ```bash

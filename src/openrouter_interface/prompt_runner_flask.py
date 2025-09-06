@@ -957,7 +957,7 @@ class FlaskPromptRunner:
         except Exception as e:
             logging.warning(f"Error cleaning up chain files: {e}")
 
-    def run(self, host='127.0.0.1', port=5000, debug=False, foreground=False):
+    def run(self, host='0.0.0.0', port=5000, debug=False, foreground=False):
         """Run the Flask application."""
         import socket
         import subprocess
@@ -977,25 +977,21 @@ class FlaskPromptRunner:
             print("🔧 Running in background mode...")
             print("   • Web server will continue running after terminal closes")
             print("   • To stop: kill the process or restart your system")
-            print("   • Logs will be written to flask_app.log")
+            print("   • Logs will be written to openrouter_web.log")
             print(f"")
             
             # Run in background using nohup
             try:
-                # Create a command to run the app
+                # Use the standalone background runner script to avoid import issues
+                background_script = os.path.join(os.getcwd(), 'run-flask-background.py')
+                
                 cmd = [
-                    sys.executable, '-c',
-                    f"""
-import sys
-sys.path.insert(0, '{os.path.dirname(__file__)}')
-from prompt_runner_flask import FlaskPromptRunner
-app_runner = FlaskPromptRunner()
-app_runner.app.run(host='{host}', port={port}, debug=False)
-"""
+                    sys.executable, background_script,
+                    '--host', host, '--port', str(port)
                 ]
                 
                 # Start the process in background
-                with open('flask_app.log', 'w') as log_file:
+                with open('openrouter_web.log', 'w') as log_file:
                     process = subprocess.Popen(
                         ['nohup'] + cmd,
                         stdout=log_file,
@@ -1009,7 +1005,7 @@ app_runner.app.run(host='{host}', port={port}, debug=False)
                 
                 print(f"✅ Web server started successfully!")
                 print(f"📝 Process ID: {process.pid}")
-                print(f"📄 Logs: flask_app.log")
+                print(f"📄 Logs: openrouter_web.log")
                 print(f"")
                 print("🌐 Open your browser and navigate to:")
                 print(f"   http://{local_ip}:{port}")

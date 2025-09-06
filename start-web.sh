@@ -46,13 +46,16 @@ fi
 if [ ! -d "templates" ]; then
     echo "📋 Creating templates directory..."
     python3 -c "
+import sys
+sys.path.insert(0, 'src')
 try:
-    from src.openrouter_interface.create_templates import main
+    from openrouter_interface.create_templates import main
     main()
     print('✅ Templates created successfully')
 except Exception as e:
-    print(f'❌ Error creating templates: {e}')
-    exit(1)
+    print('❌ Error creating templates:', str(e))
+    import sys
+    sys.exit(1)
     "
 fi
 
@@ -101,10 +104,21 @@ else
     echo ""
     echo "🎉 Web server is now running in the background!"
     echo ""
-    echo "📖 Usage:"
-    echo "  • Web interface is accessible from any device on your network"
-    echo "  • Check flask_app.log for server logs"  
+    echo "🌐 Network Access:"
+    echo "  • The server is accessible from ANY device on your local network"
+    echo "  • From other computers: http://$(hostname -I | awk '{print $1}'):5000"
+    echo "  • From phones/tablets: Use the same URL above"
+    echo "  • From this computer: http://localhost:5000"
+    echo ""
+    echo "🔧 Troubleshooting Network Access:"
+    echo "  • If blocked by firewall, run: sudo ufw allow 5000"
+    echo "  • Check your local IP: ip addr show | grep 'inet '"
+    echo "  • Server logs: tail -f openrouter_web.log"
+    echo ""
+    echo "📖 Usage Options:"
     echo "  • To run in foreground: ./start-web.sh --foreground"
     echo "  • To run in debug mode: ./start-web.sh --debug"
+    echo "  • To stop server: pkill -f 'flask\|openrouter-web\|run-flask-background'"
+    echo "  • Direct background start: python3 run-flask-background.py"
     echo ""
 fi

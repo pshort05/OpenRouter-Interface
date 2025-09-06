@@ -62,7 +62,7 @@ Files Created:
     flask_config.yaml       Application configuration
     prompts_registry.yaml   Prompts registry
     templates/              HTML template directory
-    flask_app.log          Application log file (background mode)
+    openrouter_web.log          Application log file (background mode)
     flask_app.pid          Process ID file (background mode)
 
 EOF
@@ -188,11 +188,11 @@ kill_instances() {
 
 # Function to show logs
 show_logs() {
-    if [ -f "flask_app.log" ]; then
+    if [ -f "openrouter_web.log" ]; then
         print_color $BLUE "Showing application logs (press Ctrl+C to exit):"
-        tail -f flask_app.log
+        tail -f openrouter_web.log
     else
-        print_color $YELLOW "No log file found (flask_app.log)"
+        print_color $YELLOW "No log file found (openrouter_web.log)"
     fi
 }
 
@@ -217,12 +217,12 @@ start_flask() {
     
     if [ "$background" = "true" ]; then
         # Run in background
-        nohup $cmd > flask_app.log 2>&1 &
+        nohup $cmd > openrouter_web.log 2>&1 &
         local pid=$!
         echo $pid > flask_app.pid
         print_color $GREEN "✓ Flask application started in background (PID: $pid)"
         print_color $BLUE "Access at: http://$host:$port"
-        print_color $BLUE "Logs: tail -f flask_app.log"
+        print_color $BLUE "Logs: tail -f openrouter_web.log"
         print_color $BLUE "Stop with: prompt_runner_flask.sh --kill"
     else
         # Run in foreground

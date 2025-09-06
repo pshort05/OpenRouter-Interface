@@ -21,6 +21,10 @@ Get started with OpenRouter Interface in just a few simple steps. No complex con
 
 Done! The web interface will start automatically and show you the access URLs.
 
+**🌐 Network Access**: The web interface is accessible from any device on your local network - phones, tablets, other computers. Just use the network IP address shown when starting the server.
+
+**📱 Mobile Friendly**: The web interface works great on mobile devices for on-the-go AI processing.
+
 ### Alternative Installation Methods
 
 If you prefer manual control:
@@ -226,6 +230,18 @@ export OPENROUTER_API_KEY="your-actual-key-here"
 - Add user bin to PATH: `export PATH="$HOME/.local/bin:$PATH"`
 - Or use full path: `~/.local/bin/openrouter-runner`
 - In virtual environment, commands should work directly
+
+**Network Access Issues**
+```bash
+# Check network connectivity and troubleshoot
+./check-network.sh
+
+# Allow through firewall if needed
+sudo ufw allow 5000
+
+# Find your local IP address
+ip addr show | grep 'inet '
+```
 
 ## 🎓 What's Next?
 
