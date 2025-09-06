@@ -15,19 +15,17 @@ Get started with OpenRouter Interface in just a few simple steps. No complex con
    git clone <repository-url>
    cd openrouter-interface
    
-   # Method 1: User installation (recommended)
-   pip install --user -e .
+   # Method 1: Easy installation script (recommended)
+   chmod +x install.sh
+   ./install.sh web    # Options: basic, web, dev, all
    
-   # Method 2: With web interface
-   pip install --user -e ".[web]"
-   
-   # Method 3: With all features  
-   pip install --user -e ".[all]"
-   
-   # Alternative: Use virtual environment (best practice)
-   python3 -m venv venv
-   source venv/bin/activate
+   # Method 2: Manual virtual environment
+   python3 -m venv openrouter-venv
+   source openrouter-venv/bin/activate
    pip install -e ".[web]"
+   
+   # Method 3: If user site-packages enabled
+   pip install --user -e ".[web]"
    ```
 
 Done! You're ready to run prompts.
@@ -192,15 +190,18 @@ python prompt_runner.py -p prompt.json -i input.md -c config.yaml
 
 ## 🆘 Quick Troubleshooting
 
-**Installation Permission Errors**
+**Installation Permission Errors / User site-packages disabled**
 ```bash
-# Use --user flag to install to user directory
-pip install --user -e .
+# Solution 1: Use the provided installation script
+./install.sh web
 
-# Or use virtual environment (recommended)
-python3 -m venv venv
-source venv/bin/activate
+# Solution 2: Manual virtual environment
+python3 -m venv openrouter-venv
+source openrouter-venv/bin/activate
 pip install -e ".[web]"
+
+# Solution 3: If you have sudo access
+sudo pip install -e ".[web]"
 ```
 
 **"No API key found"**
