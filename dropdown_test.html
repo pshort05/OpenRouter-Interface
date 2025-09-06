@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dropdown Test</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* Dropdown menu styles for light/dark theme compatibility */
+        .dropdown-menu {
+            background-color: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.15) !important;
+            color-scheme: light !important;
+            min-width: 160px !important;
+        }
+        
+        .dropdown-item {
+            color: #212529 !important;
+            background-color: transparent !important;
+            padding: 0.5rem 1rem !important;
+            font-size: 0.9rem !important;
+        }
+        
+        .dropdown-item:hover,
+        .dropdown-item:focus {
+            color: #16181b !important;
+            background-color: #f8f9fa !important;
+            text-decoration: none !important;
+        }
+        
+        .dropdown-item:active {
+            color: #fff !important;
+            background-color: #007bff !important;
+        }
+        
+        .dropdown-item i {
+            color: inherit !important;
+            margin-right: 0.5rem;
+        }
+        
+        /* Force light theme for dropdown regardless of browser/OS preference */
+        .navbar .dropdown-menu,
+        .navbar .dropdown-item {
+            color-scheme: light !important;
+            forced-color-adjust: none !important;
+        }
+        
+        /* Override any dark theme dropdown styles */
+        @media (prefers-color-scheme: dark) {
+            .dropdown-menu {
+                background-color: #ffffff !important;
+                border: 1px solid #dee2e6 !important;
+                color-scheme: light !important;
+            }
+            
+            .dropdown-item {
+                color: #212529 !important;
+                background-color: transparent !important;
+            }
+            
+            .dropdown-item:hover,
+            .dropdown-item:focus {
+                color: #16181b !important;
+                background-color: #f8f9fa !important;
+            }
+        }
+        
+        body { padding: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Dropdown Theme Compatibility Test</h1>
+    <p>This tests the Settings dropdown visibility in both light and dark Chrome themes.</p>
+    
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <a class="navbar-brand" href="#">
+            <i class="fas fa-robot"></i> OpenRouter Interface
+        </a>
+        
+        <div class="navbar-nav">
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+                <div class="dropdown-menu">
+                    <a class="dropdown-item" href="#">
+                        <i class="fas fa-sliders-h"></i> Configuration
+                    </a>
+                    <a class="dropdown-item" href="#">
+                        <i class="fas fa-list"></i> Prompts Registry
+                    </a>
+                </div>
+            </li>
+        </div>
+    </nav>
+    
+    <div class="alert alert-info">
+        <strong>Instructions:</strong>
+        <ol>
+            <li>Click on "Settings" above to open the dropdown</li>
+            <li>The dropdown should be clearly visible with white background and dark text</li>
+            <li>Both light and dark browser themes should show the dropdown clearly</li>
+            <li>Hover effects should work (light gray background on hover)</li>
+        </ol>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

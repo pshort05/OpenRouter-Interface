@@ -120,6 +120,67 @@
         }
         .navbar a:hover { background: #34495e; }
         .navbar a.active { background: #34495e; }
+        
+        /* Dropdown menu styles for light/dark theme compatibility */
+        .dropdown-menu {
+            background-color: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.15) !important;
+            color-scheme: light !important;
+            min-width: 160px !important;
+        }
+        
+        .dropdown-item {
+            color: #212529 !important;
+            background-color: transparent !important;
+            padding: 0.5rem 1rem !important;
+            font-size: 0.9rem !important;
+        }
+        
+        .dropdown-item:hover,
+        .dropdown-item:focus {
+            color: #16181b !important;
+            background-color: #f8f9fa !important;
+            text-decoration: none !important;
+        }
+        
+        .dropdown-item:active {
+            color: #fff !important;
+            background-color: #007bff !important;
+        }
+        
+        .dropdown-item i {
+            color: inherit !important;
+            margin-right: 0.5rem;
+        }
+        
+        /* Force light theme for dropdown regardless of browser/OS preference */
+        .navbar .dropdown-menu,
+        .navbar .dropdown-item {
+            color-scheme: light !important;
+            forced-color-adjust: none !important;
+        }
+        
+        /* Override any dark theme dropdown styles */
+        @media (prefers-color-scheme: dark) {
+            .dropdown-menu {
+                background-color: #ffffff !important;
+                border: 1px solid #dee2e6 !important;
+                color-scheme: light !important;
+            }
+            
+            .dropdown-item {
+                color: #212529 !important;
+                background-color: transparent !important;
+            }
+            
+            .dropdown-item:hover,
+            .dropdown-item:focus {
+                color: #16181b !important;
+                background-color: #f8f9fa !important;
+            }
+        }
+        
         .loading {
             display: none;
             text-align: center;
