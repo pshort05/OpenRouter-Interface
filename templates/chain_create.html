@@ -285,25 +285,32 @@ function addPromptStep() {
                     <label class="form-label mb-1">Prompt File</label>
                     <select class="form-control form-control-sm prompt-select" name="step_${promptStepCounter}_prompt" required>
                         <option value="">Select a prompt...</option>
-                        {% for prompt in prompts %}
-                        <option value="{{ prompt.file }}">{{ prompt.name }}</option>
-                        {% endfor %}
                     </select>
                 </div>
                 <div class="form-group mb-0">
                     <label class="form-label mb-1">Configuration (Optional)</label>
                     <select class="form-control form-control-sm" name="step_${promptStepCounter}_config">
                         <option value="">Use default configuration</option>
-                        {% for config in configs %}
-                        <option value="{{ config.file }}">{{ config.name }}</option>
-                        {% endfor %}
                     </select>
                 </div>
             </div>
         </div>
     `;
     
-    $('#prompt-steps').append(stepHtml);
+    const newStep = $(stepHtml);
+    $('#prompt-steps').append(newStep);
+    
+    // Populate the prompt options dynamically
+    const promptSelect = newStep.find('.prompt-select');
+    {% for prompt in prompts %}
+    promptSelect.append(`<option value="{{ prompt.file }}">{{ prompt.name }}</option>`);
+    {% endfor %}
+    
+    // Populate the config options dynamically  
+    const configSelect = newStep.find('select[name*="_config"]');
+    {% for config in configs %}
+    configSelect.append(`<option value="{{ config.file }}">{{ config.name }}</option>`);
+    {% endfor %}
 }
 
 function removePromptStep(stepId) {
