@@ -2,9 +2,13 @@
 
 A comprehensive tool for executing JSON prompt files using the OpenRouter API. Available as both a **command-line interface (CLI)** and a **Flask web application**. Choose the interface that best fits your workflow!
 
+## ⚡ New User? Start Here!
+
+**👋 First time using this tool?** → **[QUICK START GUIDE](QUICK-START.md)** - Get running in 3 minutes!
+
 ## 📖 Quick Navigation
 
-🚀 **Get Started**: [Setup Guide (README_setup.md)](README_setup.md) | [Linux Setup (SETUP_LINUX.md)](SETUP_LINUX.md)  
+🚀 **Get Started**: [Quick Start (QUICK-START.md)](QUICK-START.md) | [Setup Guide (README_setup.md)](README_setup.md) | [Linux Setup (SETUP_LINUX.md)](SETUP_LINUX.md)  
 ⛓️ **Advanced**: [Prompt Chains (prompt_chain_readme.md)](prompt_chain_readme.md) | [Multi-File Processing](prompt_chain_readme.md#enhanced-configuration-examples)  
 🌐 **Web Interface**: [Flask Setup (setup_guide.md)](setup_guide.md) | [Templates (README_temple_setup.md)](README_temple_setup.md)  
 🔧 **Development**: [Claude Code Integration (CLAUDE.md)](CLAUDE.md) | [Architecture Guide](CLAUDE.md#code-architecture)
@@ -848,6 +852,48 @@ For issues and questions:
 3. Verify API key and network connectivity
 4. Test with simple prompts first
 5. Check file permissions and dependencies
+
+---
+
+## 🔧 Additional Utilities
+
+This project includes several specialized utilities for different use cases:
+
+### 📚 Book Generation Tools
+- **[BookGen Utilities](README-BookGen.md)** - AI-powered book chapter generation and editing
+  - `bookGen.py` - Main book generation application
+  - `bookFileManager.py` - File management for book content
+  - Smart text chunking, action-based prompts, comprehensive logging
+
+### 🎯 Specialized Applications
+- **`generateProse.py`** - Prose generation utility
+- **`openrouter_editor.py`** - Original text editor interface
+- **`callAPI.py`** - Basic API testing utility
+
+### 📖 Complete Documentation Index
+
+**Setup & Installation:**
+- [Quick Start Guide](QUICK-START.md) - Get running in 3 minutes
+- [Complete Setup Guide](README_setup.md) - Detailed installation instructions
+- [Linux Automated Setup](SETUP_LINUX.md) - Linux-specific setup script
+- [Flask Web Setup](setup_guide.md) - Web interface setup guide
+- [Template Setup](README_temple_setup.md) - HTML template configuration
+
+**Advanced Features:**
+- [Prompt Chain Runner](prompt_chain_readme.md) - Multi-step AI workflows
+- [BookGen Utilities](README-BookGen.md) - Book generation tools
+- [Claude Code Integration](CLAUDE.md) - Developer architecture guide
+
+**Reference Materials:**
+- [Compliance Analysis](compliance_analysis.md) - Quality standards framework
+- [Style Reference](style_reference.md) - Writing style guidelines
+- [Analysis Framework](analysis_framework.md) - Document analysis methodology
+
+**Configuration Examples:**
+- `config.yaml` - Main application configuration
+- `flask_config.yaml` - Web interface settings
+- `bookGen.yaml` - Book generation configuration
+- `openrouter_editor.yaml` - Legacy editor settings
 
 ---
 
