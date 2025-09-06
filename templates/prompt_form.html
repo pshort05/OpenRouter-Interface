@@ -3,6 +3,12 @@
 {% block title %}Execute Prompt - {{ prompt.name }}{% endblock %}
 
 {% block content %}
+<div class="breadcrumb" style="background: #f8f9fa; padding: 10px; margin-bottom: 20px; border-radius: 4px; font-size: 0.9em;">
+    <a href="{{ url_for('index') }}">📋 All Prompts</a> → 
+    <strong style="color: #007bff;">{{ prompt.title or prompt.name }}</strong>
+    <small style="color: #6c757d; margin-left: 10px;">{{ prompt.name }}</small>
+</div>
+
 <h1>Execute Prompt</h1>
 <h2>{{ prompt.title or prompt.name }}</h2>
 
@@ -12,10 +18,32 @@
     {% if prompt.has_instructions %}<strong>Has Instructions:</strong> Yes<br>{% endif %}
     {% if prompt.has_criteria %}<strong>Has Review Criteria:</strong> Yes<br>{% endif %}
     <strong>Model:</strong> {{ config.model }}<br>
+    <strong>Page Loaded:</strong> <span id="pageTimestamp"></span><br>
 </div>
+
+<script>
+// Display current timestamp to help debug caching
+document.getElementById('pageTimestamp').textContent = new Date().toLocaleString();
+</script>
 
 <form id="promptForm" method="POST" action="{{ url_for('execute_prompt') }}" enctype="multipart/form-data">
     <input type="hidden" name="prompt_file" value="{{ prompt.path }}">
+    
+    <!-- Prompt Selection Dropdown -->
+    {% if available_prompts %}
+    <div class="form-group">
+        <label for="prompt_selector">Switch Prompt:</label>
+        <select name="prompt_selector" id="prompt_selector" onchange="switchPrompt()">
+            {% for p in available_prompts %}
+                <option value="{{ p.path }}" {{ 'selected' if p.path == prompt.path }}>
+                    {{ p.title or p.name }} 
+                    {% if p.description %} - {{ p.description[:60] }}{% if p.description|length > 60 %}...{% endif %}{% endif %}
+                </option>
+            {% endfor %}
+        </select>
+        <small class="form-text">Select a different prompt to execute</small>
+    </div>
+    {% endif %}
     
     <div class="form-group">
         <label for="input_method">Input Method:</label>
@@ -71,6 +99,15 @@
 
 {% block scripts %}
 <script>
+// Debug logging
+console.log('Prompt form loaded:', {
+    promptPath: '{{ prompt.path }}',
+    promptName: '{{ prompt.name }}',
+    promptTitle: '{{ prompt.title }}',
+    modelName: '{{ config.model }}',
+    timestamp: new Date().toISOString()
+});
+
 // Helper function to escape HTML
 function escapeHtml(text) {
     const map = {
@@ -97,6 +134,20 @@ function toggleInputMethod() {
     }
 }
 
+function switchPrompt() {
+    const selectedPath = document.getElementById('prompt_selector').value;
+    console.log('Switching to prompt:', selectedPath);
+    
+    // Navigate to the new prompt page
+    if (selectedPath) {
+        // Construct the URL for the selected prompt
+        const baseUrl = '{{ url_for("show_prompt", prompt_file="") }}';
+        const url = baseUrl + encodeURIComponent(selectedPath);
+        console.log('Navigating to:', url);
+        window.location.href = url;
+    }
+}
+
 document.getElementById('promptForm').onsubmit = function(e) {
     e.preventDefault();
     
@@ -107,6 +158,15 @@ document.getElementById('promptForm').onsubmit = function(e) {
     response.style.display = 'none';
     
     const formData = new FormData(this);
+    
+    // Debug: Log form data being submitted
+    console.log('Form submission data:', {
+        promptFile: formData.get('prompt_file'),
+        inputMethod: formData.get('input_method'),
+        systemPrompt: formData.get('system_prompt')?.substring(0, 100) + '...',
+        outputFormat: formData.get('output_format'),
+        timestamp: new Date().toISOString()
+    });
     
     fetch('{{ url_for("execute_prompt") }}', {
         method: 'POST',

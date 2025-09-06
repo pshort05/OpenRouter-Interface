@@ -27,7 +27,7 @@ from typing import Dict, Any, List, Optional
 from werkzeug.utils import secure_filename
 
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, send_file
-from flask import Response
+from flask import Response, make_response
 
 from .config_manager import ConfigManager
 from .logging_manager import LoggingManager
@@ -379,18 +379,24 @@ class FlaskPromptRunner:
         def show_prompt(prompt_file):
             """Show prompt details and input form."""
             try:
+                logging.info(f"Loading prompt form for: {prompt_file}")
+                
                 # If prompt_file is relative (e.g., "prompts/file.json"), resolve it to project root
                 if not os.path.isabs(prompt_file):
                     prompt_path = Path(os.path.join(self.project_root, prompt_file))
                 else:
                     prompt_path = Path(prompt_file)
                 
+                logging.debug(f"Resolved prompt path: {prompt_path}")
+                
                 if not prompt_path.exists():
+                    logging.error(f"Prompt file not found: {prompt_path}")
                     flash(f"Prompt file not found: {prompt_file}", 'error')
                     return redirect(url_for('index'))
                 
                 # Load and validate prompt
                 prompt_data = self.prompt_loader.load_prompt(prompt_path)
+                logging.debug(f"Current model from config: {self.flask_config.get('model', 'NOT SET')}")
                 
                 # Format prompt data for display
                 prompt_info = {
@@ -403,7 +409,25 @@ class FlaskPromptRunner:
                     'field_count': len(prompt_data.keys())
                 }
                 
-                return render_template('prompt_form.html', prompt=prompt_info, config=self.flask_config)
+                # Get all available prompts for dropdown
+                try:
+                    all_prompts = self._load_prompts_registry()
+                    available_prompts = [p for p in all_prompts if p.get('enabled', False) and p.get('exists', False)]
+                except Exception as e:
+                    logging.warning(f"Could not load prompts registry: {e}")
+                    available_prompts = []
+                
+                logging.info(f"Rendering prompt form for: {prompt_info['title']} with model: {self.flask_config.get('model', 'NOT SET')}")
+                
+                response = make_response(render_template('prompt_form.html', 
+                                                       prompt=prompt_info, 
+                                                       config=self.flask_config,
+                                                       available_prompts=available_prompts))
+                # Prevent caching to ensure fresh data
+                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                response.headers['Pragma'] = 'no-cache'
+                response.headers['Expires'] = '0'
+                return response
                 
             except Exception as e:
                 logging.error(f"Error loading prompt {prompt_file}: {e}")
@@ -419,7 +443,12 @@ class FlaskPromptRunner:
                 system_prompt = request.form.get('system_prompt', '').strip()
                 output_format = request.form.get('output_format', 'markdown')
                 
+                logging.info(f"Executing prompt: {prompt_file}")
+                logging.debug(f"Input method: {input_method}, Output format: {output_format}")
+                logging.debug(f"System prompt provided: {'Yes' if system_prompt else 'No'}")
+                
                 if not prompt_file:
+                    logging.error("No prompt file specified in form submission")
                     return jsonify({'error': 'No prompt file specified'}), 400
                 
                 # If prompt_file is relative, resolve it to project root
