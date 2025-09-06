@@ -463,6 +463,33 @@ function startChain(chainData) {
     });
 }
 
+// Handle prompt selection changes
+$(document).on('change', '.prompt-select', function() {
+    const selectedPrompt = $(this).val();
+    const selectedOption = $(this).find('option:selected');
+    const promptName = selectedOption.text();
+    
+    // Update the step header to show the selected prompt
+    const stepCard = $(this).closest('.prompt-step');
+    const stepHeader = stepCard.find('.card-header strong');
+    
+    if (selectedPrompt) {
+        // Extract step number from current text
+        const currentText = stepHeader.text();
+        const stepMatch = currentText.match(/Step (\d+)/);
+        const stepNumber = stepMatch ? stepMatch[1] : '1';
+        
+        stepHeader.text(`Step ${stepNumber}: ${promptName}`);
+    } else {
+        // Reset to just step number if no prompt selected
+        const currentText = stepHeader.text();
+        const stepMatch = currentText.match(/Step (\d+)/);
+        const stepNumber = stepMatch ? stepMatch[1] : '1';
+        
+        stepHeader.text(`Step ${stepNumber}`);
+    }
+});
+
 // Initialize
 $(document).ready(function() {
     toggleConfigMethod();
