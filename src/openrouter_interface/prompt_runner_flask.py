@@ -403,7 +403,7 @@ class FlaskPromptRunner:
                     'field_count': len(prompt_data.keys())
                 }
                 
-                return render_template('prompt_form.html', prompt=prompt_info)
+                return render_template('prompt_form.html', prompt=prompt_info, config=self.flask_config)
                 
             except Exception as e:
                 logging.error(f"Error loading prompt {prompt_file}: {e}")
