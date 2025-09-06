@@ -185,10 +185,19 @@ DESCRIPTION:
     
     1. Verifies Python 3.7+ installation
     2. Installs all required Python packages (requests, pyyaml, flask)
+       - Handles externally-managed Python environments (PEP 668)
+       - Falls back to system package manager when needed
     3. Makes all entry point scripts executable
     4. Copies all Python modules to the specified installation directory
     5. Copies shell scripts and makes them executable
     6. Verifies the installation
+    
+NOTES:
+    On modern Linux distributions (Ubuntu 22.04+, Debian 12+), Python
+    environments are externally managed. This script handles this by:
+    - Using --user flag for user installations
+    - Using system packages (python3-requests, etc.) as fallback
+    - Only using --break-system-packages when necessary
 
 EXAMPLES:
     $0                    # Install to ~/.local/bin (user installation)
@@ -258,35 +267,108 @@ install_requirements() {
         exit 1
     fi
     
-    # Add user flag for user installation
+    # Add user flag for user installation and handle externally-managed environments
     local pip_flags=""
     if [ "$INSTALL_TO_SYSTEM" = false ]; then
         pip_flags="--user"
+    else
+        # For system installation, check if we need --break-system-packages
+        pip_flags="--break-system-packages"
+    fi
+    
+    # Function to try installation with fallback options
+    install_with_fallback() {
+        local install_cmd="$1"
+        local package_spec="$2"
+        
+        print_status "Attempting to install: $package_spec"
+        
+        # Try standard installation first
+        if eval "$install_cmd $package_spec" 2>/dev/null; then
+            return 0
+        fi
+        
+        # If that fails and we're doing user installation, try with --break-system-packages
+        if [ "$INSTALL_TO_SYSTEM" = false ]; then
+            print_warning "Standard installation failed, trying with --break-system-packages"
+            if eval "$install_cmd --break-system-packages $package_spec" 2>/dev/null; then
+                return 0
+            fi
+        fi
+        
+        # Try using system package manager as fallback
+        print_warning "pip installation failed, checking system packages"
+        case "$package_spec" in
+            *"requests"*)
+                if command_exists apt-get; then
+                    print_status "Installing python3-requests via apt"
+                    sudo apt-get update && sudo apt-get install -y python3-requests
+                elif command_exists yum; then
+                    print_status "Installing python3-requests via yum"
+                    sudo yum install -y python3-requests
+                elif command_exists dnf; then
+                    print_status "Installing python3-requests via dnf"
+                    sudo dnf install -y python3-requests
+                fi
+                ;;
+            *"PyYAML"*|*"yaml"*)
+                if command_exists apt-get; then
+                    print_status "Installing python3-yaml via apt"
+                    sudo apt-get update && sudo apt-get install -y python3-yaml
+                elif command_exists yum; then
+                    print_status "Installing python3-pyyaml via yum"
+                    sudo yum install -y python3-pyyaml
+                elif command_exists dnf; then
+                    print_status "Installing python3-pyyaml via dnf"
+                    sudo dnf install -y python3-pyyaml
+                fi
+                ;;
+            *"flask"*)
+                if command_exists apt-get; then
+                    print_status "Installing python3-flask via apt"
+                    sudo apt-get update && sudo apt-get install -y python3-flask
+                elif command_exists yum; then
+                    print_status "Installing python3-flask via yum"
+                    sudo yum install -y python3-flask
+                elif command_exists dnf; then
+                    print_status "Installing python3-flask via dnf"
+                    sudo dnf install -y python3-flask
+                fi
+                ;;
+        esac
+        
+        return 1
+    }
+    
+    # Build installation command
+    local base_install_cmd=""
+    if [ "$INSTALL_TO_SYSTEM" = true ] && [ "$EUID" -ne 0 ]; then
+        base_install_cmd="sudo $pip_cmd install $pip_flags"
+    else
+        base_install_cmd="$pip_cmd install $pip_flags"
     fi
     
     # Install from requirements.txt if it exists
     if [ -f "$requirements_file" ]; then
         print_status "Installing from requirements.txt"
-        if [ "$INSTALL_TO_SYSTEM" = true ] && [ "$EUID" -ne 0 ]; then
-            sudo $pip_cmd install $pip_flags -r "$requirements_file"
-        else
-            $pip_cmd install $pip_flags -r "$requirements_file"
+        if ! install_with_fallback "$base_install_cmd" "-r $requirements_file"; then
+            print_warning "requirements.txt installation failed, trying individual packages"
+            # Fall back to individual package installation
+            local packages=("requests>=2.25.0" "PyYAML>=5.4.0" "flask")
+            for package in "${packages[@]}"; do
+                install_with_fallback "$base_install_cmd" "\"$package\""
+            done
         fi
     else
         print_warning "requirements.txt not found, installing core packages manually"
         local packages=("requests>=2.25.0" "PyYAML>=5.4.0" "flask")
         
         for package in "${packages[@]}"; do
-            print_status "Installing $package"
-            if [ "$INSTALL_TO_SYSTEM" = true ] && [ "$EUID" -ne 0 ]; then
-                sudo $pip_cmd install $pip_flags "$package"
-            else
-                $pip_cmd install $pip_flags "$package"
-            fi
+            install_with_fallback "$base_install_cmd" "\"$package\""
         done
     fi
     
-    print_status "Python requirements installed successfully"
+    print_status "Python requirements installation completed"
 }
 
 # Function to make entry points executable

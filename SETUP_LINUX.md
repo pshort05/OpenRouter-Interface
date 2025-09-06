@@ -130,6 +130,31 @@ prompt_runner_flask.py
 
 ## Troubleshooting
 
+### Externally-Managed Environment Error
+**Modern Linux distributions (Ubuntu 22.04+, Debian 12+) protect the system Python:**
+```
+error: externally-managed-environment
+```
+
+**The setup script handles this automatically by:**
+- Using `--user` flag for user installations
+- Falling back to system packages (python3-requests, python3-yaml, python3-flask)
+- Using `--break-system-packages` only when necessary
+
+**Manual alternatives:**
+```bash
+# Option 1: Install system packages directly
+sudo apt install python3-requests python3-yaml python3-flask
+
+# Option 2: Use virtual environment
+python3 -m venv openrouter-env
+source openrouter-env/bin/activate
+pip install requests pyyaml flask
+
+# Option 3: Use pipx (if available)
+pipx install requests pyyaml flask
+```
+
 ### Python Issues
 ```bash
 # Check Python version
