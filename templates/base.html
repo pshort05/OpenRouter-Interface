@@ -154,6 +154,14 @@
             margin-right: 0.5rem;
         }
         
+        .dropdown-divider {
+            height: 0;
+            margin: 0.5rem 0;
+            overflow: hidden;
+            border-top: 1px solid #e9ecef !important;
+            background-color: transparent !important;
+        }
+        
         /* Force light theme for dropdown regardless of browser/OS preference */
         .navbar .dropdown-menu,
         .navbar .dropdown-item {
@@ -284,6 +292,10 @@
                             <a class="dropdown-item" href="{{ url_for('show_prompts_registry') }}">
                                 <i class="fas fa-list"></i> Prompts Registry
                             </a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="#" onclick="confirmShutdown()" style="color: #dc3545 !important;">
+                                <i class="fas fa-power-off"></i> Shutdown Server
+                            </a>
                         </div>
                     </li>
                 </ul>
@@ -306,6 +318,51 @@
     <!-- Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Shutdown Server Confirmation -->
+    <script>
+        function confirmShutdown() {
+            if (confirm('⚠️ WARNING: This will shutdown the Flask server!\n\nAre you sure you want to continue?\n\nThe web interface will become unavailable until you restart the server manually.')) {
+                // Show loading message
+                const loadingDiv = document.createElement('div');
+                loadingDiv.innerHTML = `
+                    <div class="alert alert-warning text-center" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; min-width: 300px;">
+                        <i class="fas fa-power-off"></i> Shutting down server...<br>
+                        <small>Please wait while the server shuts down gracefully.</small>
+                    </div>
+                `;
+                document.body.appendChild(loadingDiv);
+                
+                // Send shutdown request
+                fetch('/shutdown', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                }).then(response => {
+                    if (response.ok) {
+                        // Server is shutting down
+                        setTimeout(() => {
+                            loadingDiv.innerHTML = `
+                                <div class="alert alert-success text-center" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; min-width: 300px;">
+                                    <i class="fas fa-check"></i> Server shutdown initiated.<br>
+                                    <small>You can now close this browser tab.</small>
+                                </div>
+                            `;
+                        }, 1000);
+                    }
+                }).catch(error => {
+                    console.log('Server shutdown initiated - connection lost as expected');
+                    loadingDiv.innerHTML = `
+                        <div class="alert alert-success text-center" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; min-width: 300px;">
+                            <i class="fas fa-check"></i> Server has been shutdown.<br>
+                            <small>You can now close this browser tab.</small>
+                        </div>
+                    `;
+                });
+            }
+        }
+    </script>
     
     {% block scripts %}{% endblock %}
 </body>

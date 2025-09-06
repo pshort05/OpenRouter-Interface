@@ -22,6 +22,11 @@ def main():
     args = parser.parse_args()
     
     try:
+        # Enable shutdown functionality for development
+        os.environ['ALLOW_SHUTDOWN'] = 'true'
+        if args.debug:
+            os.environ['FLASK_ENV'] = 'development'
+            
         # Import with absolute path after setting up sys.path
         from openrouter_interface.prompt_runner_flask import FlaskPromptRunner
         

@@ -747,6 +747,43 @@ class FlaskPromptRunner:
             except Exception as e:
                 return jsonify({'error': f'Failed to download results: {str(e)}'}), 500
 
+        @self.app.route('/shutdown', methods=['POST'])
+        def shutdown_server():
+            """Shutdown the Flask development server."""
+            try:
+                # Only allow shutdown in development mode or if explicitly enabled
+                import os
+                if not os.environ.get('FLASK_ENV') == 'development' and not os.environ.get('ALLOW_SHUTDOWN') == 'true':
+                    return jsonify({'error': 'Server shutdown not allowed in production mode'}), 403
+                
+                logging.info("Server shutdown requested via web interface")
+                
+                # Use werkzeug's shutdown function
+                from flask import request
+                func = request.environ.get('werkzeug.server.shutdown')
+                if func is None:
+                    # Alternative shutdown method for different WSGI servers
+                    import threading
+                    import time
+                    
+                    def delayed_shutdown():
+                        time.sleep(1)
+                        import os
+                        os._exit(0)
+                    
+                    thread = threading.Thread(target=delayed_shutdown)
+                    thread.daemon = True
+                    thread.start()
+                    
+                    return jsonify({'message': 'Server shutting down...'}), 200
+                else:
+                    func()
+                    return jsonify({'message': 'Server shutting down...'}), 200
+                    
+            except Exception as e:
+                logging.error(f"Error during shutdown: {e}")
+                return jsonify({'error': f'Shutdown failed: {str(e)}'}), 500
+
         @self.app.errorhandler(413)
         def too_large(e):
             flash('File too large. Maximum size is 16MB.', 'error')
