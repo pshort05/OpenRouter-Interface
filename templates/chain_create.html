@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}Create Prompt Chain{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-plus-circle"></i> Create New Prompt Chain</h1>
+                <a href="{{ url_for('chains_index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Chains
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog"></i> Chain Configuration
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="chain-form">
+                        <!-- Configuration Method Selection -->
+                        <div class="form-group">
+                            <label for="config-method"><strong>Configuration Method</strong></label>
+                            <select class="form-control" id="config-method" onchange="toggleConfigMethod()">
+                                <option value="upload">Upload Configuration File</option>
+                                <option value="builder">Build Configuration</option>
+                            </select>
+                            <small class="form-text text-muted">
+                                Choose how to define your chain configuration
+                            </small>
+                        </div>
+
+                        <!-- Upload Configuration -->
+                        <div id="config-upload-section">
+                            <div class="form-group">
+                                <label for="config-file"><strong>Chain Configuration File</strong></label>
+                                <input type="file" class="form-control-file" id="config-file" accept=".yaml,.yml" onchange="handleConfigUpload()">
+                                <small class="form-text text-muted">
+                                    Upload a YAML file defining your prompt chain sequence
+                                </small>
+                            </div>
+                            <div id="config-preview" class="mt-3" style="display: none;">
+                                <h6>Configuration Preview:</h6>
+                                <pre id="config-content" class="bg-light p-3" style="max-height: 300px; overflow-y: auto;"></pre>
+                            </div>
+                        </div>
+
+                        <!-- Build Configuration -->
+                        <div id="config-builder-section" style="display: none;">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> Build your chain by selecting prompts in order
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><strong>Chain Prompts</strong></label>
+                                <div id="chain-builder">
+                                    <div class="mb-2">
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="addPromptStep()">
+                                            <i class="fas fa-plus"></i> Add Prompt Step
+                                        </button>
+                                    </div>
+                                    <div id="prompt-steps">
+                                        <!-- Prompt steps will be added here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Input Content -->
+                        <div class="form-group mt-4">
+                            <label for="input-method"><strong>Input Method</strong></label>
+                            <select class="form-control" id="input-method" onchange="toggleInputMethod()">
+                                <option value="text">Text Input</option>
+                                <option value="file">File Upload</option>
+                            </select>
+                        </div>
+
+                        <!-- Text Input -->
+                        <div id="text-input-section">
+                            <div class="form-group">
+                                <label for="input-content"><strong>Input Content</strong></label>
+                                <textarea class="form-control" id="input-content" rows="8" placeholder="Enter your content here..."></textarea>
+                                <small class="form-text text-muted">
+                                    This content will be processed through your prompt chain
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- File Input -->
+                        <div id="file-input-section" style="display: none;">
+                            <div class="form-group">
+                                <label for="input-file"><strong>Input File</strong></label>
+                                <input type="file" class="form-control-file" id="input-file" accept=".txt,.md,.doc,.docx">
+                                <small class="form-text text-muted">
+                                    Upload a file to process through your prompt chain
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Output Configuration -->
+                        <div class="form-group">
+                            <label for="output-filename"><strong>Output Filename (Optional)</strong></label>
+                            <input type="text" class="form-control" id="output-filename" placeholder="chain_result.md">
+                            <small class="form-text text-muted">
+                                Leave empty to use auto-generated filename
+                            </small>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-rocket"></i> Start Chain Execution
+                            </button>
+                            <button type="button" class="btn btn-secondary ml-2" onclick="previewChain()">
+                                <i class="fas fa-eye"></i> Preview Configuration
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-question-circle"></i> What are Prompt Chains?
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p><small>
+                        Prompt chains allow you to process content through multiple AI prompts in sequence. 
+                        Each prompt builds on the output of the previous one.
+                    </small></p>
+                    
+                    <h6>Example Use Cases:</h6>
+                    <ul class="small">
+                        <li>Draft → Edit → Polish → Finalize</li>
+                        <li>Analyze → Summarize → Recommend</li>
+                        <li>Translate → Review → Format</li>
+                        <li>Code → Document → Test</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-file-code"></i> Available Prompts
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="available-prompts">
+                        {% for prompt in prompts %}
+                        <div class="prompt-item mb-2 p-2 border rounded">
+                            <strong>{{ prompt.name }}</strong><br>
+                            <small class="text-muted">{{ prompt.description }}</small>
+                            <button type="button" class="btn btn-xs btn-outline-primary float-right" onclick="addPromptToChain('{{ prompt.file }}', '{{ prompt.name }}')">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye"></i> Chain Configuration Preview
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <pre id="preview-content" class="bg-light p-3"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="startChainFromPreview()">
+                    <i class="fas fa-rocket"></i> Start Chain
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let uploadedConfigPath = null;
+let promptStepCounter = 0;
+
+function toggleConfigMethod() {
+    const method = $('#config-method').val();
+    
+    if (method === 'upload') {
+        $('#config-upload-section').show();
+        $('#config-builder-section').hide();
+    } else {
+        $('#config-upload-section').hide();
+        $('#config-builder-section').show();
+        
+        // Add first prompt step if none exist
+        if ($('#prompt-steps').children().length === 0) {
+            addPromptStep();
+        }
+    }
+}
+
+function toggleInputMethod() {
+    const method = $('#input-method').val();
+    
+    if (method === 'text') {
+        $('#text-input-section').show();
+        $('#file-input-section').hide();
+    } else {
+        $('#text-input-section').hide();
+        $('#file-input-section').show();
+    }
+}
+
+function handleConfigUpload() {
+    const fileInput = document.getElementById('config-file');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        $('#config-preview').hide();
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('config_file', file);
+    
+    $.ajax({
+        url: '/chains/upload_config',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(data) {
+            uploadedConfigPath = data.config_path;
+            $('#config-content').text(JSON.stringify(data.config_data, null, 2));
+            $('#config-preview').show();
+        },
+        error: function(xhr) {
+            alert('Config upload failed: ' + (xhr.responseJSON?.error || 'Unknown error'));
+            fileInput.value = '';
+            $('#config-preview').hide();
+        }
+    });
+}
+
+function addPromptStep() {
+    promptStepCounter++;
+    const stepHtml = `
+        <div class="prompt-step card mb-2" data-step="${promptStepCounter}">
+            <div class="card-header py-2">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <strong>Step ${promptStepCounter}</strong>
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePromptStep(${promptStepCounter})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body py-2">
+                <div class="form-group mb-2">
+                    <label class="form-label mb-1">Prompt File</label>
+                    <select class="form-control form-control-sm prompt-select" name="step_${promptStepCounter}_prompt" required>
+                        <option value="">Select a prompt...</option>
+                        {% for prompt in prompts %}
+                        <option value="{{ prompt.file }}">{{ prompt.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group mb-0">
+                    <label class="form-label mb-1">Configuration (Optional)</label>
+                    <select class="form-control form-control-sm" name="step_${promptStepCounter}_config">
+                        <option value="">Use default configuration</option>
+                        {% for config in configs %}
+                        <option value="{{ config.file }}">{{ config.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    $('#prompt-steps').append(stepHtml);
+}
+
+function removePromptStep(stepId) {
+    $(`.prompt-step[data-step="${stepId}"]`).remove();
+    
+    // Renumber remaining steps
+    let counter = 1;
+    $('.prompt-step').each(function() {
+        $(this).find('strong').text(`Step ${counter}`);
+        counter++;
+    });
+}
+
+function addPromptToChain(promptFile, promptName) {
+    addPromptStep();
+    
+    // Set the last added step to this prompt
+    const lastStep = $('.prompt-step').last();
+    lastStep.find('.prompt-select').val(promptFile);
+}
+
+function buildChainConfig() {
+    const prompts = {};
+    let stepNum = 1;
+    
+    $('.prompt-step').each(function() {
+        const promptFile = $(this).find('.prompt-select').val();
+        const configFile = $(this).find('select[name*="_config"]').val();
+        
+        if (promptFile) {
+            if (configFile) {
+                prompts[`prompt ${stepNum}`] = {
+                    prompt_file: promptFile,
+                    config_file: configFile
+                };
+            } else {
+                prompts[`prompt ${stepNum}`] = promptFile;
+            }
+            stepNum++;
+        }
+    });
+    
+    return {
+        prompts: prompts,
+        input_file: 'input.md',
+        output_file: $('#output-filename').val() || 'chain_result.md'
+    };
+}
+
+function previewChain() {
+    let config;
+    
+    if ($('#config-method').val() === 'upload') {
+        if (!uploadedConfigPath) {
+            alert('Please upload a configuration file first');
+            return;
+        }
+        // We'll use the uploaded config, so just show a placeholder
+        config = 'Using uploaded configuration file';
+    } else {
+        config = buildChainConfig();
+    }
+    
+    $('#preview-content').text(typeof config === 'string' ? config : JSON.stringify(config, null, 2));
+    $('#previewModal').modal('show');
+}
+
+function startChainFromPreview() {
+    $('#previewModal').modal('hide');
+    $('#chain-form').submit();
+}
+
+$('#chain-form').on('submit', function(e) {
+    e.preventDefault();
+    
+    // Validate form
+    if ($('#config-method').val() === 'upload' && !uploadedConfigPath) {
+        alert('Please upload a configuration file');
+        return;
+    }
+    
+    if ($('#config-method').val() === 'builder' && $('.prompt-step').length === 0) {
+        alert('Please add at least one prompt step');
+        return;
+    }
+    
+    // Get input content
+    let inputContent = '';
+    if ($('#input-method').val() === 'text') {
+        inputContent = $('#input-content').val();
+        if (!inputContent.trim()) {
+            alert('Please enter input content');
+            return;
+        }
+    } else {
+        const fileInput = document.getElementById('input-file');
+        if (!fileInput.files[0]) {
+            alert('Please select an input file');
+            return;
+        }
+        // For file upload, we'll need to handle this differently
+        inputContent = fileInput.files[0].name; // Placeholder
+    }
+    
+    // Prepare chain data
+    let chainData;
+    
+    if ($('#config-method').val() === 'upload') {
+        chainData = {
+            config_path: uploadedConfigPath,
+            input_file: inputContent,
+            output_file: $('#output-filename').val() || 'chain_result.md'
+        };
+    } else {
+        // Create temporary config file for built configuration
+        const config = buildChainConfig();
+        
+        // Send config to server to create temp file
+        $.ajax({
+            url: '/chains/upload_config',
+            type: 'POST',
+            data: JSON.stringify(config),
+            contentType: 'application/json',
+            success: function(data) {
+                chainData = {
+                    config_path: data.config_path,
+                    input_file: inputContent,
+                    output_file: $('#output-filename').val() || 'chain_result.md'
+                };
+                
+                startChain(chainData);
+            },
+            error: function(xhr) {
+                alert('Failed to create configuration: ' + (xhr.responseJSON?.error || 'Unknown error'));
+            }
+        });
+        return; // Will continue in success callback
+    }
+    
+    startChain(chainData);
+});
+
+function startChain(chainData) {
+    // Start the chain
+    $.ajax({
+        url: '/chains/start',
+        type: 'POST',
+        data: JSON.stringify(chainData),
+        contentType: 'application/json',
+        success: function(data) {
+            alert('Chain started successfully! Redirecting to chain monitor...');
+            window.location.href = '/chains';
+        },
+        error: function(xhr) {
+            alert('Failed to start chain: ' + (xhr.responseJSON?.error || 'Unknown error'));
+        }
+    });
+}
+
+// Initialize
+$(document).ready(function() {
+    toggleConfigMethod();
+    toggleInputMethod();
+});
+</script>
+
+<style>
+.prompt-item {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.prompt-item:hover {
+    background-color: #f8f9fa;
+    border-color: #007bff !important;
+}
+
+.prompt-step .card-header {
+    background-color: #e9ecef;
+}
+
+.form-label {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+#preview-content {
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+}
+</style>
+{% endblock %}

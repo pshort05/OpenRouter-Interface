@@ -16,6 +16,10 @@ import logging
 import os
 import tempfile
 import yaml
+import subprocess
+import threading
+import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -29,6 +33,7 @@ from .logging_manager import LoggingManager
 from .prompt_scanner import PromptScanner
 from .prompt_handler import PromptLoader, PromptProcessor
 from .prompt_runner_api_client import PromptAPIClient
+from .prompt_chain_runner import PromptChainRunner
 
 
 class FlaskPromptRunner:
@@ -71,6 +76,10 @@ class FlaskPromptRunner:
         
         # Storage for session data
         self.session_responses = []
+        
+        # Chain runner management
+        self.active_chains = {}  # Dict[chain_id, chain_info]
+        self.chain_lock = threading.Lock()
     
     def _load_flask_config(self) -> Dict[str, Any]:
         """Load Flask configuration from YAML file."""
@@ -481,6 +490,236 @@ class FlaskPromptRunner:
             except Exception as e:
                 return jsonify({'error': str(e)}), 500
         
+        @self.app.route('/api/chains/status')
+        def api_chains_status():
+            """API endpoint to get all chains status."""
+            try:
+                with self.chain_lock:
+                    chains = self.active_chains.copy()
+                
+                return jsonify({'chains': chains})
+                
+            except Exception as e:
+                return jsonify({'error': f'Failed to get chains status: {str(e)}'}), 500
+        
+        # Chain Runner Routes
+        @self.app.route('/chains')
+        def chains_index():
+            """Show chain runner interface."""
+            return render_template('chains.html')
+        
+        @self.app.route('/chains/create')
+        def chains_create():
+            """Show chain creation form."""
+            # Get available prompts for selection
+            prompts = self._get_available_prompts()
+            configs = self._get_available_configs()
+            return render_template('chain_create.html', prompts=prompts, configs=configs)
+        
+        @self.app.route('/chains/upload_config', methods=['POST'])
+        def chains_upload_config():
+            """Upload chain configuration file."""
+            try:
+                if 'config_file' not in request.files:
+                    return jsonify({'error': 'No configuration file provided'}), 400
+                
+                config_file = request.files['config_file']
+                if config_file.filename == '':
+                    return jsonify({'error': 'No file selected'}), 400
+                
+                if not config_file.filename.endswith(('.yaml', '.yml')):
+                    return jsonify({'error': 'Configuration file must be YAML format'}), 400
+                
+                # Save uploaded config temporarily
+                filename = secure_filename(config_file.filename)
+                config_path = Path(tempfile.gettempdir()) / f"chain_config_{uuid.uuid4().hex}_{filename}"
+                config_file.save(str(config_path))
+                
+                # Validate configuration
+                try:
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        config_data = yaml.safe_load(f)
+                    self._validate_chain_config(config_data)
+                except Exception as e:
+                    config_path.unlink()  # Clean up
+                    return jsonify({'error': f'Invalid configuration: {str(e)}'}), 400
+                
+                return jsonify({
+                    'success': True,
+                    'config_path': str(config_path),
+                    'config_data': config_data
+                })
+                
+            except Exception as e:
+                return jsonify({'error': f'Upload failed: {str(e)}'}), 500
+        
+        @self.app.route('/chains/start', methods=['POST'])
+        def chains_start():
+            """Start a new chain execution."""
+            try:
+                data = request.get_json()
+                
+                # Generate unique chain ID
+                chain_id = str(uuid.uuid4())
+                
+                # Get required parameters
+                config_path = data.get('config_path')
+                input_file = data.get('input_file')
+                output_file = data.get('output_file')
+                
+                if not all([config_path, input_file]):
+                    return jsonify({'error': 'Missing required parameters'}), 400
+                
+                # Create chain info
+                chain_info = {
+                    'id': chain_id,
+                    'status': 'starting',
+                    'progress': 0,
+                    'total_prompts': 0,
+                    'current_prompt': 0,
+                    'started_at': datetime.now().isoformat(),
+                    'config_path': config_path,
+                    'input_file': input_file,
+                    'output_file': output_file,
+                    'log_file': None,
+                    'temp_dir': None,
+                    'error': None,
+                    'results': []
+                }
+                
+                # Store chain info
+                with self.chain_lock:
+                    self.active_chains[chain_id] = chain_info
+                
+                # Start chain execution in background thread
+                thread = threading.Thread(
+                    target=self._execute_chain,
+                    args=(chain_id,),
+                    daemon=True
+                )
+                thread.start()
+                
+                return jsonify({
+                    'success': True,
+                    'chain_id': chain_id,
+                    'message': 'Chain execution started'
+                })
+                
+            except Exception as e:
+                logging.error(f"Failed to start chain: {e}")
+                return jsonify({'error': f'Failed to start chain: {str(e)}'}), 500
+        
+        @self.app.route('/chains/status/<chain_id>')
+        def chains_status(chain_id):
+            """Get status of a running chain."""
+            try:
+                with self.chain_lock:
+                    if chain_id not in self.active_chains:
+                        return jsonify({'error': 'Chain not found'}), 404
+                    
+                    chain_info = self.active_chains[chain_id].copy()
+                
+                return jsonify(chain_info)
+                
+            except Exception as e:
+                return jsonify({'error': f'Failed to get status: {str(e)}'}), 500
+        
+        @self.app.route('/chains/logs/<chain_id>')
+        def chains_logs(chain_id):
+            """Get logs for a running chain."""
+            try:
+                with self.chain_lock:
+                    if chain_id not in self.active_chains:
+                        return jsonify({'error': 'Chain not found'}), 404
+                    
+                    chain_info = self.active_chains[chain_id]
+                    log_file = chain_info.get('log_file')
+                
+                if not log_file or not Path(log_file).exists():
+                    return jsonify({'logs': 'No logs available yet'})
+                
+                # Read recent log entries (last 100 lines)
+                try:
+                    with open(log_file, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                        recent_lines = lines[-100:] if len(lines) > 100 else lines
+                        logs = ''.join(recent_lines)
+                except Exception as e:
+                    logs = f"Error reading logs: {e}"
+                
+                return jsonify({'logs': logs})
+                
+            except Exception as e:
+                return jsonify({'error': f'Failed to get logs: {str(e)}'}), 500
+        
+        @self.app.route('/chains/stop/<chain_id>', methods=['POST'])
+        def chains_stop(chain_id):
+            """Stop a running chain."""
+            try:
+                with self.chain_lock:
+                    if chain_id not in self.active_chains:
+                        return jsonify({'error': 'Chain not found'}), 404
+                    
+                    chain_info = self.active_chains[chain_id]
+                    if chain_info['status'] in ['completed', 'failed', 'stopped']:
+                        return jsonify({'error': 'Chain is not running'}), 400
+                    
+                    # Mark as stopping
+                    chain_info['status'] = 'stopping'
+                    chain_info['stop_requested'] = True
+                
+                return jsonify({'success': True, 'message': 'Stop requested'})
+                
+            except Exception as e:
+                return jsonify({'error': f'Failed to stop chain: {str(e)}'}), 500
+        
+        @self.app.route('/chains/delete/<chain_id>', methods=['POST'])
+        def chains_delete(chain_id):
+            """Delete a chain and clean up its files."""
+            try:
+                with self.chain_lock:
+                    if chain_id not in self.active_chains:
+                        return jsonify({'error': 'Chain not found'}), 404
+                    
+                    chain_info = self.active_chains[chain_id]
+                    
+                    # Clean up temporary files
+                    self._cleanup_chain_files(chain_info)
+                    
+                    # Remove from active chains
+                    del self.active_chains[chain_id]
+                
+                return jsonify({'success': True, 'message': 'Chain deleted'})
+                
+            except Exception as e:
+                return jsonify({'error': f'Failed to delete chain: {str(e)}'}), 500
+        
+        @self.app.route('/chains/download/<chain_id>')
+        def chains_download(chain_id):
+            """Download results from a completed chain."""
+            try:
+                with self.chain_lock:
+                    if chain_id not in self.active_chains:
+                        return jsonify({'error': 'Chain not found'}), 404
+                    
+                    chain_info = self.active_chains[chain_id]
+                
+                if chain_info['status'] != 'completed':
+                    return jsonify({'error': 'Chain not completed yet'}), 400
+                
+                output_file = chain_info.get('output_file')
+                if not output_file or not Path(output_file).exists():
+                    return jsonify({'error': 'Output file not found'}), 404
+                
+                return send_file(
+                    output_file,
+                    as_attachment=True,
+                    download_name=f"chain_result_{chain_id[:8]}.md"
+                )
+                
+            except Exception as e:
+                return jsonify({'error': f'Failed to download results: {str(e)}'}), 500
+
         @self.app.errorhandler(413)
         def too_large(e):
             flash('File too large. Maximum size is 16MB.', 'error')
@@ -499,6 +738,225 @@ class FlaskPromptRunner:
         
         return f"{size_bytes:.1f} {size_names[i]}"
     
+    def _get_available_prompts(self) -> List[Dict[str, Any]]:
+        """Get list of available prompt files."""
+        prompts = []
+        prompt_dir = Path("prompts")
+        
+        if prompt_dir.exists():
+            for prompt_file in prompt_dir.glob("*.json"):
+                try:
+                    with open(prompt_file, 'r', encoding='utf-8') as f:
+                        prompt_data = json.load(f)
+                    
+                    prompts.append({
+                        'file': str(prompt_file),
+                        'name': prompt_file.stem.replace('_', ' ').title(),
+                        'description': prompt_data.get('instruction', 'No description')[:100]
+                    })
+                except Exception as e:
+                    logging.warning(f"Could not load prompt {prompt_file}: {e}")
+        
+        return sorted(prompts, key=lambda x: x['name'])
+    
+    def _get_available_configs(self) -> List[Dict[str, Any]]:
+        """Get list of available configuration files."""
+        configs = []
+        config_dir = Path("config")
+        
+        if config_dir.exists():
+            for config_file in config_dir.glob("*.yaml"):
+                configs.append({
+                    'file': str(config_file),
+                    'name': config_file.stem.replace('_', ' ').title()
+                })
+        
+        return sorted(configs, key=lambda x: x['name'])
+    
+    def _validate_chain_config(self, config_data: Dict[str, Any]):
+        """Validate chain configuration data."""
+        required_fields = ['prompts']
+        
+        for field in required_fields:
+            if field not in config_data:
+                raise ValueError(f"Missing required field: {field}")
+        
+        if not isinstance(config_data['prompts'], dict):
+            raise ValueError("'prompts' must be a dictionary")
+        
+        if len(config_data['prompts']) == 0:
+            raise ValueError("At least one prompt must be specified")
+        
+        # Validate each prompt entry
+        for prompt_name, prompt_config in config_data['prompts'].items():
+            if isinstance(prompt_config, str):
+                # Simple format: prompt_name: "prompt_file.json"
+                continue
+            elif isinstance(prompt_config, dict):
+                # Complex format with config file
+                if 'prompt_file' not in prompt_config:
+                    raise ValueError(f"Missing 'prompt_file' for prompt '{prompt_name}'")
+            else:
+                raise ValueError(f"Invalid format for prompt '{prompt_name}'")
+    
+    def _execute_chain(self, chain_id: str):
+        """Execute a chain in the background."""
+        try:
+            with self.chain_lock:
+                chain_info = self.active_chains[chain_id]
+            
+            # Update status
+            with self.chain_lock:
+                chain_info['status'] = 'running'
+            
+            # Create temporary input file if needed
+            input_file = chain_info['input_file']
+            if not Path(input_file).exists():
+                # Assume it's content, create temp file
+                temp_input = tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8')
+                temp_input.write(input_file)  # input_file contains content
+                temp_input.flush()
+                temp_input.close()
+                input_file = temp_input.name
+                
+                with self.chain_lock:
+                    chain_info['temp_input_file'] = input_file
+            
+            # Initialize chain runner with subprocess approach for better control
+            success = self._run_chain_subprocess(chain_info, input_file)
+            
+            # Update final status
+            with self.chain_lock:
+                if success:
+                    chain_info['status'] = 'completed'
+                    chain_info['completed_at'] = datetime.now().isoformat()
+                    chain_info['progress'] = 100
+                else:
+                    chain_info['status'] = 'failed'
+                    chain_info['failed_at'] = datetime.now().isoformat()
+            
+        except Exception as e:
+            logging.error(f"Chain {chain_id} failed: {e}")
+            with self.chain_lock:
+                chain_info = self.active_chains.get(chain_id, {})
+                chain_info['status'] = 'failed'
+                chain_info['error'] = str(e)
+                chain_info['failed_at'] = datetime.now().isoformat()
+    
+    def _run_chain_subprocess(self, chain_info: Dict[str, Any], input_file: str) -> bool:
+        """Run chain using subprocess for better control and monitoring."""
+        try:
+            # Build command
+            cmd = [
+                'python', '-m', 'openrouter_interface.chain',
+                '-c', chain_info['config_path'],
+                '-i', input_file
+            ]
+            
+            if chain_info.get('output_file'):
+                cmd.extend(['-o', chain_info['output_file']])
+            
+            # Start process
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
+            )
+            
+            # Monitor process and track progress
+            chain_id = chain_info['id']
+            while process.poll() is None:
+                # Check for stop request
+                with self.chain_lock:
+                    if chain_info.get('stop_requested'):
+                        process.terminate()
+                        time.sleep(1)
+                        if process.poll() is None:
+                            process.kill()
+                        return False
+                
+                # Update progress by reading log file if available
+                self._update_chain_progress_from_logs(chain_info)
+                time.sleep(2)  # Check every 2 seconds
+            
+            # Final progress update
+            self._update_chain_progress_from_logs(chain_info)
+            
+            return process.returncode == 0
+            
+        except Exception as e:
+            logging.error(f"Chain subprocess failed: {e}")
+            return False
+    
+    def _update_chain_progress_from_logs(self, chain_info: Dict[str, Any]):
+        """Update chain progress by parsing log files."""
+        try:
+            log_file = chain_info.get('log_file')
+            if not log_file or not Path(log_file).exists():
+                return
+            
+            # Read log file and look for progress indicators
+            try:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                
+                # Look for prompt execution indicators
+                current_prompt = 0
+                total_prompts = chain_info.get('total_prompts', 0)
+                
+                for line in lines:
+                    if 'Total prompts loaded:' in line:
+                        try:
+                            total_prompts = int(line.split(':')[-1].strip())
+                            chain_info['total_prompts'] = total_prompts
+                        except:
+                            pass
+                    elif 'Processing prompt' in line or 'Step ' in line:
+                        try:
+                            # Extract step number from log
+                            parts = line.split()
+                            for i, part in enumerate(parts):
+                                if part.isdigit() and int(part) > current_prompt:
+                                    current_prompt = int(part)
+                                    break
+                        except:
+                            pass
+                
+                # Update progress
+                if total_prompts > 0:
+                    progress = min(int((current_prompt / total_prompts) * 100), 99)  # Don't reach 100 until actually complete
+                    with self.chain_lock:
+                        chain_info['current_prompt'] = current_prompt
+                        chain_info['progress'] = progress
+                        
+            except Exception as e:
+                logging.debug(f"Error reading chain logs: {e}")
+                
+        except Exception as e:
+            logging.debug(f"Error updating chain progress: {e}")
+    
+    def _cleanup_chain_files(self, chain_info: Dict[str, Any]):
+        """Clean up temporary files for a chain."""
+        try:
+            # Clean up temp input file
+            temp_input = chain_info.get('temp_input_file')
+            if temp_input and Path(temp_input).exists():
+                Path(temp_input).unlink()
+            
+            # Clean up config file (only if it's a temporary one)
+            config_path = chain_info.get('config_path')
+            if config_path and Path(config_path).exists() and 'chain_config_' in config_path:
+                Path(config_path).unlink()
+                
+            # Note: We don't clean up the temp_dir as it contains useful logs and results
+            # Users can manually clean these up or they'll be cleaned by system
+            
+        except Exception as e:
+            logging.warning(f"Error cleaning up chain files: {e}")
+
     def run(self, host='127.0.0.1', port=5000, debug=False):
         """Run the Flask application."""
         print(f"Starting OpenRouter Prompt Runner Flask App...")

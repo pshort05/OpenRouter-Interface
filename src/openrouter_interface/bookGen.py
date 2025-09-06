@@ -174,55 +174,55 @@ Instructions: {action_prompt.get('instructions', 'Please continue writing the ne
 Please provide the output in Markdown format.
 """
 
-headers = {
-    "Authorization": f"Bearer {api_key}",
-    "Content-Type": "application/json",
-    "HTTP-Referer": "https://your-website-or-app-name.com", # Replace with your actual referer
-    "X-Title": "Book Chapter Generator", # Replace with your actual app title
-}
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://your-website-or-app-name.com", # Replace with your actual referer
+        "X-Title": "Book Chapter Generator", # Replace with your actual app title
+    }
 
-payload = {
-    "model": model,
-    "messages": [
-        {"role": "system", "content": system_message},
-        {"role": "user", "content": user_message}
-    ],
-    "temperature": temperature, # Use configurable temperature
-    "max_tokens": max_tokens # Use configurable max_tokens
-}
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message}
+        ],
+        "temperature": temperature, # Use configurable temperature
+        "max_tokens": max_tokens # Use configurable max_tokens
+    }
 
-logger.info(f"Calling OpenRouter API with model: {model}, temperature: {temperature}, max_tokens: {max_tokens}...")
-start_time = time.time() # Record start time
-try:
-    response = requests.post(api_base_url, headers=headers, json=payload)
-    response.raise_for_status() # Raise an exception for HTTP errors (4xx or 5xx)
-    response_data = response.json()
+    logger.info(f"Calling OpenRouter API with model: {model}, temperature: {temperature}, max_tokens: {max_tokens}...")
+    start_time = time.time() # Record start time
+    try:
+        response = requests.post(api_base_url, headers=headers, json=payload)
+        response.raise_for_status() # Raise an exception for HTTP errors (4xx or 5xx)
+        response_data = response.json()
 
-    end_time = time.time() # Record end time
-    duration = end_time - start_time
-    logger.info(f"OpenRouter API call took {duration:.2f} seconds.")
+        end_time = time.time() # Record end time
+        duration = end_time - start_time
+        logger.info(f"OpenRouter API call took {duration:.2f} seconds.")
 
-    if response_data and response_data.get('choices'):
-        generated_text = response_data['choices'][0]['message']['content']
-        logger.info("Successfully received response from OpenRouter API.")
-        return generated_text
-    else:
-        logger.error("Unexpected API response structure.")
-        logger.error(f"Full response: {response_data}")
+        if response_data and response_data.get('choices'):
+            generated_text = response_data['choices'][0]['message']['content']
+            logger.info("Successfully received response from OpenRouter API.")
+            return generated_text
+        else:
+            logger.error("Unexpected API response structure.")
+            logger.error(f"Full response: {response_data}")
+            return None
+    except requests.exceptions.RequestException as e:
+        end_time = time.time() # Record end time even on error
+        duration = end_time - start_time
+        logger.error(f"Error calling OpenRouter API after {duration:.2f} seconds: {e}")
+        if 'response' in locals():
+            logger.error(f"Response status code: {response.status_code}")
+            logger.error(f"Response body: {response.text}")
         return None
-except requests.exceptions.RequestException as e:
-    end_time = time.time() # Record end time even on error
-    duration = end_time - start_time
-    logger.error(f"Error calling OpenRouter API after {duration:.2f} seconds: {e}")
-    if response is not None:
-        logger.error(f"Response status code: {response.status_code}")
-        logger.error(f"Response body: {response.text}")
-    return None
-except Exception as e:
-    end_time = time.time() # Record end time even on error
-    duration = end_time - start_time
-    logger.error(f"An unexpected error occurred during API call after {duration:.2f} seconds: {e}")
-    return None
+    except Exception as e:
+        end_time = time.time() # Record end time even on error
+        duration = end_time - start_time
+        logger.error(f"An unexpected error occurred during API call after {duration:.2f} seconds: {e}")
+        return None
 
 def main():
     parser = argparse.ArgumentParser(description="Generate book chapters using an LLM via OpenRouter API.")

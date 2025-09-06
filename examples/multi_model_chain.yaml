@@ -1,0 +1,18 @@
+# Multi-Model Chain Configuration
+# This demonstrates using different AI models for different steps
+
+input_file: "technical_document.md"
+output_file: "processed_technical_doc.md"
+
+prompts:
+  prompt 1:
+    prompt_file: "prompts/technical_review.json"
+    config_file: "config/claude_config.yaml"  # Use Claude for technical analysis
+  
+  prompt 2: 
+    prompt_file: "prompts/creative_writing_assistant.json"
+    config_file: "config/gpt4_config.yaml"   # Use GPT-4 for creative enhancement
+  
+  prompt 3:
+    prompt_file: "prompts/copy_editor_prompt_v1.3.json"
+    config_file: "config/deepseek_config.yaml" # Use DeepSeek for final editing

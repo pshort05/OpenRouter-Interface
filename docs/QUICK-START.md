@@ -1,6 +1,6 @@
 # Quick Start Guide - Run Your First Prompt in 3 Minutes
 
-Get started with OpenRouter Prompt Runner in just a few simple steps. No complex configuration needed!
+Get started with OpenRouter Interface in just a few simple steps. No complex configuration needed! Choose between CLI or Web interface.
 
 ## ⚡ Super Quick Setup (30 seconds)
 
@@ -9,33 +9,53 @@ Get started with OpenRouter Prompt Runner in just a few simple steps. No complex
    ```bash
    export OPENROUTER_API_KEY="your-key-here"
    ```
-3. **Install requirements:**
+3. **Install the package:**
    ```bash
-   pip install requests PyYAML
+   # From source (recommended)
+   git clone <repository-url>
+   cd openrouter-interface
+   pip install -e ".[web]"  # Include web interface
    ```
 
 Done! You're ready to run prompts.
 
-## 🚀 Run Your First Prompt (2 minutes)
+## 🚀 Choose Your Interface
 
-### Method 1: Interactive Mode (Easiest)
-Just run the program and follow the menu:
+### Method 1: Web Interface (Recommended for Beginners)
 
+**Start the web server:**
 ```bash
-python prompt_runner.py
+openrouter-web
 ```
 
-The program will:
-- Show you all available prompts (`.json` files)
-- Let you pick one from a menu
-- Ask for an input file to process
-- Run the AI and show results
+**Open your browser:**
+- Navigate to `http://localhost:5000`
+- Click **"Single Prompts"** for individual processing
+- Click **"Prompt Chains"** for multi-step workflows
 
-### Method 2: Direct Command (Fastest)
-If you know exactly what you want:
+**Web Features:**
+- 🖱️ **Point & Click**: No command line needed
+- 📊 **Progress Tracking**: Visual progress bars and status
+- 🔗 **Chain Builder**: Create multi-step AI workflows
+- 📱 **Mobile Friendly**: Works on phones and tablets
+- 🌐 **Remote Access**: Perfect for server deployments
 
+### Method 2: CLI Interface (Power Users)
+
+**Interactive Mode (Easiest):**
 ```bash
-python prompt_runner.py -p "creative_writing_assistant.json" -i your_document.md
+openrouter-runner
+```
+The program will show available prompts and guide you through selection.
+
+**Direct Command (Fastest):**
+```bash
+openrouter-runner -p "prompts/creative_writing_assistant.json" -i your_document.md
+```
+
+**Chain Processing:**
+```bash
+openrouter-chain -c examples/sample_chain.yaml -i input.md
 ```
 
 ## 📝 What You Need
@@ -52,24 +72,69 @@ python prompt_runner.py -p "creative_writing_assistant.json" -i your_document.md
 - `first_chapter_checker.json` - First chapter feedback
 - And many more...
 
+## 🔗 Try Prompt Chains (Web Interface)
+
+**What are Prompt Chains?**
+Process your content through multiple AI steps automatically:
+- Draft → Edit → Polish → Finalize
+- Analyze → Summarize → Recommend  
+- Creative → Technical → Review
+
+**Quick Chain Demo:**
+1. Go to `http://localhost:5000/chains`
+2. Click **"New Chain"**
+3. Select **"Build Configuration"** 
+4. Add these steps:
+   - Step 1: `dialogue_editor.json`
+   - Step 2: `engagement_checker.json`  
+   - Step 3: `copy_editor_prompt_v1.3.json`
+5. Paste your text in **"Input Content"**
+6. Click **"Start Chain Execution"**
+7. Watch real-time progress!
+
+**Chain Management:**
+- 📊 **Live Progress**: Real-time updates every 3 seconds
+- 📝 **Log Viewing**: See exactly what's happening
+- ⏸️ **Stop/Start**: Full control over execution
+- 📥 **Download**: Get final results when complete
+- 🌐 **Remote Access**: Perfect for server deployments
+
 ## 🎯 Try These Examples
 
-### Example 1: Quick Writing Check
+### Web Interface Examples
+
+**Example 1: Single Prompt (Web)**
+1. Go to `http://localhost:5000`
+2. Select **"Engagement Checker"** from prompt list
+3. Paste your text or upload file
+4. Click **"Execute Prompt"**
+5. View results with real-time streaming
+
+**Example 2: Chain Processing (Web)**  
+1. Go to `http://localhost:5000/chains`
+2. Click **"New Chain"**
+3. Build chain: Dialogue Editor → Engagement Checker → Copy Editor
+4. Add your content and start execution
+5. Monitor progress and download results
+
+### CLI Examples
+
+**Example 1: Quick Writing Check**
 ```bash
 # Check if your writing is engaging
-python prompt_runner.py -p "engagement_checker.json" -i my_chapter.md
+openrouter-runner -p "prompts/engagement_checker.json" -i my_chapter.md
 ```
 
-### Example 2: Dialogue Improvement
+**Example 2: Chain Processing**
 ```bash
-# Improve dialogue in your story
-python prompt_runner.py -p "dialogue_editor.json" -i story_draft.md
+# Multi-step improvement chain
+openrouter-chain -c examples/sample_chain.yaml -i story_draft.md
 ```
 
-### Example 3: Save Results to File
+**Example 3: Save Results to File**
 ```bash
 # Save AI feedback to a file
-python prompt_runner.py -p "copy_editor_prompt_v1.3.json" -i document.md -o feedback.md
+openrouter-runner -p "prompts/copy_editor_prompt_v1.3.json" -i document.md -o feedback.md
 ```
 
 ## 📄 Sample Files to Get Started

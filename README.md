@@ -30,10 +30,12 @@ export OPENROUTER_API_KEY="your-api-key-here"
 # Run CLI interface
 openrouter-runner --help
 
-# Run web interface
+# Run web interface with chain runner
 openrouter-web
+# Access at: http://localhost:5000
+# Features: Single prompts, Chain runner, Progress tracking
 
-# Run prompt chains
+# Run prompt chains (CLI)
 openrouter-chain --help
 
 # Book generation
@@ -106,7 +108,7 @@ openrouter-interface/
 - **Multiple Interfaces**: CLI, Web, and programmatic Python API
 - **400+ AI Models**: Support for Claude, GPT-4, Gemini, DeepSeek, Llama, and more
 - **Prompt Management**: JSON-based prompt system with 25+ included prompts
-- **Chain Processing**: Execute multiple prompts in sequence
+- **Chain Processing**: Execute multiple prompts in sequence with web GUI
 - **Book Generation**: Specialized tools for chapter writing and editing
 
 ### Advanced Features
@@ -114,15 +116,16 @@ openrouter-interface/
 - **Flexible Configuration**: YAML config with command-line overrides
 - **Comprehensive Logging**: Multiple log levels with file output
 - **Session Management**: Web interface with history tracking
+- **Real-time Progress Tracking**: Monitor long-running chain executions
+- **Remote Chain Management**: Web-based control for server deployments
 - **File Validation**: Input validation and error handling
 
 ## 📖 Documentation
 
 ### Quick References
 - **[Quick Start Guide](docs/QUICK-START.md)** - Get running in 3 minutes
-- **[API Documentation](docs/api/)** - Python API reference
-- **[CLI Reference](docs/cli.md)** - Command-line usage
-- **[Web Interface](docs/web.md)** - Browser-based usage
+- **[Developer Guide](docs/CLAUDE.md)** - Architecture and development
+- **[Setup Guide](docs/README_setup.md)** - Detailed installation
 
 ### Comprehensive Guides
 - **[Setup Guide](docs/README_setup.md)** - Detailed installation
@@ -207,8 +210,47 @@ openrouter-runner -c config/custom.yaml -p prompts/review.json -i code.py
 openrouter-web
 
 # Access at http://localhost:5000
-# Upload files, select prompts, view results
+# Features available:
+# - Single prompt processing
+# - Prompt chain creation and monitoring
+# - Real-time progress tracking
+# - Session history management
+# - Configuration management
 ```
+
+#### Web Interface Features
+
+**🔗 Prompt Chain Runner:**
+- **Visual Chain Builder**: Drag-and-drop prompt sequencing
+- **Upload Configurations**: Import existing YAML chain configs
+- **Real-time Monitoring**: Live progress updates every 3 seconds
+- **Remote Management**: Perfect for server deployments
+- **Multi-step Workflows**: Connect multiple AI processing steps
+
+**📊 Chain Management Dashboard:**
+```
+/chains                    # Chain overview and monitoring
+/chains/create            # Visual chain creation interface  
+/chains/status/<id>       # Real-time chain status
+```
+
+**🎯 Chain Creation Options:**
+- **Configuration Upload**: Upload pre-built YAML files
+- **Visual Builder**: Select prompts from library in sequence
+- **Input Methods**: Text paste or file upload
+- **Output Control**: Custom filenames and download
+
+**⚡ Real-time Features:**
+- **Progress Tracking**: Visual progress bars and percentages
+- **Log Streaming**: Live execution logs in web interface
+- **Status Updates**: Running, completed, failed, stopped states
+- **Background Processing**: Non-blocking execution with status persistence
+
+**🔧 Chain Operations:**
+- **Start/Stop**: Full chain execution control
+- **Monitor**: Real-time progress and log viewing
+- **Download**: Retrieve completed results
+- **Delete**: Clean up chains with file management
 
 ### Programmatic Usage
 
@@ -229,6 +271,9 @@ success = runner.run_batch_mode("prompts/editor.json", "draft.md")
 ```bash
 # Multi-step processing
 openrouter-chain -c config/writing_chain.yaml -i manuscript.md
+
+# Or use the web interface for visual chain management
+# Navigate to http://localhost:5000/chains
 ```
 
 ## 🤖 Supported Models
@@ -288,6 +333,64 @@ pip install -e .
 pip install -e ".[dev]"
 ```
 
+## 🌐 Remote Deployment & Web Chain Management
+
+The web interface is perfect for remote server deployments, allowing team access to AI processing pipelines:
+
+### Server Deployment
+
+```bash
+# Deploy on remote server
+git clone <repository-url>
+cd openrouter-interface
+pip install -e ".[web]"
+
+# Set API key on server
+export OPENROUTER_API_KEY="your-api-key"
+
+# Start web server (public access)
+openrouter-web --host 0.0.0.0 --port 8080
+
+# Or use production WSGI server
+gunicorn -w 4 -b 0.0.0.0:8080 "openrouter_interface.web:create_app()"
+```
+
+### Remote Chain Management Benefits
+
+**📱 Web-based Control:**
+- No SSH or CLI access needed
+- Cross-platform browser compatibility
+- Mobile-friendly responsive design
+
+**⏱️ Long-running Process Management:**
+- Start chains and close browser
+- Return later to check progress
+- Background execution continues
+- Email notifications (configurable)
+
+**👥 Team Collaboration:**
+- Multiple users can access same server
+- Shared chain configurations
+- Centralized processing power
+- Collaborative prompt development
+
+**📊 Monitoring & Analytics:**
+- Real-time progress dashboards
+- Execution history tracking
+- Performance metrics
+- Resource usage monitoring
+
+### Chain Management Workflow
+
+1. **Deploy** server with web interface
+2. **Access** via browser from anywhere
+3. **Create chains** using visual builder
+4. **Upload configs** or build interactively
+5. **Start execution** and monitor progress
+6. **Return later** to check results
+7. **Download outputs** when complete
+8. **Share configurations** with team
+
 ## 🧪 Testing
 
 ```bash
@@ -303,6 +406,10 @@ pytest tests/integration   # Integration tests only
 
 # Test across Python versions
 tox
+
+# Test web interface
+pytest tests/web/          # Web interface tests
+python -m pytest tests/chains/  # Chain runner tests
 ```
 
 ## 🚨 Troubleshooting

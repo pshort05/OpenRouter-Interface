@@ -1,6 +1,6 @@
 # OpenRouter Prompt Chain Runner
 
-A powerful automation wrapper for `prompt_runner.py` that executes multiple prompts in sequence, creating sophisticated document processing pipelines. Perfect for complex AI workflows that require multiple processing steps.
+A powerful automation tool that executes multiple prompts in sequence, creating sophisticated document processing pipelines. Available as both **CLI interface** and **Web GUI** with real-time progress tracking. Perfect for complex AI workflows that require multiple processing steps.
 
 ## 🚀 Overview
 
@@ -13,16 +13,37 @@ The Prompt Chain Runner takes a single input document and processes it through 1
 
 ## 📋 Table of Contents
 
+- [Interfaces](#-interfaces)
 - [Features](#-features)
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
+- [Web Interface](#-web-interface)
 - [Configuration](#-configuration)
 - [Usage Examples](#-usage-examples)
 - [File Management](#-file-management)
 - [Advanced Usage](#-advanced-usage)
 - [Troubleshooting](#-troubleshooting)
 - [Best Practices](#-best-practices)
+
+## 🖥️ Interfaces
+
+### 🌐 Web Interface (Recommended)
+- **Visual Chain Builder**: Drag-and-drop prompt sequencing
+- **Real-time Progress**: Live updates and progress bars
+- **Log Streaming**: View execution logs in real-time  
+- **Remote Management**: Perfect for server deployments
+- **Session Persistence**: Return later to check long-running chains
+
+**Access**: `http://localhost:5000/chains` after running `openrouter-web`
+
+### 💻 CLI Interface (Power Users)
+- **YAML Configuration**: Define chains in configuration files
+- **Batch Processing**: Automate multiple file processing
+- **Scriptable**: Perfect for CI/CD and automation
+- **Advanced Options**: Full control over execution parameters
+
+**Usage**: `openrouter-chain -c config.yaml -i input.md`
 
 ## ✨ Features
 
@@ -111,21 +132,119 @@ echo 'export OPENROUTER_API_KEY="your_api_key_here"' >> ~/.bashrc
 
 ## 🚀 Quick Start
 
-### 1. Create Sample Configuration
+### Web Interface (Recommended)
+
+1. **Start Web Server**:
+   ```bash
+   openrouter-web
+   ```
+
+2. **Access Chain Interface**:
+   - Navigate to `http://localhost:5000/chains`
+   - Click **"New Chain"** to get started
+
+3. **Create Your First Chain**:
+   - Choose **"Build Configuration"** for visual builder
+   - Or **"Upload Configuration"** for existing YAML files
+   - Add prompts: Dialogue Editor → Engagement Checker → Copy Editor
+   - Paste your content or upload file
+   - Click **"Start Chain Execution"**
+   - Monitor real-time progress!
+
+### CLI Interface
+
+#### 1. Use Sample Configuration
 ```bash
-# Generate a sample configuration file
-python3 prompt_chain_runner.py --create-sample
+# Use included sample configuration
+openrouter-chain -c examples/sample_chain.yaml -i your_document.md
 ```
 
-This creates `prompt_chain_config_sample.yaml`:
+Sample configuration (`examples/sample_chain.yaml`):
 ```yaml
-input_file: input_document.md
-output_file: final_output.md
+input_file: "sample_input.md"
+output_file: "improved_sample_output.md"
 prompts:
-    prompt 1: step1_analysis.json
-    prompt 2: step2_refinement.json
-    prompt 3: step3_finalization.json
+  prompt 1:
+    prompt_file: "prompts/dialogue_editor.json" 
+  prompt 2:
+    prompt_file: "prompts/engagement_checker.json"
+  prompt 3:
+    prompt_file: "prompts/copy_editor_prompt_v1.3.json"
 ```
+
+#### 2. Create Custom Configuration
+```bash
+# Generate a sample configuration file
+python3 -m openrouter_interface.chain --create-sample
+```
+
+## 🌐 Web Interface
+
+The web interface provides a comprehensive GUI for creating and managing prompt chains with real-time monitoring capabilities.
+
+### Features
+
+**🔧 Chain Creation**:
+- **Visual Builder**: Select prompts from library and arrange in sequence
+- **Configuration Upload**: Import existing YAML chain configurations
+- **Input Methods**: Text paste or file upload support
+- **Preview Mode**: Review chain configuration before execution
+
+**📊 Real-time Monitoring**:
+- **Progress Tracking**: Visual progress bars with percentage completion
+- **Live Status Updates**: Running, completed, failed, stopped states  
+- **Log Streaming**: Real-time execution logs viewable in browser
+- **Auto-refresh**: Updates every 3 seconds automatically
+
+**⚙️ Chain Management**:
+- **Active Chains Dashboard**: Monitor all currently running chains
+- **Execution History**: View past chain executions and results
+- **Control Operations**: Start, stop, pause, and delete chains
+- **Result Downloads**: Retrieve final outputs when processing completes
+- **File Cleanup**: Automatic temporary file management
+
+### Web Workflow
+
+1. **Access Interface**: Navigate to `http://localhost:5000/chains`
+
+2. **Create New Chain**:
+   - Click **"New Chain"** button
+   - Choose configuration method:
+     - **Build Configuration**: Visual prompt selection and sequencing
+     - **Upload Configuration**: Import existing YAML files
+   - Configure input source (text or file upload)
+   - Set output filename (optional)
+
+3. **Monitor Execution**:
+   - Real-time progress updates with visual indicators
+   - Live streaming of execution logs
+   - Status badges showing current chain state
+   - Estimated completion time (when available)
+
+4. **Manage Results**:
+   - Download completed processing results
+   - View detailed execution logs
+   - Delete finished chains to free resources
+   - Export configurations for reuse
+
+### Remote Deployment
+
+The web interface is ideal for server deployments:
+
+```bash
+# Deploy on remote server
+openrouter-web --host 0.0.0.0 --port 8080
+
+# Or with production WSGI server
+gunicorn -w 4 -b 0.0.0.0:8080 "openrouter_interface.web:create_app()"
+```
+
+**Remote Benefits**:
+- **No Terminal Access**: Full functionality through web browser
+- **Multi-user Support**: Team members can access shared server
+- **Persistent Sessions**: Start chains, close browser, check results later
+- **Mobile Compatibility**: Monitor progress from phones and tablets
+- **Centralized Processing**: Leverage server resources for intensive AI tasks
 
 ### 2. Create Your Prompt Files
 Create the JSON prompt files referenced in your configuration:

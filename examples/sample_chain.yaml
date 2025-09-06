@@ -1,0 +1,18 @@
+# Sample Chain Configuration for Testing
+# This demonstrates a 3-step writing improvement chain
+
+input_file: "sample_input.md"
+output_file: "improved_sample_output.md"
+
+prompts:
+  prompt 1:
+    prompt_file: "prompts/dialogue_editor.json" 
+    # Improve dialogue first
+  
+  prompt 2:
+    prompt_file: "prompts/engagement_checker.json"
+    # Check engagement levels
+  
+  prompt 3:
+    prompt_file: "prompts/copy_editor_prompt_v1.3.json"
+    # Final copy editing pass
