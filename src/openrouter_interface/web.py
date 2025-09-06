@@ -13,10 +13,11 @@ def main():
     try:
         # Import Flask app after ensuring we have flask installed
         try:
-            from .prompt_runner_flask import app, main as flask_main
-        except ImportError:
+            from .prompt_runner_flask import main as flask_main
+        except ImportError as e:
             print("Error: Flask is required for the web interface.")
-            print("Install with: pip install openrouter-interface[web]")
+            print("Install with: pip install flask werkzeug")
+            print(f"Import error: {e}")
             sys.exit(1)
         
         # Run the Flask application

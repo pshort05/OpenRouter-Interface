@@ -63,13 +63,17 @@ echo "🧪 Testing API key..."
 if command -v curl >/dev/null 2>&1; then
     response=$(curl -s -H "Authorization: Bearer $api_key" \
                    -H "Content-Type: application/json" \
-                   "https://openrouter.ai/api/v1/models" | head -c 100)
+                   "https://openrouter.ai/api/v1/models" 2>/dev/null)
     
-    if [[ $response == *"id"* ]] && [[ $response == *"model"* ]]; then
+    if [[ $response == *'"data":'* ]] && [[ $response == *'"id":'* ]]; then
         echo "✅ API key is valid and working!"
+        # Show first model as example
+        first_model=$(echo "$response" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+        echo "   First available model: $first_model"
     else
         echo "⚠️  Warning: API key test failed. Please verify your key is correct."
-        echo "Response: $response"
+        echo "   This might be due to network issues or an invalid key."
+        echo "   You can test manually at: https://openrouter.ai/playground"
     fi
 else
     echo "⚠️  curl not available - cannot test API key"

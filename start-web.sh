@@ -7,16 +7,24 @@ set -e
 echo "🌐 OpenRouter Web Interface Starter"
 echo "=================================="
 
-# Check if virtual environment exists and is activated
-if [ -z "$VIRTUAL_ENV" ]; then
-    if [ -d "openrouter-venv" ]; then
-        echo "🔧 Activating virtual environment..."
-        source openrouter-venv/bin/activate
-    else
-        echo "❌ Error: No virtual environment found"
-        echo "Please run ./install.sh first to set up the environment"
-        exit 1
-    fi
+# Check if virtual environment exists and activate it
+if [ -d "openrouter-venv" ]; then
+    echo "🔧 Activating virtual environment..."
+    source openrouter-venv/bin/activate
+    echo "✅ Virtual environment activated: $VIRTUAL_ENV"
+else
+    echo "❌ Error: No virtual environment found"
+    echo "Please run ./install.sh first to set up the environment"
+    exit 1
+fi
+
+# Verify Flask is available
+echo "🔍 Checking Flask installation..."
+if ! python3 -c "import flask; print('Flask version:', flask.__version__)" 2>/dev/null; then
+    echo "❌ Flask not found in virtual environment"
+    echo "Installing Flask..."
+    pip install flask werkzeug
+    echo "✅ Flask installed"
 fi
 
 # Check if API key is set
@@ -50,6 +58,35 @@ fi
 
 echo ""
 echo "🚀 Starting OpenRouter Web Interface..."
+
+# Verify the command is available
+echo "🔍 Checking openrouter-web command..."
+if ! command -v openrouter-web >/dev/null 2>&1; then
+    echo "❌ openrouter-web command not found"
+    echo "🔧 Trying to reinstall the package..."
+    pip install -e ".[web]"
+    
+    # Check again
+    if ! command -v openrouter-web >/dev/null 2>&1; then
+        echo "❌ Still cannot find openrouter-web command"
+        echo "🔧 Running directly with Python..."
+        
+        # Run directly
+        if [ "$1" = "--debug" ] || [ "$1" = "-d" ]; then
+            echo "🛠️  Starting in debug mode..."
+            python3 -m openrouter_interface.web --debug --foreground
+        elif [ "$1" = "--foreground" ] || [ "$1" = "-f" ]; then
+            echo "🖥️  Starting in foreground mode..."
+            python3 -m openrouter_interface.web --foreground
+        else
+            echo "🏭 Starting in production mode (background)..."
+            python3 -m openrouter_interface.web
+        fi
+        exit 0
+    fi
+fi
+
+echo "✅ openrouter-web command found"
 
 # Start the web application
 if [ "$1" = "--debug" ] || [ "$1" = "-d" ]; then

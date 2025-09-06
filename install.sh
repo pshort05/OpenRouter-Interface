@@ -30,12 +30,16 @@ pip install --upgrade pip setuptools wheel
 # Install the package
 echo "📥 Installing OpenRouter Interface..."
 if [ "$1" = "web" ] || [ "$1" = "all" ]; then
+    echo "🌐 Installing web interface dependencies..."
+    pip install flask werkzeug
     pip install -e ".[web]"
     echo "✅ Installed with web interface support"
 elif [ "$1" = "dev" ]; then
     pip install -e ".[dev]"
     echo "✅ Installed with development tools"
 elif [ "$1" = "all" ]; then
+    echo "🌐 Installing all dependencies..."
+    pip install flask werkzeug
     pip install -e ".[all]"
     echo "✅ Installed with all features"
 else
