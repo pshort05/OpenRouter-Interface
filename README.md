@@ -2,6 +2,13 @@
 
 A comprehensive tool for executing JSON prompt files using the OpenRouter API. Available as both a **command-line interface (CLI)** and a **Flask web application**. Choose the interface that best fits your workflow!
 
+## 📖 Quick Navigation
+
+🚀 **Get Started**: [Setup Guide (README_setup.md)](README_setup.md) | [Linux Setup (SETUP_LINUX.md)](SETUP_LINUX.md)  
+⛓️ **Advanced**: [Prompt Chains (prompt_chain_readme.md)](prompt_chain_readme.md) | [Multi-File Processing](prompt_chain_readme.md#enhanced-configuration-examples)  
+🌐 **Web Interface**: [Flask Setup (setup_guide.md)](setup_guide.md) | [Templates (README_temple_setup.md)](README_temple_setup.md)  
+🔧 **Development**: [Claude Code Integration (CLAUDE.md)](CLAUDE.md) | [Architecture Guide](CLAUDE.md#code-architecture)
+
 ## 🚀 Interfaces Available
 
 ### 📟 Command Line Interface (CLI)
@@ -28,6 +35,25 @@ Advanced automation for multi-step AI workflows:
 
 ---
 
+## 📚 Documentation
+
+This project includes comprehensive documentation for all components and use cases:
+
+### 🚀 Setup & Installation
+- **[README_setup.md](README_setup.md)** - Complete setup instructions for all platforms
+- **[SETUP_LINUX.md](SETUP_LINUX.md)** - Linux-specific automated setup script documentation  
+- **[setup_guide.md](setup_guide.md)** - Step-by-step Flask web application setup guide
+- **[README_temple_setup.md](README_temple_setup.md)** - HTML template setup for Flask interface
+
+### ⛓️ Advanced Features
+- **[prompt_chain_readme.md](prompt_chain_readme.md)** - Complete guide to Prompt Chain Runner for multi-step AI workflows
+- **[CLAUDE.md](CLAUDE.md)** - Developer guidance for Claude Code integration and project architecture
+
+### 📖 Reference Materials
+- **[compliance_analysis.md](compliance_analysis.md)** - Analysis framework and quality standards
+- **[style_reference.md](style_reference.md)** - Writing style guidelines and formatting standards
+- **[analysis_framework.md](analysis_framework.md)** - Document analysis methodology
+
 ---
 
 ## 🛠️ Setup and Installation
@@ -36,19 +62,28 @@ Advanced automation for multi-step AI workflows:
 
 For complete setup instructions, see the **[Setup Guide (README_setup.md)](README_setup.md)**.
 
-**One-command automated setup:**
+#### Linux/Unix Systems
+**Comprehensive Linux setup (recommended):**
 ```bash
 # Download project files, then run:
+chmod +x setup_linux.sh
+./setup_linux.sh                    # Install to ~/.local/bin (user)
+./setup_linux.sh --system          # Install to /usr/local/bin (system-wide, requires sudo)
+```
+
+**Legacy setup script:**
+```bash
 chmod +x setup_prompt_runner.sh
 ./setup_prompt_runner.sh
 ```
 
-This automated script will:
-- ✅ Check Python 3 installation
-- ✅ Install all required packages
-- ✅ Make files executable
-- ✅ Install to `~/.local/bin` for system-wide access
-- ✅ Verify everything works
+The Linux setup script will:
+- ✅ Verify Python 3.7+ installation
+- ✅ Install all required packages (requests, pyyaml, flask)
+- ✅ Make all entry point scripts executable
+- ✅ Copy all modules to `~/.local/bin` or `/usr/local/bin`
+- ✅ Copy shell scripts and make them executable
+- ✅ Verify installation and provide next steps
 
 ### Manual Setup
 
