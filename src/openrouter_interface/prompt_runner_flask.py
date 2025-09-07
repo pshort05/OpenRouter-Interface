@@ -124,12 +124,18 @@ class FlaskPromptRunner:
         
         if config_path.exists():
             logging.info(f"Loading Flask configuration from {self.config_file}")
+            print(f"LOADING CONFIG from {self.config_file}")
             with open(config_path, 'r', encoding='utf-8') as f:
+                file_contents = f.read()
+                print(f"CONFIG FILE CONTENTS:\n{file_contents}")
+                f.seek(0)  # Reset file pointer
                 user_config = yaml.safe_load(f) or {}
             logging.info(f"Loaded config contains model: {user_config.get('model', 'NOT SET')}")
+            print(f"PARSED CONFIG MODEL: {user_config.get('model', 'NOT SET')}")
             logging.debug(f"Full loaded user config: {user_config}")
             default_config.update(user_config)
             logging.info(f"Final merged config model: {default_config.get('model', 'NOT SET')}")
+            print(f"FINAL CONFIG MODEL: {default_config.get('model', 'NOT SET')}")
         else:
             logging.info(f"Configuration file {self.config_file} not found, using defaults")
             self._save_flask_config(default_config)
