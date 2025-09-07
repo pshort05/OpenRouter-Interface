@@ -297,6 +297,11 @@ class FlaskPromptRunner:
             """Update configuration."""
             try:
                 logging.info("Processing configuration update request")
+                print("FORM UPDATE: Processing configuration update request")
+                
+                # Log all form data for debugging
+                logging.info(f"Form data received: {dict(request.form)}")
+                print(f"FORM DATA: {dict(request.form)}")
                 
                 # Get form data
                 new_config = {}
@@ -308,11 +313,13 @@ class FlaskPromptRunner:
                     if value:
                         new_config[field] = value
                         logging.debug(f"Config field {field}: {value}")
+                        print(f"FORM FIELD {field}: {value}")
                 
                 # Log the model change specifically
                 old_model = self.flask_config.get('model', 'NOT SET')
                 new_model = new_config.get('model', 'NOT CHANGED')
                 logging.info(f"Model change: '{old_model}' -> '{new_model}'")
+                print(f"MODEL CHANGE: '{old_model}' -> '{new_model}'")
                 
                 # Numeric fields
                 try:
