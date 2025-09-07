@@ -53,7 +53,7 @@ class FlaskPromptRunner:
         self.app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
         
         # Configuration file paths - look in parent directory (project root)
-        self.config_file = 'flask_config.yaml'
+        self.config_file = os.path.join(self.project_root, 'flask_config.yaml')
         self.prompts_registry_file = os.path.join(self.project_root, 'prompts_registry.yaml')
         
         # Model cache setup
@@ -95,6 +95,10 @@ class FlaskPromptRunner:
         """Load Flask configuration from YAML file."""
         config_path = Path(self.config_file)
         
+        logging.info(f"Attempting to load config from: {self.config_file}")
+        logging.info(f"Config path exists: {config_path.exists()}")
+        logging.info(f"Absolute config path: {config_path.absolute()}")
+        
         # Default configuration
         default_config = {
             'model': 'anthropic/claude-4-sonnet-20250522',
@@ -112,7 +116,10 @@ class FlaskPromptRunner:
             logging.info(f"Loading Flask configuration from {self.config_file}")
             with open(config_path, 'r', encoding='utf-8') as f:
                 user_config = yaml.safe_load(f) or {}
+            logging.info(f"Loaded config contains model: {user_config.get('model', 'NOT SET')}")
+            logging.debug(f"Full loaded user config: {user_config}")
             default_config.update(user_config)
+            logging.info(f"Final merged config model: {default_config.get('model', 'NOT SET')}")
         else:
             logging.info(f"Configuration file {self.config_file} not found, using defaults")
             self._save_flask_config(default_config)
