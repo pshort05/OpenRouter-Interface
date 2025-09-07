@@ -42,8 +42,12 @@ class FlaskPromptRunner:
     
     def __init__(self):
         """Initialize the Flask application."""
+        logging.info("INIT DEBUG: Starting Flask initialization")
+        
         # Set template folder to the project root's templates folder
         self.project_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
+        logging.info(f"INIT DEBUG: Project root calculated as: {self.project_root}")
+        
         template_folder = os.path.join(self.project_root, 'templates')
         self.app = Flask(__name__, template_folder=template_folder)
         self.app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-key-change-in-production')
@@ -54,6 +58,12 @@ class FlaskPromptRunner:
         
         # Configuration file paths - look in parent directory (project root)
         self.config_file = os.path.join(self.project_root, 'flask_config.yaml')
+        print(f"STARTUP DEBUG: Config file path set to: {self.config_file}")
+        print(f"STARTUP DEBUG: Project root is: {self.project_root}")
+        print(f"STARTUP DEBUG: Current working directory: {os.getcwd()}")
+        logging.info(f"STARTUP DEBUG: Config file path set to: {self.config_file}")
+        logging.info(f"STARTUP DEBUG: Project root is: {self.project_root}")
+        logging.info(f"STARTUP DEBUG: Current working directory: {os.getcwd()}")
         self.prompts_registry_file = os.path.join(self.project_root, 'prompts_registry.yaml')
         
         # Model cache setup
