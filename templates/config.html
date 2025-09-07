@@ -116,7 +116,14 @@
 
 <div class="config-section" style="margin-top: 30px;">
     <h3>Current Configuration File</h3>
-    <p><strong>Location:</strong> flask_config.yaml</p>
+    <p><strong>Location:</strong> {{ config_file_path }}</p>
+    <p><strong>File exists:</strong> {{ 'Yes' if config_file_exists else 'No' }}</p>
+    {% if config_file_contents %}
+    <details>
+        <summary>Show current file contents</summary>
+        <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 0.9em; overflow-x: auto;">{{ config_file_contents }}</pre>
+    </details>
+    {% endif %}
     <p><em>Note: You can also edit the configuration file directly and restart the application.</em></p>
 </div>
 {% endblock %}

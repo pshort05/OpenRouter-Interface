@@ -262,13 +262,26 @@ class FlaskPromptRunner:
                         'is_stale': cache_age_days >= 7
                     }
                 
+                # Get current config file info for debugging
+                config_file_exists = os.path.exists(self.config_file)
+                config_file_contents = None
+                if config_file_exists:
+                    try:
+                        with open(self.config_file, 'r', encoding='utf-8') as f:
+                            config_file_contents = f.read()
+                    except Exception as e:
+                        logging.error(f"Could not read config file for display: {e}")
+                
                 logging.info(f"Rendering config page with {model_count} models, current model: {self.flask_config.get('model', 'NOT SET')}")
                 
                 return render_template('config.html', 
                                      config=self.flask_config, 
                                      models=models,
                                      model_count=model_count,
-                                     cache_info=cache_info)
+                                     cache_info=cache_info,
+                                     config_file_path=self.config_file,
+                                     config_file_exists=config_file_exists,
+                                     config_file_contents=config_file_contents)
                                      
             except Exception as e:
                 logging.error(f"Error loading models for config: {e}")
