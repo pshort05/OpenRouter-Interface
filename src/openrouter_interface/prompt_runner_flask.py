@@ -122,14 +122,24 @@ class FlaskPromptRunner:
     def _save_flask_config(self, config: Dict[str, Any]):
         """Save Flask configuration to YAML file."""
         config_path = Path(self.config_file)
-        with open(config_path, 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, default_flow_style=False, sort_keys=True)
-        logging.info(f"Configuration saved to {self.config_file}")
+        logging.debug(f"Saving config to: {self.config_file}")
+        logging.debug(f"Config data to save: {config}")
+        
+        try:
+            with open(config_path, 'w', encoding='utf-8') as f:
+                yaml.dump(config, f, default_flow_style=False, sort_keys=True)
+            logging.info(f"Configuration saved to {self.config_file}")
+        except Exception as e:
+            logging.error(f"Failed to save configuration to {self.config_file}: {e}")
+            raise
     
     def _reload_configuration(self):
         """Reload configuration and reinitialize components."""
         logging.info("Reloading configuration...")
+        old_model = self.flask_config.get('model', 'NOT SET')
         self.flask_config = self._load_flask_config()
+        new_model = self.flask_config.get('model', 'NOT SET')
+        logging.info(f"Configuration reloaded. Model changed from '{old_model}' to '{new_model}'")
         self.config.config = self.flask_config
         
         # Update Flask app config
@@ -211,6 +221,9 @@ class FlaskPromptRunner:
         def show_config():
             """Show configuration page."""
             try:
+                logging.info("Loading configuration page")
+                logging.debug(f"Current model in config: {self.flask_config.get('model', 'NOT SET')}")
+                
                 # Get available models (cached if available)
                 models = self._get_available_models()
                 model_count = len(models)
@@ -225,6 +238,8 @@ class FlaskPromptRunner:
                         'age_days': cache_age_days,
                         'is_stale': cache_age_days >= 7
                     }
+                
+                logging.info(f"Rendering config page with {model_count} models, current model: {self.flask_config.get('model', 'NOT SET')}")
                 
                 return render_template('config.html', 
                                      config=self.flask_config, 
@@ -245,6 +260,8 @@ class FlaskPromptRunner:
         def update_config():
             """Update configuration."""
             try:
+                logging.info("Processing configuration update request")
+                
                 # Get form data
                 new_config = {}
                 
@@ -254,6 +271,12 @@ class FlaskPromptRunner:
                     value = request.form.get(field, '').strip()
                     if value:
                         new_config[field] = value
+                        logging.debug(f"Config field {field}: {value}")
+                
+                # Log the model change specifically
+                old_model = self.flask_config.get('model', 'NOT SET')
+                new_model = new_config.get('model', 'NOT CHANGED')
+                logging.info(f"Model change: '{old_model}' -> '{new_model}'")
                 
                 # Numeric fields
                 try:
@@ -289,11 +312,19 @@ class FlaskPromptRunner:
                         logging.warning(f"Could not validate model selection: {e}")
                 
                 # Update and save configuration
+                logging.info(f"Updating flask_config with new values: {list(new_config.keys())}")
                 self.flask_config.update(new_config)
+                
+                logging.info("Saving configuration to file")
                 self._save_flask_config(self.flask_config)
                 
                 # Reload configuration
+                logging.info("Reloading configuration")
                 self._reload_configuration()
+                
+                # Verify the change was applied
+                current_model = self.flask_config.get('model', 'NOT SET')
+                logging.info(f"Configuration updated successfully. Current model is now: {current_model}")
                 
                 flash('Configuration updated successfully', 'success')
                 return redirect(url_for('show_config'))
