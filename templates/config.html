@@ -141,6 +141,35 @@
 
 {% block scripts %}
 <script>
+// Form submission debugging
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[action="{{ url_for("update_config") }}"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('Form submission started');
+            console.log('Form action:', this.action);
+            console.log('Form method:', this.method);
+            
+            // Get form data
+            const formData = new FormData(this);
+            console.log('Form data:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`  ${key}: ${value}`);
+            }
+            
+            // Check if model is selected
+            const modelSelect = document.getElementById('model');
+            if (modelSelect) {
+                console.log('Model select value:', modelSelect.value);
+                console.log('Model select required:', modelSelect.required);
+            }
+            
+            // Don't prevent default - let form submit normally
+            console.log('Allowing form submission to proceed');
+        });
+    }
+});
+
 // Add model search functionality
 document.addEventListener('DOMContentLoaded', function() {
     const modelSelect = document.getElementById('model');
