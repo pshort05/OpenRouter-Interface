@@ -109,11 +109,16 @@
     </div>
     
     <div style="margin-top: 30px;">
-        <button type="submit" class="btn btn-success" onclick="console.log('Save button clicked');">Save Configuration</button>
+        <button type="submit" class="btn btn-success" onclick="console.log('Save button clicked'); debugFormSubmission();">Save Configuration</button>
         <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
         <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
             <strong>Form Action:</strong> {{ url_for('update_config') }}<br>
-            <strong>Debug:</strong> Check browser console (F12) for form submission details
+            <strong>Method:</strong> POST<br>
+            <strong>Debug:</strong> Check browser console (F12) for form submission details<br>
+            <strong>Current Model:</strong> {{ config.model }}<br>
+            <strong>Config File Path:</strong> {{ config_file_path }}<br>
+            <strong>Config File Exists:</strong> {{ config_file_exists }}<br>
+            <div id="debug-info" style="margin-top: 5px; font-family: monospace; font-size: 0.8em; background: #f8f9fa; padding: 5px; border-radius: 3px;"></div>
         </p>
     </div>
 </form>
@@ -145,32 +150,88 @@
 
 {% block scripts %}
 <script>
+// Form submission debugging function
+function debugFormSubmission() {
+    console.log('DEBUG: Save button clicked');
+    const form = document.querySelector('form[action="{{ url_for("update_config") }}"]');
+    if (form) {
+        console.log('DEBUG: Form found');
+        console.log('DEBUG: Form action:', form.action);
+        console.log('DEBUG: Form method:', form.method);
+        
+        const formData = new FormData(form);
+        console.log('DEBUG: Form data entries:');
+        const debugInfo = [];
+        for (let [key, value] of formData.entries()) {
+            console.log(`  ${key}: ${value}`);
+            debugInfo.push(`${key}: ${value}`);
+        }
+        
+        // Update debug info div
+        const debugDiv = document.getElementById('debug-info');
+        if (debugDiv) {
+            debugDiv.innerHTML = debugInfo.join('<br>');
+        }
+        
+        // Special check for model field
+        const modelSelect = document.getElementById('model');
+        if (modelSelect) {
+            console.log('DEBUG: Model field value:', modelSelect.value);
+            console.log('DEBUG: Model field name:', modelSelect.name);
+            console.log('DEBUG: Model field required:', modelSelect.required);
+        }
+    } else {
+        console.error('DEBUG: Form not found!');
+    }
+}
+
 // Form submission debugging
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('form[action="{{ url_for("update_config") }}"]');
     if (form) {
+        console.log('Page loaded: Form found, adding event listener');
         form.addEventListener('submit', function(e) {
-            console.log('Form submission started');
-            console.log('Form action:', this.action);
-            console.log('Form method:', this.method);
+            console.log('SUBMIT EVENT: Form submission started');
+            console.log('SUBMIT EVENT: Form action:', this.action);
+            console.log('SUBMIT EVENT: Form method:', this.method);
+            console.log('SUBMIT EVENT: Form target:', this.target);
+            console.log('SUBMIT EVENT: Form enctype:', this.enctype);
             
             // Get form data
             const formData = new FormData(this);
-            console.log('Form data:');
+            console.log('SUBMIT EVENT: Form data:');
+            let hasData = false;
             for (let [key, value] of formData.entries()) {
                 console.log(`  ${key}: ${value}`);
+                hasData = true;
+            }
+            
+            if (!hasData) {
+                console.error('SUBMIT EVENT: NO FORM DATA FOUND!');
+                alert('ERROR: No form data found. Please check all fields are properly filled.');
+                e.preventDefault();
+                return false;
             }
             
             // Check if model is selected
             const modelSelect = document.getElementById('model');
             if (modelSelect) {
-                console.log('Model select value:', modelSelect.value);
-                console.log('Model select required:', modelSelect.required);
+                console.log('SUBMIT EVENT: Model select value:', modelSelect.value);
+                console.log('SUBMIT EVENT: Model select required:', modelSelect.required);
+                if (!modelSelect.value) {
+                    console.error('SUBMIT EVENT: No model selected!');
+                    alert('ERROR: Please select a model.');
+                    e.preventDefault();
+                    return false;
+                }
             }
             
             // Don't prevent default - let form submit normally
-            console.log('Allowing form submission to proceed');
+            console.log('SUBMIT EVENT: Allowing form submission to proceed');
+            console.log('SUBMIT EVENT: About to submit to server...');
         });
+    } else {
+        console.error('Page loaded: Form NOT found!');
     }
 });
 

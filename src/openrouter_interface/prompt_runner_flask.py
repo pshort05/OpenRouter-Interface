@@ -46,9 +46,14 @@ class FlaskPromptRunner:
         
         # Set template folder to the project root's templates folder
         self.project_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
+        self.project_root_abs = os.path.abspath(self.project_root)
         logging.info(f"INIT DEBUG: Project root calculated as: {self.project_root}")
+        logging.info(f"INIT DEBUG: Project root absolute: {self.project_root_abs}")
         
         template_folder = os.path.join(self.project_root, 'templates')
+        template_folder_abs = os.path.abspath(template_folder)
+        logging.info(f"INIT DEBUG: Template folder: {template_folder_abs}")
+        
         self.app = Flask(__name__, template_folder=template_folder)
         self.app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-key-change-in-production')
         
@@ -58,17 +63,40 @@ class FlaskPromptRunner:
         
         # Configuration file paths - look in parent directory (project root)
         self.config_file = os.path.join(self.project_root, 'flask_config.yaml')
-        print(f"STARTUP DEBUG: Config file path set to: {self.config_file}")
-        print(f"STARTUP DEBUG: Project root is: {self.project_root}")
-        print(f"STARTUP DEBUG: Current working directory: {os.getcwd()}")
-        logging.info(f"STARTUP DEBUG: Config file path set to: {self.config_file}")
-        logging.info(f"STARTUP DEBUG: Project root is: {self.project_root}")
-        logging.info(f"STARTUP DEBUG: Current working directory: {os.getcwd()}")
+        self.config_file_abs = os.path.abspath(self.config_file)
+        
+        print(f"STARTUP PATH DEBUG: Config file path set to: {self.config_file}")
+        print(f"STARTUP PATH DEBUG: Config file absolute path: {self.config_file_abs}")
+        print(f"STARTUP PATH DEBUG: Project root is: {self.project_root}")
+        print(f"STARTUP PATH DEBUG: Project root absolute: {self.project_root_abs}")
+        print(f"STARTUP PATH DEBUG: Current working directory: {os.getcwd()}")
+        print(f"STARTUP PATH DEBUG: __file__ location: {__file__}")
+        print(f"STARTUP PATH DEBUG: __file__ dirname: {os.path.dirname(os.path.abspath(__file__))}")
+        print(f"STARTUP PATH DEBUG: Config file exists: {os.path.exists(self.config_file_abs)}")
+        
+        logging.info(f"STARTUP PATH DEBUG: Config file path set to: {self.config_file}")
+        logging.info(f"STARTUP PATH DEBUG: Config file absolute path: {self.config_file_abs}")
+        logging.info(f"STARTUP PATH DEBUG: Project root is: {self.project_root}")
+        logging.info(f"STARTUP PATH DEBUG: Project root absolute: {self.project_root_abs}")
+        logging.info(f"STARTUP PATH DEBUG: Current working directory: {os.getcwd()}")
+        logging.info(f"STARTUP PATH DEBUG: Config file exists: {os.path.exists(self.config_file_abs)}")
+        
         self.prompts_registry_file = os.path.join(self.project_root, 'prompts_registry.yaml')
+        self.prompts_registry_file_abs = os.path.abspath(self.prompts_registry_file)
+        logging.info(f"STARTUP PATH DEBUG: Prompts registry file: {self.prompts_registry_file_abs}")
+        print(f"STARTUP PATH DEBUG: Prompts registry file: {self.prompts_registry_file_abs}")
         
         # Model cache setup
         self.cache_dir = os.path.join(self.project_root, 'cache')
+        self.cache_dir_abs = os.path.abspath(self.cache_dir)
         self.models_cache_file = os.path.join(self.cache_dir, 'openrouter_models.json')
+        self.models_cache_file_abs = os.path.abspath(self.models_cache_file)
+        
+        print(f"STARTUP PATH DEBUG: Cache directory: {self.cache_dir_abs}")
+        print(f"STARTUP PATH DEBUG: Models cache file: {self.models_cache_file_abs}")
+        logging.info(f"STARTUP PATH DEBUG: Cache directory: {self.cache_dir_abs}")
+        logging.info(f"STARTUP PATH DEBUG: Models cache file: {self.models_cache_file_abs}")
+        
         os.makedirs(self.cache_dir, exist_ok=True)
         
         # Initialize components
@@ -106,10 +134,23 @@ class FlaskPromptRunner:
         config_path = Path(self.config_file)
         
         absolute_path = config_path.absolute()
-        logging.info(f"LOAD CONFIG DEBUG: Loading from path: {self.config_file}")
-        logging.info(f"LOAD CONFIG DEBUG: Absolute path: {absolute_path}")
-        logging.info(f"LOAD CONFIG DEBUG: Path exists: {config_path.exists()}")
-        logging.info(f"LOAD CONFIG DEBUG: Current working directory: {os.getcwd()}")
+        logging.info(f"LOAD CONFIG PATH DEBUG: Loading from path: {self.config_file}")
+        logging.info(f"LOAD CONFIG PATH DEBUG: Absolute path: {absolute_path}")
+        logging.info(f"LOAD CONFIG PATH DEBUG: Path exists: {config_path.exists()}")
+        logging.info(f"LOAD CONFIG PATH DEBUG: Current working directory: {os.getcwd()}")
+        logging.info(f"LOAD CONFIG PATH DEBUG: Path parent directory: {config_path.parent}")
+        logging.info(f"LOAD CONFIG PATH DEBUG: Path parent exists: {config_path.parent.exists()}")
+        logging.info(f"LOAD CONFIG PATH DEBUG: Path is file: {config_path.is_file()}")
+        logging.info(f"LOAD CONFIG PATH DEBUG: Path is readable: {os.access(str(config_path), os.R_OK) if config_path.exists() else False}")
+        
+        print(f"LOAD CONFIG PATH DEBUG: Loading from path: {self.config_file}")
+        print(f"LOAD CONFIG PATH DEBUG: Absolute path: {absolute_path}")
+        print(f"LOAD CONFIG PATH DEBUG: Path exists: {config_path.exists()}")
+        print(f"LOAD CONFIG PATH DEBUG: Current working directory: {os.getcwd()}")
+        print(f"LOAD CONFIG PATH DEBUG: Path parent directory: {config_path.parent}")
+        print(f"LOAD CONFIG PATH DEBUG: Path parent exists: {config_path.parent.exists()}")
+        print(f"LOAD CONFIG PATH DEBUG: Path is file: {config_path.is_file()}")
+        print(f"LOAD CONFIG PATH DEBUG: Path is readable: {os.access(str(config_path), os.R_OK) if config_path.exists() else False}")
         print(f"LOAD CONFIG: Loading from {absolute_path}")
         
         # Default configuration
@@ -154,13 +195,69 @@ class FlaskPromptRunner:
         logging.info(f"SAVE CONFIG DEBUG: Absolute path: {absolute_path}")
         logging.info(f"SAVE CONFIG DEBUG: Path exists: {config_path.exists()}")
         logging.info(f"SAVE CONFIG DEBUG: Parent directory exists: {config_path.parent.exists()}")
+        logging.info(f"SAVE CONFIG DEBUG: Parent directory path: {config_path.parent}")
         logging.debug(f"SAVE CONFIG DEBUG: Config data to save: {config}")
         print(f"SAVE CONFIG: Saving to {absolute_path}")
         print(f"SAVE CONFIG: Data = {config}")
+        print(f"SAVE CONFIG: Parent directory = {config_path.parent}")
+        print(f"SAVE CONFIG: Parent exists = {config_path.parent.exists()}")
+        print(f"SAVE CONFIG: File writable = {os.access(config_path.parent, os.W_OK)}")
+        
+        # Check if directory exists and create if needed
+        if not config_path.parent.exists():
+            logging.info(f"Creating parent directory: {config_path.parent}")
+            print(f"Creating parent directory: {config_path.parent}")
+            config_path.parent.mkdir(parents=True, exist_ok=True)
         
         try:
+            # Test write permissions first
+            test_file = config_path.parent / f".test_write_{uuid.uuid4().hex[:8]}"
+            try:
+                with open(test_file, 'w') as tf:
+                    tf.write("test")
+                test_file.unlink()
+                print("SAVE CONFIG: Write permissions verified")
+            except Exception as perm_error:
+                logging.error(f"SAVE CONFIG: Permission test failed: {perm_error}")
+                print(f"SAVE CONFIG: Permission test failed: {perm_error}")
+                raise Exception(f"No write permission to directory {config_path.parent}: {perm_error}")
+            
+            # Read current file to compare before writing
+            old_content = None
+            if config_path.exists():
+                try:
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        old_content = f.read()
+                        print(f"SAVE CONFIG: Old file content:\n{old_content}")
+                except Exception as read_error:
+                    logging.warning(f"Could not read old config file: {read_error}")
+                    print(f"SAVE CONFIG: Could not read old config file: {read_error}")
+            
+            # Write new config
             with open(config_path, 'w', encoding='utf-8') as f:
                 yaml.dump(config, f, default_flow_style=False, sort_keys=True)
+            
+            # Verify write by reading back
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    new_content = f.read()
+                    print(f"SAVE CONFIG: New file content:\n{new_content}")
+                    
+                # Parse to verify YAML is valid
+                parsed = yaml.safe_load(new_content)
+                expected_model = config.get('model', 'NOT SET')
+                actual_model = parsed.get('model', 'NOT SET')
+                print(f"SAVE CONFIG: Expected model: {expected_model}")
+                print(f"SAVE CONFIG: Actual model in saved file: {actual_model}")
+                
+                if actual_model != expected_model:
+                    raise Exception(f"Verification failed: expected model '{expected_model}' but file contains '{actual_model}'")
+                    
+            except Exception as verify_error:
+                logging.error(f"SAVE CONFIG: Verification failed: {verify_error}")
+                print(f"SAVE CONFIG: Verification failed: {verify_error}")
+                raise
+                
             logging.info(f"SAVE CONFIG DEBUG: Successfully saved to {absolute_path}")
             print(f"SAVE CONFIG: Successfully saved to {absolute_path}")
         except Exception as e:
@@ -256,7 +353,17 @@ class FlaskPromptRunner:
         def show_config():
             """Show configuration page."""
             try:
-                logging.info("Loading configuration page")
+                logging.info("CONFIG PAGE: Loading configuration page")
+                logging.info(f"CONFIG PAGE PATH: Config file path: {self.config_file}")
+                logging.info(f"CONFIG PAGE PATH: Config file absolute path: {self.config_file_abs}")
+                logging.info(f"CONFIG PAGE PATH: Config file exists: {os.path.exists(self.config_file_abs)}")
+                logging.info(f"CONFIG PAGE PATH: Current working directory: {os.getcwd()}")
+                
+                print(f"CONFIG PAGE PATH DEBUG: Config file path: {self.config_file}")
+                print(f"CONFIG PAGE PATH DEBUG: Config file absolute path: {self.config_file_abs}")
+                print(f"CONFIG PAGE PATH DEBUG: Config file exists: {os.path.exists(self.config_file_abs)}")
+                print(f"CONFIG PAGE PATH DEBUG: Current working directory: {os.getcwd()}")
+                
                 logging.debug(f"Current model in config: {self.flask_config.get('model', 'NOT SET')}")
                 
                 # Get available models (cached if available)
@@ -277,12 +384,26 @@ class FlaskPromptRunner:
                 # Get current config file info for debugging
                 config_file_exists = os.path.exists(self.config_file)
                 config_file_contents = None
+                
+                logging.info(f"CONFIG PAGE PATH: Checking file existence at: {self.config_file}")
+                logging.info(f"CONFIG PAGE PATH: File exists check result: {config_file_exists}")
+                print(f"CONFIG PAGE PATH DEBUG: Checking file existence at: {self.config_file}")
+                print(f"CONFIG PAGE PATH DEBUG: File exists check result: {config_file_exists}")
+                
                 if config_file_exists:
                     try:
+                        logging.info(f"CONFIG PAGE PATH: Reading config file from: {self.config_file}")
+                        print(f"CONFIG PAGE PATH DEBUG: Reading config file from: {self.config_file}")
                         with open(self.config_file, 'r', encoding='utf-8') as f:
                             config_file_contents = f.read()
+                        logging.info(f"CONFIG PAGE PATH: Successfully read {len(config_file_contents)} characters from config file")
+                        print(f"CONFIG PAGE PATH DEBUG: Successfully read {len(config_file_contents)} characters from config file")
                     except Exception as e:
-                        logging.error(f"Could not read config file for display: {e}")
+                        logging.error(f"CONFIG PAGE PATH: Could not read config file for display: {e}")
+                        print(f"CONFIG PAGE PATH ERROR: Could not read config file for display: {e}")
+                else:
+                    logging.warning(f"CONFIG PAGE PATH: Config file does not exist at: {self.config_file}")
+                    print(f"CONFIG PAGE PATH WARNING: Config file does not exist at: {self.config_file}")
                 
                 logging.info(f"Rendering config page with {model_count} models, current model: {self.flask_config.get('model', 'NOT SET')}")
                 
@@ -310,13 +431,34 @@ class FlaskPromptRunner:
             try:
                 logging.info("ROUTE DEBUG: /config POST route hit")
                 logging.info("Processing configuration update request")
+                logging.info(f"SAVE OPERATION PATH: Config file to save: {self.config_file}")
+                logging.info(f"SAVE OPERATION PATH: Config file absolute: {self.config_file_abs}")
+                logging.info(f"SAVE OPERATION PATH: Config file exists: {os.path.exists(self.config_file_abs)}")
+                logging.info(f"SAVE OPERATION PATH: Current working directory: {os.getcwd()}")
+                
                 print("FORM UPDATE: Processing configuration update request")
+                print(f"SAVE OPERATION PATH DEBUG: Config file to save: {self.config_file}")
+                print(f"SAVE OPERATION PATH DEBUG: Config file absolute: {self.config_file_abs}")
+                print(f"SAVE OPERATION PATH DEBUG: Config file exists: {os.path.exists(self.config_file_abs)}")
+                print(f"SAVE OPERATION PATH DEBUG: Current working directory: {os.getcwd()}")
                 print(f"ROUTE DEBUG: Request method = {request.method}")
                 print(f"ROUTE DEBUG: Request URL = {request.url}")
+                print(f"ROUTE DEBUG: Request headers = {dict(request.headers)}")
+                print(f"ROUTE DEBUG: Content type = {request.content_type}")
+                print(f"ROUTE DEBUG: Content length = {request.content_length}")
                 
                 # Log all form data for debugging
                 logging.info(f"Form data received: {dict(request.form)}")
                 print(f"FORM DATA: {dict(request.form)}")
+                print(f"FORM DATA KEYS: {list(request.form.keys())}")
+                print(f"FORM DATA LENGTH: {len(request.form)}")
+                
+                # Check if form is empty
+                if not request.form:
+                    logging.error("ERROR: No form data received!")
+                    print("ERROR: No form data received!")
+                    flash('No form data received. Please check your browser settings and try again.', 'error')
+                    return redirect(url_for('show_config'))
                 
                 # Get form data
                 new_config = {}
@@ -371,18 +513,46 @@ class FlaskPromptRunner:
                 
                 # Update and save configuration
                 logging.info(f"Updating flask_config with new values: {list(new_config.keys())}")
+                print(f"BEFORE UPDATE: flask_config model = {self.flask_config.get('model', 'NOT SET')}")
+                print(f"NEW CONFIG: {new_config}")
+                
                 self.flask_config.update(new_config)
+                print(f"AFTER UPDATE: flask_config model = {self.flask_config.get('model', 'NOT SET')}")
                 
                 logging.info("Saving configuration to file")
-                self._save_flask_config(self.flask_config)
+                print("SAVE: About to call _save_flask_config")
+                try:
+                    self._save_flask_config(self.flask_config)
+                    print("SAVE: _save_flask_config completed successfully")
+                except Exception as save_error:
+                    logging.error(f"SAVE ERROR: {save_error}")
+                    print(f"SAVE ERROR: {save_error}")
+                    raise
                 
                 # Reload configuration
                 logging.info("Reloading configuration")
-                self._reload_configuration()
+                print("RELOAD: About to call _reload_configuration")
+                try:
+                    self._reload_configuration()
+                    print("RELOAD: _reload_configuration completed successfully")
+                except Exception as reload_error:
+                    logging.error(f"RELOAD ERROR: {reload_error}")
+                    print(f"RELOAD ERROR: {reload_error}")
+                    raise
                 
                 # Verify the change was applied
                 current_model = self.flask_config.get('model', 'NOT SET')
                 logging.info(f"Configuration updated successfully. Current model is now: {current_model}")
+                print(f"FINAL VERIFICATION: Current model is now: {current_model}")
+                
+                # Double-check by reading the file back
+                try:
+                    with open(self.config_file, 'r', encoding='utf-8') as f:
+                        file_contents = f.read()
+                        print(f"FILE VERIFICATION: Config file now contains:\n{file_contents}")
+                except Exception as read_error:
+                    logging.error(f"FILE READ ERROR: {read_error}")
+                    print(f"FILE READ ERROR: {read_error}")
                 
                 flash('Configuration updated successfully', 'success')
                 return redirect(url_for('show_config'))
