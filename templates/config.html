@@ -114,6 +114,20 @@
     </div>
 </form>
 
+<!-- Reset Configuration Form -->
+<div class="config-section" style="margin-top: 30px; background: #fff3cd; border-color: #ffeaa7;">
+    <h3 style="color: #856404;">Reset Configuration</h3>
+    <p>If model selection isn't working, you can reset to recommended defaults:</p>
+    <form method="POST" action="{{ url_for('reset_config') }}">
+        <button type="submit" class="btn btn-warning" onclick="return confirm('Reset configuration to defaults? This will overwrite current settings.')">
+            Reset to Defaults (Claude Sonnet 4)
+        </button>
+    </form>
+</div>
+
+<form method="POST" action="{{ url_for('update_config') }}" style="display: none;">
+</form>
+
 <div class="config-section" style="margin-top: 30px;">
     <h3>Current Configuration File</h3>
     <p><strong>Location:</strong> {{ config_file_path }}</p>

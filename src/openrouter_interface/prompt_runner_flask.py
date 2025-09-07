@@ -370,6 +370,42 @@ class FlaskPromptRunner:
                 flash(f"Error updating configuration: {e}", 'error')
                 return redirect(url_for('show_config'))
         
+        @self.app.route('/config/reset', methods=['POST'])
+        def reset_config():
+            """Reset configuration to recommended defaults."""
+            try:
+                logging.info("Resetting configuration to defaults")
+                
+                # Reset to default configuration with recommended model
+                default_config = {
+                    'model': 'anthropic/claude-4-sonnet-20250522',
+                    'api_base_url': 'https://openrouter.ai/api/v1',
+                    'temperature': 0.8,
+                    'max_tokens': 10000,
+                    'log_level': 'INFO',
+                    'log_to_file': False,
+                    'payload_file': 'prompt_runner_flask.payload.json',
+                    'max_content_length_mb': 16,
+                    'session_timeout_hours': 24
+                }
+                
+                logging.info("Saving reset configuration")
+                self._save_flask_config(default_config)
+                
+                logging.info("Reloading configuration after reset")
+                self._reload_configuration()
+                
+                current_model = self.flask_config.get('model', 'NOT SET')
+                logging.info(f"Configuration reset completed. Model is now: {current_model}")
+                
+                flash('Configuration reset to defaults successfully', 'success')
+                return redirect(url_for('show_config'))
+                
+            except Exception as e:
+                logging.error(f"Error resetting configuration: {e}")
+                flash(f"Error resetting configuration: {e}", 'error')
+                return redirect(url_for('show_config'))
+        
         @self.app.route('/prompts_registry')
         def show_prompts_registry():
             """Show prompts registry management page."""
