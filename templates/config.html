@@ -109,8 +109,9 @@
     </div>
     
     <div style="margin-top: 30px;">
-        <button type="submit" class="btn btn-success" onclick="console.log('Save button clicked'); debugFormSubmission();">Save Configuration</button>
+        <button type="submit" id="save-btn" class="btn btn-success" onclick="console.log('Save button clicked'); debugFormSubmission();">Save Configuration</button>
         <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+        <div id="save-status" style="margin-top: 10px; font-weight: bold; display: none;"></div>
         <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
             <strong>Form Action:</strong> {{ url_for('update_config') }}<br>
             <strong>Method:</strong> POST<br>
@@ -197,6 +198,9 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('SUBMIT EVENT: Form target:', this.target);
             console.log('SUBMIT EVENT: Form enctype:', this.enctype);
             
+            // Prevent default form submission to bypass redirect blockers
+            e.preventDefault();
+            
             // Get form data
             const formData = new FormData(this);
             console.log('SUBMIT EVENT: Form data:');
@@ -209,7 +213,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!hasData) {
                 console.error('SUBMIT EVENT: NO FORM DATA FOUND!');
                 alert('ERROR: No form data found. Please check all fields are properly filled.');
-                e.preventDefault();
                 return false;
             }
             
@@ -221,14 +224,86 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!modelSelect.value) {
                     console.error('SUBMIT EVENT: No model selected!');
                     alert('ERROR: Please select a model.');
-                    e.preventDefault();
                     return false;
                 }
             }
             
-            // Don't prevent default - let form submit normally
-            console.log('SUBMIT EVENT: Allowing form submission to proceed');
-            console.log('SUBMIT EVENT: About to submit to server...');
+            // Show saving indicator
+            const saveBtn = document.getElementById('save-btn');
+            const saveStatus = document.getElementById('save-status');
+            
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            }
+            
+            if (saveStatus) {
+                saveStatus.style.display = 'block';
+                saveStatus.style.color = 'blue';
+                saveStatus.innerHTML = '⏳ Saving configuration...';
+            }
+            
+            // Use fetch API to bypass redirect blockers
+            console.log('SUBMIT EVENT: Using fetch API to bypass redirect blocker');
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'  // Include cookies/session
+            })
+            .then(response => {
+                console.log('FETCH RESPONSE: Status:', response.status);
+                console.log('FETCH RESPONSE: Status text:', response.statusText);
+                console.log('FETCH RESPONSE: Headers:', [...response.headers.entries()]);
+                
+                if (response.ok) {
+                    console.log('FETCH RESPONSE: Success, reloading page');
+                    
+                    if (saveStatus) {
+                        saveStatus.style.color = 'green';
+                        saveStatus.innerHTML = '✅ Configuration saved successfully! Reloading...';
+                    }
+                    
+                    // Wait a moment to show success, then reload
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    console.error('FETCH RESPONSE: Error response:', response.status, response.statusText);
+                    
+                    if (saveBtn) {
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = 'Save Configuration';
+                    }
+                    
+                    if (saveStatus) {
+                        saveStatus.style.color = 'red';
+                        saveStatus.innerHTML = `❌ Save failed: ${response.status} ${response.statusText}`;
+                    }
+                    
+                    response.text().then(text => {
+                        console.error('FETCH RESPONSE: Error content:', text);
+                        alert(`Configuration save failed: ${response.status} ${response.statusText}`);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('FETCH ERROR: Network or other error:', error);
+                
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = 'Save Configuration';
+                }
+                
+                if (saveStatus) {
+                    saveStatus.style.color = 'red';
+                    saveStatus.innerHTML = `❌ Network error: ${error.message}`;
+                }
+                
+                alert(`Configuration save failed: ${error.message}`);
+            });
+            
+            return false; // Prevent any default action
         });
     } else {
         console.error('Page loaded: Form NOT found!');
