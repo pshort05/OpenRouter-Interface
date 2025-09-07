@@ -109,8 +109,12 @@
     </div>
     
     <div style="margin-top: 30px;">
-        <button type="submit" class="btn btn-success">Save Configuration</button>
+        <button type="submit" class="btn btn-success" onclick="console.log('Save button clicked');">Save Configuration</button>
         <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+        <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+            <strong>Form Action:</strong> {{ url_for('update_config') }}<br>
+            <strong>Debug:</strong> Check browser console (F12) for form submission details
+        </p>
     </div>
 </form>
 

@@ -105,9 +105,12 @@ class FlaskPromptRunner:
         """Load Flask configuration from YAML file."""
         config_path = Path(self.config_file)
         
-        logging.info(f"Attempting to load config from: {self.config_file}")
-        logging.info(f"Config path exists: {config_path.exists()}")
-        logging.info(f"Absolute config path: {config_path.absolute()}")
+        absolute_path = config_path.absolute()
+        logging.info(f"LOAD CONFIG DEBUG: Loading from path: {self.config_file}")
+        logging.info(f"LOAD CONFIG DEBUG: Absolute path: {absolute_path}")
+        logging.info(f"LOAD CONFIG DEBUG: Path exists: {config_path.exists()}")
+        logging.info(f"LOAD CONFIG DEBUG: Current working directory: {os.getcwd()}")
+        print(f"LOAD CONFIG: Loading from {absolute_path}")
         
         # Default configuration
         default_config = {
@@ -145,15 +148,24 @@ class FlaskPromptRunner:
     def _save_flask_config(self, config: Dict[str, Any]):
         """Save Flask configuration to YAML file."""
         config_path = Path(self.config_file)
-        logging.debug(f"Saving config to: {self.config_file}")
-        logging.debug(f"Config data to save: {config}")
+        absolute_path = config_path.absolute()
+        
+        logging.info(f"SAVE CONFIG DEBUG: Saving to path: {self.config_file}")
+        logging.info(f"SAVE CONFIG DEBUG: Absolute path: {absolute_path}")
+        logging.info(f"SAVE CONFIG DEBUG: Path exists: {config_path.exists()}")
+        logging.info(f"SAVE CONFIG DEBUG: Parent directory exists: {config_path.parent.exists()}")
+        logging.debug(f"SAVE CONFIG DEBUG: Config data to save: {config}")
+        print(f"SAVE CONFIG: Saving to {absolute_path}")
+        print(f"SAVE CONFIG: Data = {config}")
         
         try:
             with open(config_path, 'w', encoding='utf-8') as f:
                 yaml.dump(config, f, default_flow_style=False, sort_keys=True)
-            logging.info(f"Configuration saved to {self.config_file}")
+            logging.info(f"SAVE CONFIG DEBUG: Successfully saved to {absolute_path}")
+            print(f"SAVE CONFIG: Successfully saved to {absolute_path}")
         except Exception as e:
-            logging.error(f"Failed to save configuration to {self.config_file}: {e}")
+            logging.error(f"SAVE CONFIG DEBUG: Failed to save to {absolute_path}: {e}")
+            print(f"SAVE CONFIG ERROR: Failed to save to {absolute_path}: {e}")
             raise
     
     def _reload_configuration(self):
@@ -296,8 +308,11 @@ class FlaskPromptRunner:
         def update_config():
             """Update configuration."""
             try:
+                logging.info("ROUTE DEBUG: /config POST route hit")
                 logging.info("Processing configuration update request")
                 print("FORM UPDATE: Processing configuration update request")
+                print(f"ROUTE DEBUG: Request method = {request.method}")
+                print(f"ROUTE DEBUG: Request URL = {request.url}")
                 
                 # Log all form data for debugging
                 logging.info(f"Form data received: {dict(request.form)}")
