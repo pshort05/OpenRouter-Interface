@@ -3,9 +3,8 @@
 
 # Input files to process
 input_files:
-  - article.md
-  - research_paper.md
-  - blog_post.md
+  - sample_input.md
+  - sample_input.md
 
 # Output file naming pattern
 output_pattern: "enhanced_{input_name}{input_ext}"
@@ -13,22 +12,22 @@ output_pattern: "enhanced_{input_name}{input_ext}"
 # Sequential prompts with different models for each step
 prompts:
   # Step 1: Initial analysis with Gemini 2.0 Flash (fast and efficient)
-  analysis:
+  prompt 1:
     prompt_file: content_analysis.json
     model: google/gemini-2.0-flash-001
   
   # Step 2: Deep content enhancement with Claude Sonnet (high quality reasoning)
-  enhancement:
+  prompt 2:
     prompt_file: content_enhancement.json
     model: anthropic/claude-4-sonnet-20250522
   
   # Step 3: Final polish with GPT-4o (excellent writing style)
-  polish:
+  prompt 3:
     prompt_file: content_polish.json
     model: openai/gpt-4o
   
   # Step 4: Quality check with Gemini Pro (cost-effective validation)
-  validation:
+  prompt 4:
     prompt_file: quality_check.json
     model: google/gemini-pro
 
@@ -39,10 +38,8 @@ global_config:
   max_tokens: 4000
   log_level: INFO
 
-# This configuration will process each input file through all 4 steps:
-# 1. article.md -> Gemini analysis -> Claude enhancement -> GPT-4o polish -> Gemini validation -> enhanced_article.md
-# 2. research_paper.md -> [same 4-step process] -> enhanced_research_paper.md  
-# 3. blog_post.md -> [same 4-step process] -> enhanced_blog_post.md
+# This configuration will process the input file through all 4 steps:
+# README.md -> Gemini analysis -> Claude enhancement -> GPT-4o polish -> Gemini validation -> enhanced_README.md
 
 # Usage:
 # ./openrouter-chain -c examples/different_models_per_step.yaml

@@ -74,9 +74,13 @@ class PromptChainRunner:
     
     def _create_temp_dir(self) -> Path:
         """Create temporary directory using new naming convention: <input_filename>_<date>_<pid>"""
-        # Get input file name (without extension)
-        input_file = self._get_input_file()
-        input_basename = input_file.stem  # filename without extension
+        # Get input file name (without extension) - use first file for multi-file mode
+        if 'input_files' in self.config:
+            input_file = Path(self.config['input_files'][0])
+            input_basename = f"multi_{len(self.config['input_files'])}_files"
+        else:
+            input_file = self._get_input_file()
+            input_basename = input_file.stem  # filename without extension
         
         # Create temp directory name: inputname_date_pid
         temp_dirname = f"{input_basename}_{self.timestamp}_{self.process_id}"
@@ -91,9 +95,13 @@ class PromptChainRunner:
     
     def _create_log_file(self) -> Path:
         """Create log file in temp directory using same naming convention."""
-        # Get input file name (without extension)
-        input_file = self._get_input_file()
-        input_basename = input_file.stem
+        # Get input file name (without extension) - use first file for multi-file mode
+        if 'input_files' in self.config:
+            input_file = Path(self.config['input_files'][0])
+            input_basename = f"multi_{len(self.config['input_files'])}_files"
+        else:
+            input_file = self._get_input_file()
+            input_basename = input_file.stem
         
         # Create log filename using same convention as directory
         log_filename = f"{input_basename}_{self.timestamp}_{self.process_id}.log"
@@ -166,11 +174,12 @@ class PromptChainRunner:
         # Validate input files
         if 'input_files' in config:
             self._validate_input_files(config['input_files'])
-        else:
+        elif 'input_file' in config:
             # Single input file
             input_file = Path(config['input_file'])
             if not input_file.exists():
                 raise FileNotFoundError(f"Input file not found: {input_file}")
+        # Note: input_file might be provided via command line override, so don't error here
         
         # Validate prompts section  
         prompts = config['prompts']
@@ -360,6 +369,8 @@ class PromptChainRunner:
             input_file = Path(self.input_file_override)
             logging.info(f"Using command line input file: {input_file}")
         else:
+            if 'input_file' not in self.config:
+                raise ValueError("input_file not in config and no command line override provided")
             input_file = Path(self.config['input_file'])
             logging.info(f"Using config input file: {input_file}")
         
@@ -371,9 +382,11 @@ class PromptChainRunner:
             input_files = [Path(f).resolve() for f in self.config['input_files']]
             logging.info(f"Using config input files: {len(input_files)} files")
             return input_files
-        else:
+        elif 'input_file' in self.config or self.input_file_override:
             # Single file mode - return as list
             return [self._get_input_file()]
+        else:
+            raise ValueError("No input files specified")
     
     def _is_multiple_file_mode(self) -> bool:
         """Check if we're in multiple file processing mode."""
@@ -481,9 +494,9 @@ class PromptChainRunner:
         step_config_file = self._get_prompt_config_file(prompt_config)
         step_model = self._get_prompt_model(prompt_config)
         
-        # Build command - use prompt_runner.py directly from PATH
+        # Build command - use openrouter-runner entry point
         cmd = [
-            "python", "prompt_runner.py",  # Use python to execute the script
+            "openrouter-runner",
             "-p", prompt_file,
             "-i", str(input_file),
             "-o", str(output_file),
@@ -514,7 +527,7 @@ class PromptChainRunner:
         # Add temp directory to keep all files organized
         cmd.extend(["--temp-dir", str(self.temp_dir)])
         
-        logging.info(f"Step {step}: Executing prompt_runner.py")
+        logging.info(f"Step {step}: Executing openrouter-runner")
         logging.info(f"Full command: {' '.join(cmd)}")
         logging.info(f"Prompt file: {prompt_file}")
         logging.info(f"Input file: {input_file}")
@@ -531,12 +544,12 @@ class PromptChainRunner:
             
             # Log the results
             if result.returncode == 0:
-                logging.info(f"Step {step}: SUCCESS - prompt_runner.py completed")
+                logging.info(f"Step {step}: SUCCESS - openrouter-runner completed")
                 if result.stdout:
                     logging.debug(f"Step {step} stdout: {result.stdout}")
                 return True
             else:
-                logging.error(f"Step {step}: FAILED - prompt_runner.py returned code {result.returncode}")
+                logging.error(f"Step {step}: FAILED - openrouter-runner returned code {result.returncode}")
                 if result.stderr:
                     logging.error(f"Step {step} stderr: {result.stderr}")
                 if result.stdout:
@@ -544,14 +557,14 @@ class PromptChainRunner:
                 return False
                 
         except subprocess.TimeoutExpired:
-            logging.error(f"Step {step}: TIMEOUT - prompt_runner.py timed out after 5 minutes")
+            logging.error(f"Step {step}: TIMEOUT - openrouter-runner timed out after 5 minutes")
             return False
         except FileNotFoundError:
-            logging.error(f"Step {step}: ERROR - prompt_runner.py not found in PATH")
-            logging.error("Make sure prompt_runner.py is installed and accessible in your system PATH")
+            logging.error(f"Step {step}: ERROR - openrouter-runner not found in PATH")
+            logging.error("Make sure openrouter-runner is installed and accessible in your system PATH")
             return False
         except Exception as e:
-            logging.error(f"Step {step}: ERROR - Failed to execute prompt_runner.py: {e}")
+            logging.error(f"Step {step}: ERROR - Failed to execute openrouter-runner: {e}")
             return False
     
     def _verify_output_file(self, file_path: Path, step: int) -> bool:
