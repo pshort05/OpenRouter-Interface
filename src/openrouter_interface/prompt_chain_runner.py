@@ -283,6 +283,54 @@ class PromptChainRunner:
             return prompt_config.get('config_file')
         return None
     
+    def _get_prompt_model(self, prompt_config) -> Optional[str]:
+        """Extract model from prompt config (returns None if not specified)."""
+        if isinstance(prompt_config, dict):
+            return prompt_config.get('model')
+        return None
+    
+    def _create_step_config_file(self, step: int, step_model: str = None) -> Optional[str]:
+        """
+        Create a temporary config file for this step with the specified model.
+        
+        Args:
+            step: Step number for filename uniqueness
+            step_model: Model to use for this step (if None, no config file is created)
+            
+        Returns:
+            Path to temporary config file, or None if no step-specific config needed
+        """
+        if not step_model and not self.prompt_runner_config:
+            return None
+            
+        # Create a temporary config file in the temp directory
+        step_config_path = self.temp_dir / f"step_{step:02d}_config.yaml"
+        
+        # Base configuration
+        step_config = {}
+        
+        # Load from global config if provided
+        if self.prompt_runner_config and Path(self.prompt_runner_config).exists():
+            with open(self.prompt_runner_config, 'r', encoding='utf-8') as f:
+                step_config = yaml.safe_load(f) or {}
+        
+        # Load from global_config section if it exists
+        if 'global_config' in self.config:
+            global_config = self.config['global_config']
+            step_config.update(global_config)
+        
+        # Override with step-specific model if provided
+        if step_model:
+            step_config['model'] = step_model
+            logging.info(f"Step {step}: Using step-specific model: {step_model}")
+        
+        # Write the temporary config file
+        with open(step_config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(step_config, f, default_flow_style=False, sort_keys=False)
+        
+        logging.debug(f"Step {step}: Created temporary config file: {step_config_path}")
+        return str(step_config_path)
+    
     def _validate_input_file(self) -> Path:
         """Validate that the input file exists before starting execution."""
         input_file = self._get_input_file()
@@ -420,7 +468,7 @@ class PromptChainRunner:
         Run prompt_runner.py with specified parameters.
         
         Args:
-            prompt_config: Prompt configuration (string or dict with prompt_file and optional config_file)
+            prompt_config: Prompt configuration (string or dict with prompt_file, optional config_file, and optional model)
             input_file: Input file for this step
             output_file: Output file for this step
             step: Current step number for logging
@@ -428,9 +476,10 @@ class PromptChainRunner:
         Returns:
             True if successful, False otherwise
         """
-        # Extract prompt file and config from prompt_config
+        # Extract file paths and model from config
         prompt_file = self._get_prompt_file(prompt_config)
         step_config_file = self._get_prompt_config_file(prompt_config)
+        step_model = self._get_prompt_model(prompt_config)
         
         # Build command - use prompt_runner.py directly from PATH
         cmd = [
@@ -441,13 +490,26 @@ class PromptChainRunner:
             "-l", str(self.log_file)  # Use same log file
         ]
         
-        # Add config file (priority: step-specific > global > none)
+        # Create step-specific config file if needed (handles both step-specific model and global config)
+        effective_config_file = None
+        
         if step_config_file:
-            cmd.extend(["-c", step_config_file])
-            logging.info(f"Step {step}: Using step-specific config: {step_config_file}")
-        elif self.prompt_runner_config:
-            cmd.extend(["-c", self.prompt_runner_config])
-            logging.info(f"Step {step}: Using global config: {self.prompt_runner_config}")
+            # User specified a step-specific config file, use it
+            effective_config_file = step_config_file
+            logging.info(f"Step {step}: Using step-specific config file: {step_config_file}")
+        elif step_model or self.prompt_runner_config or 'global_config' in self.config:
+            # Create a temporary config file with step-specific model and/or global config
+            effective_config_file = self._create_step_config_file(step, step_model)
+            if effective_config_file:
+                logging.info(f"Step {step}: Created temporary config file with model override")
+        
+        # Add config file if we have one
+        if effective_config_file:
+            cmd.extend(["-c", effective_config_file])
+            if step_model:
+                logging.info(f"Step {step}: Using model: {step_model}")
+            else:
+                logging.info(f"Step {step}: Using config file: {effective_config_file}")
         
         # Add temp directory to keep all files organized
         cmd.extend(["--temp-dir", str(self.temp_dir)])

@@ -13,29 +13,40 @@ input_files:
 output_pattern: "processed_{input_name}_final{input_ext}"
 
 # Sequential prompts to run on each file
+# Each step can optionally specify a different model
 prompts:
-  # Step 1: Run 1.json on each file
-  prompt 1: 1.json
+  # Step 1: Run 1.json with Gemini 2.0 Flash
+  prompt 1:
+    prompt_file: 1.json
+    model: google/gemini-2.0-flash-001
   
-  # Step 2: Run 2.json on the output from step 1
+  # Step 2: Run 2.json with default model (from global_config)
   prompt 2: 2.json
   
-  # Step 3: Run 3.json on the output from step 2
-  prompt 3: 3.json
+  # Step 3: Run 3.json with Claude Sonnet  
+  prompt 3:
+    prompt_file: 3.json
+    model: anthropic/claude-4-sonnet-20250522
 
-# Global configuration for all prompt executions
-# This will create a config file for each prompt_runner.py execution
+# Alternative simple format (all steps use global_config model):
+# prompts:
+#   prompt 1: 1.json
+#   prompt 2: 2.json  
+#   prompt 3: 3.json
+
+# Global configuration for prompt executions
+# Used as default for steps that don't specify their own model
 global_config:
-  model: google/gemini-2.0-flash-001
+  model: openai/gpt-4o-mini
   api_base_url: https://openrouter.ai/api/v1
   temperature: 0.7
   max_tokens: 8000
   log_level: INFO
 
-# Execution will create these final outputs:
-# - processed_file1_final.md (file1.md -> 1.json -> 2.json -> 3.json)
-# - processed_file2_final.md (file2.md -> 1.json -> 2.json -> 3.json)
-# - processed_file3_final.md (file3.md -> 1.json -> 2.json -> 3.json)
+# Execution will create these final outputs with different models:
+# - processed_file1_final.md (file1.md -> 1.json [Gemini] -> 2.json [GPT-4o-mini] -> 3.json [Claude])
+# - processed_file2_final.md (file2.md -> 1.json [Gemini] -> 2.json [GPT-4o-mini] -> 3.json [Claude])
+# - processed_file3_final.md (file3.md -> 1.json [Gemini] -> 2.json [GPT-4o-mini] -> 3.json [Claude])
 
 # Usage:
 # openrouter-chain -c sample_multi_file_chain.yaml
