@@ -2,7 +2,9 @@
 
 Get started with OpenRouter Interface in just a few simple steps. No complex configuration needed! Choose between CLI or Web interface.
 
-## ⚡ Super Quick Setup (30 seconds)
+## ⚡ Super Quick Setup (Choose Your Method)
+
+### Method A: Local Installation (30 seconds)
 
 1. **Clone and install:**
    ```bash
@@ -19,7 +21,27 @@ Get started with OpenRouter Interface in just a few simple steps. No complex con
    ./start-web.sh
    ```
 
-Done! The web interface will start automatically and show you the access URLs.
+### Method B: Global Installation (Work from anywhere)
+
+1. **Clone and install globally:**
+   ```bash
+   git clone <repository-url>
+   cd openrouter-interface
+   ./install-global.sh
+   ```
+2. **Set up your API key:**
+   ```bash
+   export OPENROUTER_API_KEY='your-api-key-here'
+   echo 'export OPENROUTER_API_KEY="your-key"' >> ~/.bashrc
+   ```
+3. **Use from any directory:**
+   ```bash
+   cd /anywhere/you/want
+   openrouter-runner --help
+   openrouter-web --foreground
+   ```
+
+**🌍 Global Benefits**: With global installation, you can run CLI tools from any directory without activating virtual environments.
 
 **🌐 Network Access**: The web interface is accessible from any device on your local network - phones, tablets, other computers. Just use the network IP address shown when starting the server.
 
@@ -64,19 +86,41 @@ openrouter-web
 
 **Interactive Mode (Easiest):**
 ```bash
+# Works from any directory after global install
 openrouter-runner
+
+# Or with local install, from project directory:
+./openrouter-runner
 ```
 The program will show available prompts and guide you through selection.
 
-**Direct Command (Fastest):**
+**Direct Command with absolute paths (Global install):**
 ```bash
-openrouter-runner -p "prompts/creative_writing_assistant.json" -i your_document.md
+# Use from anywhere with full paths
+openrouter-runner -p /path/to/prompts/creative_writing_assistant.json -i /path/to/your_document.md
+
+# Or with config file
+openrouter-runner -p /path/to/prompts/analysis.json -i input.md -c /path/to/config.yaml
+```
+
+**Direct Command (Local install):**
+```bash
+# From project directory
+./openrouter-runner -p prompts/creative_writing_assistant.json -i your_document.md
 ```
 
 **Chain Processing:**
 ```bash
-openrouter-chain -c examples/sample_chain.yaml -i input.md
+# Global install - use absolute paths
+openrouter-chain -c /path/to/chain_config.yaml -i /path/to/input.md
+
+# Local install - from project directory
+./openrouter-chain -c examples/sample_chain.yaml -i input.md
 ```
+
+**🌍 Global vs Local Usage:**
+- **Global install**: Run commands from any directory, use absolute file paths
+- **Local install**: Run from project directory, use relative file paths
 
 ## 📝 What You Need
 

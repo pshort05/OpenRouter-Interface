@@ -24,7 +24,7 @@
             <div class="prompt-description">{{ prompt.description }}</div>
             {% endif %}
             {% if prompt.enabled and prompt.exists %}
-                <a href="{{ url_for('show_prompt', prompt_file=prompt.path) }}" class="btn">Use This Prompt</a>
+                <a href="{{ url_for('show_prompt', prompt_file=prompt.file) }}" class="btn">Use This Prompt</a>
             {% else %}
                 <button class="btn" disabled>{{ "File Missing" if not prompt.exists else "Disabled" }}</button>
             {% endif %}

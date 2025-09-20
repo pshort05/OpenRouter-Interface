@@ -70,45 +70,21 @@ fi
 echo ""
 echo "🚀 Starting OpenRouter Web Interface..."
 
-# Verify the command is available
-echo "🔍 Checking openrouter-web command..."
-if ! command -v openrouter-web >/dev/null 2>&1; then
-    echo "❌ openrouter-web command not found"
-    echo "🔧 Trying to reinstall the package..."
-    pip install -e ".[web]"
-    
-    # Check again
-    if ! command -v openrouter-web >/dev/null 2>&1; then
-        echo "❌ Still cannot find openrouter-web command"
-        echo "🔧 Running directly with Python..."
-        
-        # Run directly
-        if [ "$1" = "--debug" ] || [ "$1" = "-d" ]; then
-            echo "🛠️  Starting in debug mode..."
-            python3 -m openrouter_interface.web --debug --foreground
-        elif [ "$1" = "--foreground" ] || [ "$1" = "-f" ]; then
-            echo "🖥️  Starting in foreground mode..."
-            python3 -m openrouter_interface.web --foreground
-        else
-            echo "🏭 Starting in production mode (background)..."
-            python3 -m openrouter_interface.web
-        fi
-        exit 0
-    fi
-fi
+# Set the Python path to include the src directory
+export PYTHONPATH="src:$PYTHONPATH"
 
-echo "✅ openrouter-web command found"
+echo "🔧 Running directly with Python module..."
 
 # Start the web application
 if [ "$1" = "--debug" ] || [ "$1" = "-d" ]; then
     echo "🛠️  Starting in debug mode..."
-    openrouter-web --debug --foreground
+    python3 -m openrouter_interface.web --debug --foreground
 elif [ "$1" = "--foreground" ] || [ "$1" = "-f" ]; then
     echo "🖥️  Starting in foreground mode..."
-    openrouter-web --foreground
+    python3 -m openrouter_interface.web --foreground
 else
     echo "🏭 Starting in production mode (background)..."
-    openrouter-web
+    python3 -m openrouter_interface.web
     echo ""
     echo "🎉 Web server is now running in the background!"
     echo ""

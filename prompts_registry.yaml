@@ -1,60 +1,173 @@
-# OpenRouter Interface Prompts Registry
-# This file defines which prompts are available in the web interface
-
+created: '2025-09-19 23:00:18'
 prompts:
-  - name: "Creative Writing Assistant"
-    file: "creative_writing_assistant.json"
-    category: "Writing"
-    description: "General purpose creative writing assistance"
-    enabled: true
-    
-  - name: "Dialogue Editor"
-    file: "dialogue_editor.json" 
-    category: "Editing"
-    description: "Improve dialogue in your writing"
-    enabled: true
-    
-  - name: "Copy Editor"
-    file: "copy_editor_prompt_v1.3.json"
-    category: "Editing" 
-    description: "Professional copy editing and proofreading"
-    enabled: true
-    
-  - name: "Engagement Checker"
-    file: "engagement_checker.json"
-    category: "Analysis"
-    description: "Check if your writing is engaging"
-    enabled: true
-    
-  - name: "Character Review"
-    file: "7-point character review.json"
-    category: "Analysis"
-    description: "7-point character development analysis"
-    enabled: true
-    
-  - name: "Content Quality"
-    file: "content_quality.json"
-    category: "Analysis"
-    description: "Assess overall content quality"
-    enabled: true
-    
-  - name: "First Chapter Checker"
-    file: "first_chapter_checker.json"
-    category: "Analysis"
-    description: "Analyze first chapters for hooks and engagement"
-    enabled: true
-
-categories:
-  - name: "Writing"
-    description: "Creative writing and composition"
-    
-  - name: "Editing" 
-    description: "Text editing and improvement"
-    
-  - name: "Analysis"
-    description: "Content analysis and feedback"
-
-settings:
-  default_category: "Writing"
-  show_disabled: false
-  max_prompts_per_page: 20
+- name: 7-point character review.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/7-point
+    character review.json
+  title: Full-Length Novel Character Evaluation Prompt (7-Point Genre-Aware Audit)
+  description: ''
+  enabled: true
+- name: adult_scene_generator.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/adult_scene_generator.json
+  title: Adult Scene Generator
+  description: ''
+  enabled: true
+- name: advanced_dialogue_prompt.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/advanced_dialogue_prompt.json
+  title: Expert Fiction Dialogue Writing Assistant
+  description: A comprehensive prompt system for creating authentic, character-driven
+    dialogue in fiction scenes across all genres. Incorporates professional screenwriting
+    principles, agent-based persistence, and anti-hallucination safeguards to ensure
+    high-quality, purposeful dialogue that serves both character development and plot
+    advancement.
+  enabled: true
+- name: bad chapter ending checker.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/bad
+    chapter ending checker.json
+  title: bad chapter ending checker
+  description: ''
+  enabled: true
+- name: bad ending checker.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/bad
+    ending checker.json
+  title: Avoiding Bad Endings in Fiction
+  description: ''
+  enabled: true
+- name: complex_document_analysis.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/complex_document_analysis.json
+  title: complex_document_analysis
+  description: ''
+  enabled: true
+- name: content_quality.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/content_quality.json
+  title: content_quality
+  description: ''
+  enabled: true
+- name: copy_editor_prompt_v1.3.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/copy_editor_prompt_v1.3.json
+  title: copy editor
+  description: ''
+  enabled: true
+- name: creative_writing_assistant.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/creative_writing_assistant.json
+  title: creative_writing_assistant
+  description: ''
+  enabled: true
+- name: dialogue_editor.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/dialogue_editor.json
+  title: Expert Dialogue Editor & Improver
+  description: Professional dialogue revision system that analyzes existing scenes
+    and applies core screenwriting principles to enhance authenticity, character voice,
+    and story impact across all fiction genres.
+  enabled: true
+- name: engagement checker.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/engagement
+    checker.json
+  title: Reader Engagement and Chapter Strategy Evaluation Prompt
+  description: ''
+  enabled: true
+- name: Female Character Evaluation Against 8 Key Mistakes.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/Female
+    Character Evaluation Against 8 Key Mistakes.json
+  title: "Female Character Evaluation \u2013 Against 8 Key Mistakes"
+  description: ''
+  enabled: true
+- name: first chapter checker - scfi and fantasy.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/first
+    chapter checker - scfi and fantasy.json
+  title: 'First Chapter Improvement: Hooking Readers Through Oriented Emotion'
+  description: "Analyze the first chapter of a novel to identify and resolve five\
+    \ common failures that often cause readers to disengage early. Your goal is to\
+    \ help the author create a gripping opening that hooks the reader through oriented\
+    \ emotion\u2014anchoring the speculative or unfamiliar within a named protagonist's\
+    \ emotional context."
+  enabled: true
+- name: human_writing_editor_v2.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/human_writing_editor_v2.json
+  title: Enhanced Human-Style Writing Editor
+  description: Comprehensive editing system that transforms AI-generated or problematic
+    prose into natural, human-like writing that passes detection while maintaining
+    fiction quality standards. Combines writing creation and editing capabilities
+    with advanced AI detection avoidance.
+  enabled: true
+- name: improving the middle third of a novel.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/improving
+    the middle third of a novel.json
+  title: Developmental Editor Agent for Novel Midpoint Enhancement
+  description: "You are a developmental editor at a major publishing house. Your job\
+    \ is to help authors improve the middle section of their novels by identifying\
+    \ weaknesses and suggesting targeted revisions. Use the following 9-point strategy\
+    \ to guide your feedback. Always begin by asking the author what genre their book\
+    \ is targeting. Use this information to tailor your analysis and suggestions to\
+    \ fit genre conventions and reader expectations. You are an agent \u2014 continue\
+    \ interacting until the user\u2019s query is fully resolved. Only yield control\
+    \ when the problem is completely solved."
+  enabled: true
+- name: Male Character Quality Audit Avoiding the 13 Common Mistakes.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/Male
+    Character Quality Audit Avoiding the 13 Common Mistakes.json
+  title: "Male Character Quality Audit \u2013 Avoiding the 13 Common Mistakes in Writing\
+    \ Men"
+  description: ''
+  enabled: true
+- name: multi_step_code_review.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/multi_step_code_review.json
+  title: multi_step_code_review
+  description: ''
+  enabled: true
+- name: optimized_dialogue_prompt.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/optimized_dialogue_prompt.json
+  title: Expert Dialogue Writer
+  description: Professional dialogue creation system applying core screenwriting principles
+    for authentic character voices across all fiction genres.
+  enabled: true
+- name: romance_editor.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/romance_editor.json
+  title: romance_editor
+  description: 'Error loading: Extra data: line 155 column 4 (char 7794)'
+  enabled: false
+- name: silent_dialogue_editor.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/silent_dialogue_editor.json
+  title: Silent Dialogue Editor
+  description: Automated dialogue revision system that silently improves dialogue
+    within scenes or chapters by applying core screenwriting principles. Edits only
+    dialogue lines while preserving all narrative text, action lines, and story structure
+    exactly as written.
+  enabled: true
+- name: silent_dialogue_editor_prompt.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/silent_dialogue_editor_prompt.json
+  title: Silent Dialogue Editor
+  description: Automated dialogue revision system that silently improves dialogue
+    within scenes or chapters by applying core screenwriting principles. Edits only
+    dialogue lines while preserving all narrative text, action lines, and story structure
+    exactly as written.
+  enabled: true
+- name: silent_on_the_nose_editor.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/silent_on_the_nose_editor.json
+  title: Silent On the Nose Editor
+  description: Expert editor that silently identifies and fixes on-the-nose prose,
+    returning only the improved text without commentary or analysis.
+  enabled: true
+- name: silent_strunk_white_editor.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/silent_strunk_white_editor.json
+  title: Silent Strunk & White Editor
+  description: Silent editor that fixes only critical grammar and style violations
+    while preserving all other elements unchanged
+  enabled: true
+- name: spicy scene checker.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/spicy
+    scene checker.json
+  title: Spicy Scene Quality Audit
+  description: ''
+  enabled: true
+- name: strunk_white_analyzer.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/strunk_white_analyzer.json
+  title: Strunk & White Style Analyzer
+  description: Professional style analyst that identifies violations of The Elements
+    of Style principles and provides detailed correction recommendations without making
+    changes
+  enabled: true
+- name: technical_review.json
+  path: /home/paul/Dropbox/Writing/OpenRouter-Interface/src/openrouter_interface/../../prompts/technical_review.json
+  title: technical_review
+  description: ''
+  enabled: true

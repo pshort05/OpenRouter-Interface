@@ -6,12 +6,25 @@ A comprehensive tool for executing JSON prompt files using the OpenRouter API. A
 
 **👋 First time using this tool?** → **[QUICK START GUIDE](QUICK-START.md)** - Get running in 3 minutes!
 
+## 🆕 Recent Updates
+
+**🌍 Global Installation**: New `./install-global.sh` script enables CLI tools to run from any directory without virtual environments.
+
+**🔧 Web Interface Fixed**: Resolved "No prompts configured" issue - prompts now display correctly in the web interface.
+
+**📦 Installation Improved**: Fixed pyproject.toml and added proper setup.py for better pip compatibility.
+
+**🔗 Entry Points Working**: CLI commands (`openrouter-runner`, `openrouter-chain`, `openrouter-web`) now work as intended.
+
+**📚 Enhanced Documentation**: Added comprehensive troubleshooting guide and updated all setup instructions.
+
 ## 📖 Quick Navigation
 
 🚀 **Get Started**: [Quick Start (QUICK-START.md)](QUICK-START.md) | [Setup Guide (README_setup.md)](README_setup.md) | [Linux Setup (SETUP_LINUX.md)](SETUP_LINUX.md)  
 ⛓️ **Advanced**: [Prompt Chains (prompt_chain_readme.md)](prompt_chain_readme.md) | [Multi-File Processing](prompt_chain_readme.md#enhanced-configuration-examples)  
 🌐 **Web Interface**: [Flask Setup (setup_guide.md)](setup_guide.md) | [Templates (README_temple_setup.md)](README_temple_setup.md)  
-🔧 **Development**: [Claude Code Integration (CLAUDE.md)](CLAUDE.md) | [Architecture Guide](CLAUDE.md#code-architecture)
+🔧 **Development**: [Claude Code Integration (CLAUDE.md)](CLAUDE.md) | [Architecture Guide](CLAUDE.md#code-architecture)  
+🆘 **Help**: [Troubleshooting Guide (TROUBLESHOOTING.md)](TROUBLESHOOTING.md) | [Common Issues & Fixes](TROUBLESHOOTING.md#quick-fixes-summary)
 
 ## 🚀 Interfaces Available
 

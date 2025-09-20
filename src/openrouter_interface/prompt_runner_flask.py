@@ -320,13 +320,19 @@ class FlaskPromptRunner:
                 # Verify prompt files still exist and add metadata
                 verified_prompts = []
                 for prompt in prompts:
-                    # Build full path from project root + prompts directory + file name
-                    if 'file' in prompt:
-                        prompt_file_path = os.path.join(self.project_root, 'prompts', prompt['file'])
-                        prompt_path = Path(prompt_file_path)
-                        # Use relative path for URL routing (prompts/filename.json)
-                        prompt['path'] = f"prompts/{prompt['file']}" 
-                        prompt['full_path'] = str(prompt_path)  # Keep full path for file operations
+                    # Check if prompt is enabled and has required fields
+                    if not prompt.get('enabled', False):
+                        continue
+                        
+                    if 'name' in prompt and 'path' in prompt:
+                        # Use the absolute path from the registry
+                        prompt_path = Path(prompt['path'])
+                        
+                        # For URL routing, use relative path from project root
+                        # Extract just the filename from the name field
+                        prompt_filename = prompt['name']
+                        prompt['file'] = f"prompts/{prompt_filename}"  # Relative path for URL
+                        prompt['full_path'] = str(prompt_path)  # Keep absolute path for file operations
                         
                         if prompt_path.exists():
                             file_size = prompt_path.stat().st_size
@@ -339,7 +345,7 @@ class FlaskPromptRunner:
                             prompt['exists'] = False
                         verified_prompts.append(prompt)
                     else:
-                        # Skip prompts without file reference
+                        # Skip prompts without required fields
                         continue
                 
                 return render_template('index.html', prompts=verified_prompts)
@@ -446,6 +452,9 @@ class FlaskPromptRunner:
                 print(f"ROUTE DEBUG: Request headers = {dict(request.headers)}")
                 print(f"ROUTE DEBUG: Content type = {request.content_type}")
                 print(f"ROUTE DEBUG: Content length = {request.content_length}")
+                print(f"ROUTE DEBUG: Is AJAX request = {'X-Requested-With' in request.headers}")
+                print(f"ROUTE DEBUG: User Agent = {request.headers.get('User-Agent', 'Not provided')}")
+                print(f"ROUTE DEBUG: Referer = {request.headers.get('Referer', 'Not provided')}")
                 
                 # Log all form data for debugging
                 logging.info(f"Form data received: {dict(request.form)}")
@@ -554,8 +563,22 @@ class FlaskPromptRunner:
                     logging.error(f"FILE READ ERROR: {read_error}")
                     print(f"FILE READ ERROR: {read_error}")
                 
-                flash('Configuration updated successfully', 'success')
-                return redirect(url_for('show_config'))
+                # Handle AJAX vs normal form submission differently
+                if 'X-Requested-With' in request.headers and request.headers['X-Requested-With'] == 'XMLHttpRequest':
+                    # AJAX request - return JSON response
+                    logging.info("AJAX REQUEST: Returning JSON response")
+                    print("AJAX REQUEST: Returning JSON response")
+                    return jsonify({
+                        'success': True, 
+                        'message': 'Configuration updated successfully',
+                        'new_model': current_model
+                    })
+                else:
+                    # Normal form submission - redirect
+                    logging.info("NORMAL REQUEST: Redirecting to config page")
+                    print("NORMAL REQUEST: Redirecting to config page")
+                    flash('Configuration updated successfully', 'success')
+                    return redirect(url_for('show_config'))
                 
             except Exception as e:
                 logging.error(f"Error updating configuration: {e}")

@@ -9,10 +9,10 @@ A comprehensive Python package for executing JSON prompts using the OpenRouter A
 
 ## ⚡ Quick Start
 
-### 🚀 Super Easy Installation
+### 🚀 Local Installation (Virtual Environment)
 
 ```bash
-# 1. Clone and install
+# 1. Clone and install in virtual environment
 git clone <repository-url>
 cd openrouter-interface
 ./install.sh web
@@ -24,7 +24,27 @@ cd openrouter-interface
 ./start-web.sh
 ```
 
-That's it! Three simple commands and you're running a full AI processing web interface.
+### 🌍 Global Installation (Use from anywhere)
+
+For system-wide access without virtual environments:
+
+```bash
+# 1. Clone and install globally
+git clone <repository-url>
+cd openrouter-interface
+./install-global.sh
+
+# 2. Set up API key (add to shell profile)
+export OPENROUTER_API_KEY='your-api-key-here'
+echo 'export OPENROUTER_API_KEY="your-key"' >> ~/.bashrc
+
+# 3. Use from any directory
+openrouter-runner --help
+openrouter-chain --help
+openrouter-web --foreground
+```
+
+That's it! Choose local (virtual environment) or global installation based on your needs.
 
 **🌐 Network Features:**
 - **Multi-device Access**: Use from phones, tablets, and other computers on your network

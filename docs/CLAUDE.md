@@ -5,13 +5,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Installation and Setup
+
+#### Local Installation (Virtual Environment)
+```bash
+# Quick automated setup (recommended)
+./install.sh web
+
+# Set up API key
+./setup-api-key.sh
+```
+
+#### Global Installation (Use from anywhere)
+```bash
+# Install globally - no virtual environment needed
+./install-global.sh
+
+# Set API key permanently
+export OPENROUTER_API_KEY='your-key'
+echo 'export OPENROUTER_API_KEY="your-key"' >> ~/.bashrc
+```
+
+#### Manual Setup (Advanced)
 ```bash
 # Install Python dependencies
 pip install -r requirements.txt
-
-# Quick automated setup (recommended)
-chmod +x setup_prompt_runner.sh
-./setup_prompt_runner.sh
 
 # Create Flask templates and config
 python create_templates.py
@@ -20,9 +37,25 @@ python create_templates.py
 ### Running Applications
 
 #### CLI Interface
+
+**Global Installation Commands:**
+```bash
+# Interactive mode from anywhere
+openrouter-runner
+
+# Batch mode with absolute paths
+openrouter-runner -p /path/to/analysis.json -i /path/to/document.md -o results.md
+
+# With config and logging
+openrouter-runner -p /path/to/review.json -i code.py -c /path/to/config.yaml -l debug.log -v
+```
+
+**Local Installation Commands:**
 ```bash
 # Interactive mode - scan and select prompts
 python prompt_runner.py
+# OR use wrapper script
+./openrouter-runner
 
 # Batch mode - process specific files
 python prompt_runner.py -p analysis.json -i document.md -o results.md
@@ -32,13 +65,31 @@ python prompt_runner.py -p review.json -i code.py -c config.yaml -l debug.log -v
 ```
 
 #### Web Interface
-```bash
-# Quick start with shell script
-chmod +x prompt_runner_flask.sh
-./prompt_runner_flask.sh --setup    # Initial setup
-./prompt_runner_flask.sh            # Start server
 
-# Direct Flask execution
+**Recommended Method:**
+```bash
+# Start web interface (auto-handles PYTHONPATH)
+./start-web.sh
+
+# Debug mode with live reloading
+./start-web.sh --debug
+
+# Foreground mode
+./start-web.sh --foreground
+```
+
+**Global Installation:**
+```bash
+# Start from anywhere
+openrouter-web --debug --foreground
+```
+
+**Manual Methods:**
+```bash
+# Direct with PYTHONPATH
+PYTHONPATH=src python3 -m openrouter_interface.web --debug --foreground
+
+# Legacy method
 python prompt_runner_flask.py
 ```
 

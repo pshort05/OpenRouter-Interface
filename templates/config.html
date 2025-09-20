@@ -110,6 +110,7 @@
     
     <div style="margin-top: 30px;">
         <button type="submit" id="save-btn" class="btn btn-success" onclick="console.log('Save button clicked'); debugFormSubmission();">Save Configuration</button>
+        <button type="button" id="bypass-save-btn" class="btn btn-warning" onclick="bypassSave()" style="margin-left: 10px;">🔄 Bypass Save (for browser extension issues)</button>
         <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
         <div id="save-status" style="margin-top: 10px; font-weight: bold; display: none;"></div>
         <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
@@ -151,6 +152,66 @@
 
 {% block scripts %}
 <script>
+// Bypass save function that uses a different approach to avoid extensions
+function bypassSave() {
+    console.log('BYPASS: Starting bypass save function');
+    
+    const form = document.querySelector('form[action="{{ url_for("update_config") }}"]');
+    const saveStatus = document.getElementById('save-status');
+    const bypassBtn = document.getElementById('bypass-save-btn');
+    
+    if (!form) {
+        console.error('BYPASS: Form not found');
+        return;
+    }
+    
+    // Show status
+    if (saveStatus) {
+        saveStatus.style.display = 'block';
+        saveStatus.style.color = 'blue';
+        saveStatus.innerHTML = '⏳ Bypassing browser extensions, saving configuration...';
+    }
+    
+    if (bypassBtn) {
+        bypassBtn.disabled = true;
+        bypassBtn.innerHTML = '🔄 Saving...';
+    }
+    
+    // Create a new form element completely
+    const newForm = document.createElement('form');
+    newForm.method = 'POST';
+    newForm.action = form.action;
+    newForm.style.display = 'none';
+    
+    // Copy all form fields
+    const formData = new FormData(form);
+    for (let [key, value] of formData.entries()) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value;
+        newForm.appendChild(input);
+        console.log(`BYPASS: Added field ${key}: ${value}`);
+    }
+    
+    // Add to document and submit
+    document.body.appendChild(newForm);
+    
+    console.log('BYPASS: Submitting new form directly');
+    console.log('BYPASS: Form action:', newForm.action);
+    console.log('BYPASS: Form method:', newForm.method);
+    
+    // Submit the form
+    newForm.submit();
+    
+    // Clean up
+    setTimeout(() => {
+        if (document.body.contains(newForm)) {
+            document.body.removeChild(newForm);
+        }
+    }, 1000);
+}
+
 // Form submission debugging function
 function debugFormSubmission() {
     console.log('DEBUG: Save button clicked');
@@ -243,13 +304,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 saveStatus.innerHTML = '⏳ Saving configuration...';
             }
             
-            // Use fetch API to bypass redirect blockers
+            // Use fetch API to bypass redirect blockers  
             console.log('SUBMIT EVENT: Using fetch API to bypass redirect blocker');
+            console.log('SUBMIT EVENT: Form action URL:', this.action);
+            console.log('SUBMIT EVENT: Request will be sent to:', this.action);
+            
+            // Log the exact data being sent
+            const dataToSend = {};
+            for (let [key, value] of formData.entries()) {
+                dataToSend[key] = value;
+            }
+            console.log('SUBMIT EVENT: Data being sent:', dataToSend);
             
             fetch(this.action, {
                 method: 'POST',
                 body: formData,
-                credentials: 'same-origin'  // Include cookies/session
+                credentials: 'same-origin',  // Include cookies/session
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'  // Help identify AJAX requests
+                }
             })
             .then(response => {
                 console.log('FETCH RESPONSE: Status:', response.status);
@@ -257,17 +330,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('FETCH RESPONSE: Headers:', [...response.headers.entries()]);
                 
                 if (response.ok) {
-                    console.log('FETCH RESPONSE: Success, reloading page');
+                    console.log('FETCH RESPONSE: Success, processing JSON response');
                     
-                    if (saveStatus) {
-                        saveStatus.style.color = 'green';
-                        saveStatus.innerHTML = '✅ Configuration saved successfully! Reloading...';
-                    }
-                    
-                    // Wait a moment to show success, then reload
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
+                    // Try to parse JSON response
+                    response.json().then(data => {
+                        console.log('FETCH RESPONSE: JSON data:', data);
+                        
+                        if (data.success) {
+                            if (saveStatus) {
+                                saveStatus.style.color = 'green';
+                                saveStatus.innerHTML = `✅ ${data.message || 'Configuration saved successfully!'} New model: ${data.new_model || 'Unknown'}`;
+                            }
+                            
+                            console.log('FETCH RESPONSE: Success, reloading page in 2 seconds');
+                            // Wait a moment to show success, then reload
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        } else {
+                            console.error('FETCH RESPONSE: Server returned success=false:', data);
+                            if (saveStatus) {
+                                saveStatus.style.color = 'red';
+                                saveStatus.innerHTML = `❌ ${data.message || 'Save failed'}`;
+                            }
+                            // Re-enable button
+                            if (saveBtn) {
+                                saveBtn.disabled = false;
+                                saveBtn.innerHTML = 'Save Configuration';
+                            }
+                        }
+                    }).catch(jsonError => {
+                        console.log('FETCH RESPONSE: Not JSON, treating as success (probably redirect response)');
+                        
+                        if (saveStatus) {
+                            saveStatus.style.color = 'green';
+                            saveStatus.innerHTML = '✅ Configuration saved successfully! Reloading...';
+                        }
+                        
+                        // Wait a moment to show success, then reload
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    });
                 } else {
                     console.error('FETCH RESPONSE: Error response:', response.status, response.statusText);
                     

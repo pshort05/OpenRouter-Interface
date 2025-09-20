@@ -1,0 +1,7 @@
+#!/bin/bash
+# OpenRouter Runner standalone script
+# This demonstrates how the tool would work after proper installation
+
+cd "$(dirname "$0")"
+export PYTHONPATH=src
+python3 -m openrouter_interface.cli "$@"

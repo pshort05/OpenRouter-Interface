@@ -1,26 +1,15 @@
 #!/usr/bin/env python3
 """
-Setup script for OpenRouter Interface.
-
-This is a backup setup.py for systems that don't support pyproject.toml.
-The canonical configuration is in pyproject.toml.
+Setup script for OpenRouter Interface
+This provides better compatibility for pip installs and entry points
 """
 
 from setuptools import setup, find_packages
 import os
 
-# Read version from package
-def get_version():
-    version_file = os.path.join("src", "openrouter_interface", "__init__.py")
-    with open(version_file) as f:
-        for line in f:
-            if line.startswith("__version__"):
-                return line.split("=")[1].strip().strip('"').strip("'")
-    return "1.0.0"
-
-# Read long description from README
-def get_long_description():
-    readme_path = os.path.join("docs", "README.md")
+# Read the README file for long description
+def read_readme():
+    readme_path = os.path.join(os.path.dirname(__file__), "docs", "README.md")
     if os.path.exists(readme_path):
         with open(readme_path, "r", encoding="utf-8") as f:
             return f.read()
@@ -28,21 +17,35 @@ def get_long_description():
 
 setup(
     name="openrouter-interface",
-    version=get_version(),
+    version="1.0.0",
     description="A comprehensive tool for executing JSON prompts using the OpenRouter API",
-    long_description=get_long_description(),
+    long_description=read_readme(),
     long_description_content_type="text/markdown",
     author="OpenRouter Interface Team",
+    license="MIT",
     python_requires=">=3.7",
-    package_dir={"": "src"},
-    packages=find_packages(where="src"),
     
+    # Package discovery
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
+    
+    # Include package data
+    package_data={
+        "openrouter_interface": [
+            "templates/*.html",
+            "static/*.css", 
+            "static/*.js",
+        ],
+    },
+    include_package_data=True,
+    
+    # Dependencies
     install_requires=[
         "requests>=2.25.0",
         "PyYAML>=5.4.0",
-        "pathlib2; python_version<'3.4'",
     ],
     
+    # Optional dependencies
     extras_require={
         "web": [
             "flask>=2.0.0",
@@ -52,7 +55,7 @@ setup(
             "pytest>=6.0",
             "pytest-cov",
             "black",
-            "flake8", 
+            "flake8",
             "mypy",
             "tox",
         ],
@@ -68,6 +71,7 @@ setup(
         ],
     },
     
+    # Console scripts / entry points
     entry_points={
         "console_scripts": [
             "openrouter-runner=openrouter_interface.cli:main",
@@ -77,14 +81,7 @@ setup(
         ],
     },
     
-    package_data={
-        "openrouter_interface": [
-            "templates/*.html",
-            "static/*.css", 
-            "static/*.js",
-        ],
-    },
-    
+    # Classifiers
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
@@ -94,7 +91,7 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9", 
+        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
@@ -104,6 +101,15 @@ setup(
         "Topic :: Utilities",
     ],
     
+    # URLs
+    project_urls={
+        "Homepage": "https://github.com/openrouter-interface/openrouter-interface",
+        "Documentation": "https://github.com/openrouter-interface/openrouter-interface/blob/main/docs/README.md",
+        "Repository": "https://github.com/openrouter-interface/openrouter-interface",
+        "Issues": "https://github.com/openrouter-interface/openrouter-interface/issues",
+    },
+    
+    # Keywords
     keywords=[
         "openrouter", "ai", "llm", "prompt", "cli", "web", "automation",
         "claude", "gpt", "gemini", "api", "processing"
