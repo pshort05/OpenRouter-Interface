@@ -1,0 +1,14 @@
+{
+  "choices": [
+    {
+      "message": {
+        "content": "# Improved Test Document\n\nThis is an enhanced sample document that demonstrates the capabilities of the OpenRouter Interface.\n\n## Content Quality Improvements\n\nThe document has been improved in several key areas:\n\n- Grammar has been corrected throughout\n- Sentence structure has been enhanced for better flow\n- Tone and style are now consistent\n- Clarity has been significantly improved\n\nAll grammatical errors have been fixed. The writing style is now consistent throughout this document, and all problematic sections have been identified and improved.\n\n## Conclusion\n\nThis enhanced test document provides an excellent foundation for testing various prompt types and demonstrates that our system can effectively handle different content improvement tasks."
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 150,
+    "completion_tokens": 120,
+    "total_tokens": 270
+  }
+}
