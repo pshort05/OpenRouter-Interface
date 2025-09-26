@@ -1,15 +1,15 @@
 # OpenRouter Prompt Chain Runner
 
-A powerful automation tool that executes multiple prompts in sequence, creating sophisticated document processing pipelines. Available as both **CLI interface** and **Web GUI** with real-time progress tracking. Perfect for complex AI workflows that require multiple processing steps.
+A powerful automation tool that executes multiple prompts in sequence, creating sophisticated document processing pipelines. Now supports **multi-prompt processing** where each chain step can combine multiple specialized prompts. Available as both **CLI interface** and **Web GUI** with real-time progress tracking. Perfect for complex AI workflows that require multiple processing steps.
 
 ## 🚀 Overview
 
-The Prompt Chain Runner takes a single input document and processes it through 1-99 sequential prompts, where each prompt's output becomes the next prompt's input. This enables complex multi-step AI processing workflows like:
+The Prompt Chain Runner takes a single input document and processes it through 1-99 sequential prompts, where each prompt's output becomes the next prompt's input. Each chain step can use either single prompts or **multiple prompts combined** into master system prompts. This enables complex multi-step AI processing workflows like:
 
-- **Document editing pipelines**: Grammar → Style → Content → Formatting
-- **Analysis workflows**: Extract → Analyze → Summarize → Report
-- **Content transformation**: Research → Draft → Refine → Polish → Publish
-- **Data processing**: Clean → Analyze → Visualize → Interpret
+- **Document editing pipelines**: Quality+Grammar → Style+Tone → Content+Structure → Formatting
+- **Analysis workflows**: Extract+Clean → Analyze+Validate → Summarize+Categorize → Report+Visualize
+- **Content transformation**: Research+Fact-check → Draft+Style → Refine+Polish → Publish+Format
+- **Code review**: Security+Performance → Style+Standards → Documentation+Testing → Optimization
 
 ## 📋 Table of Contents
 
@@ -49,6 +49,7 @@ The Prompt Chain Runner takes a single input document and processes it through 1
 
 ### Core Functionality
 - **Sequential Processing**: 1-99 prompts executed in order
+- **Multi-Prompt Steps**: Each step can combine multiple prompts into master system prompts
 - **Automatic Chaining**: Output from step N becomes input for step N+1
 - **Flexible Configuration**: YAML-based configuration with command-line overrides
 - **Unique File Tracking**: Timestamp + UUID naming for all generated files
@@ -70,6 +71,12 @@ The Prompt Chain Runner takes a single input document and processes it through 1
 - **Pattern-Based Output**: Generate organized output files using naming patterns
 - **Efficient Execution**: Each file processes through all prompts before moving to the next
 - **Organized Results**: All files maintained in the same temp directory with clear naming
+
+#### Multi-Prompt Processing (NEW)
+- **Combined Expertise**: Each chain step can leverage multiple specialized prompts simultaneously
+- **Master System Prompts**: Automatically creates structured prompts combining all specified files
+- **Flexible Step Configuration**: Mix single-prompt and multi-prompt steps within the same chain
+- **Enhanced Processing**: Combine quality analysis + grammar checking + style improvement in one step
 
 #### Per-Prompt Configuration
 - **Different LLMs per Step**: Use optimal AI model for each processing step
@@ -484,6 +491,51 @@ jq . temp/input_*/prompt_runner_20250131_143053_12346.payload.json
 ```
 
 ### 🆕 Enhanced Configuration Examples
+
+#### Multi-Prompt Chain Configuration (NEW)
+Combine multiple prompts within individual chain steps for comprehensive processing:
+```yaml
+# multi_prompt_chain.yaml
+input_file: "manuscript.md"
+output_file: "polished_output.md"
+
+prompts:
+  # Step 1: Comprehensive analysis combining multiple specialties
+  prompt 1:
+    name: "comprehensive_analysis"
+    prompt_file: "prompts/quality_check.json,prompts/grammar_check.json,prompts/structure_analysis.json"
+
+  # Step 2: Style enhancement using multiple approaches
+  prompt 2:
+    name: "style_enhancement"
+    prompt_file: "prompts/style_guide.json,prompts/tone_adjustment.json,prompts/readability.json"
+    model: "anthropic/claude-4-sonnet-20250522"  # Use specific model for style work
+
+  # Step 3: Single specialized prompt for final polish
+  prompt 3:
+    name: "final_polish"
+    prompt_file: "prompts/final_edit.json"
+    model: "openai/gpt-4o-2024-11-20"
+
+  # Step 4: Comprehensive final review combining all quality checks
+  prompt 4:
+    name: "final_quality_assurance"
+    prompt_file: "prompts/final_review.json,prompts/publication_standards.json,prompts/consistency_check.json"
+```
+
+#### Mixed Single and Multi-Prompt Chain
+```yaml
+# mixed_processing_chain.yaml
+input_file: "technical_document.md"
+output_file: "publication_ready.md"
+
+prompts:
+  prompt 1: "technical_accuracy.json"  # Single prompt for focused technical review
+  prompt 2:
+    name: "comprehensive_editing"
+    prompt_file: "grammar.json,style.json,clarity.json"  # Multi-prompt for comprehensive editing
+  prompt 3: "formatting.json"  # Single prompt for final formatting
+```
 
 #### Multi-File Processing Configuration
 Process multiple files through the same prompt sequence:

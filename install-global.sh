@@ -21,17 +21,33 @@ fi
 
 echo "📦 Installing OpenRouter Interface package globally..."
 
-# First, uninstall any existing installation
-pip3 uninstall openrouter-interface -y 2>/dev/null || echo "No previous installation found"
+# First, uninstall any existing installation (both system and user)
+pip3 uninstall openrouter-interface -y 2>/dev/null || echo "No previous system installation found"
+pip3 uninstall openrouter-interface -y --user 2>/dev/null || echo "No previous user installation found"
 
 # Install the package globally using pip (try different approaches)
-if pip3 install . --force-reinstall 2>/dev/null; then
-    echo "✅ Installed using standard pip install"
-elif pip3 install . --user --force-reinstall 2>/dev/null; then
-    echo "✅ Installed to user directory"
-    echo "⚠️  Make sure ~/.local/bin is in your PATH"
+if pip3 install . --user --force-reinstall --no-deps 2>/dev/null; then
+    echo "✅ Installed to user directory (without dependencies)"
+    # Check if ~/.local/bin is in PATH
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        echo "⚠️  ~/.local/bin is not in your PATH"
+        echo "   Add it by running: echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc"
+        echo "   Then restart your terminal or run: source ~/.bashrc"
+    else
+        echo "✅ ~/.local/bin is already in your PATH"
+    fi
+elif pip3 install . --force-reinstall --break-system-packages --no-deps 2>/dev/null; then
+    echo "✅ Installed using system packages override (without dependencies)"
+    echo "ℹ️  Using existing system dependencies"
+elif command -v pipx >/dev/null 2>&1 && pipx install . --force 2>/dev/null; then
+    echo "✅ Installed using pipx"
+    echo "ℹ️  pipx manages isolated environments automatically"
 else
-    echo "❌ Installation failed. Try running with sudo or use virtual environment"
+    echo "❌ Installation failed. Solutions:"
+    echo "   1. Install to user directory: pip3 install . --user --no-deps"
+    echo "   2. Use pipx: pipx install ."
+    echo "   3. Create virtual environment: python3 -m venv venv && source venv/bin/activate && pip install ."
+    echo "   4. Override system protection: pip3 install . --break-system-packages --no-deps"
     exit 1
 fi
 

@@ -155,40 +155,33 @@ class PromptRunner:
         logging.info(separator)
         
         try:
-            # Validate and convert to Path objects
-            prompt_path = Path(prompt_file)
+            # Validate input file (prompt files already validated by validate_prompt_files)
             input_path = Path(input_file)
-            
-            # Validate files exist
-            if not prompt_path.exists():
-                logging.error(f"Prompt file not found: {prompt_path}")
-                return False
-                
-            if not prompt_path.is_file():
-                logging.error(f"Prompt path is not a file: {prompt_path}")
-                return False
-                
+
             if not input_path.exists():
                 logging.error(f"Input file not found: {input_path}")
                 return False
-                
+
             if not input_path.is_file():
                 logging.error(f"Input path is not a file: {input_path}")
                 return False
-            
-            # Validate file extensions
-            if prompt_path.suffix.lower() != '.json':
-                logging.warning(f"Prompt file does not have .json extension: {prompt_path}")
-            
+
+            # Validate prompt file extensions (support comma-separated)
+            prompt_paths = [p.strip() for p in prompt_file.split(',')] if ',' in prompt_file else [prompt_file]
+            for p in prompt_paths:
+                path = Path(p)
+                if path.suffix.lower() != '.json':
+                    logging.warning(f"Prompt file does not have .json extension: {path}")
+
             logging.info(f"✓ Files validated successfully")
-            
-            # Load prompt
+
+            # Load prompt(s) - PromptLoader handles single/multiple files
             logging.info("Step 1: Loading prompt configuration")
             try:
-                prompt_data = self.prompt_loader.load_prompt(prompt_path)
-                logging.info("✓ Prompt loaded successfully")
+                prompt_data = self.prompt_loader.load_prompt(prompt_file)  # Pass string directly
+                logging.info("✓ Prompt(s) loaded successfully")
             except Exception as e:
-                logging.error(f"Failed to load prompt: {e}")
+                logging.error(f"Failed to load prompt(s): {e}")
                 return False
             
             # Load input content
@@ -312,26 +305,57 @@ class PromptRunner:
 def validate_file_path(file_path: str, file_type: str) -> Path:
     """
     Validate that a file path exists and is accessible.
-    
+
     Args:
         file_path: Path string to validate
         file_type: Description of file type for error messages
-        
+
     Returns:
         Path object if valid
-        
+
     Raises:
         argparse.ArgumentTypeError: If path is invalid
     """
     path = Path(file_path)
-    
+
     if not path.exists():
         raise argparse.ArgumentTypeError(f"{file_type} file not found: {path}")
-    
+
     if not path.is_file():
         raise argparse.ArgumentTypeError(f"{file_type} path is not a file: {path}")
-    
+
     return path
+
+
+def validate_prompt_files(file_paths: str) -> str:
+    """
+    Validate prompt file paths. Supports single files and comma-separated multiple files.
+
+    Args:
+        file_paths: Single file path or comma-separated list of file paths
+
+    Returns:
+        Original string if valid (to be processed later by PromptLoader)
+
+    Raises:
+        argparse.ArgumentTypeError: If any path is invalid
+    """
+    # Handle comma-separated paths
+    if ',' in file_paths:
+        paths = [p.strip() for p in file_paths.split(',')]
+    else:
+        paths = [file_paths]
+
+    # Validate each path
+    for file_path in paths:
+        path = Path(file_path)
+        if not path.exists():
+            raise argparse.ArgumentTypeError(f"Prompt file not found: {path}")
+        if not path.is_file():
+            raise argparse.ArgumentTypeError(f"Prompt path is not a file: {path}")
+
+    # Return original string for processing by PromptLoader
+    return file_paths
 
 
 def main():
@@ -343,6 +367,8 @@ def main():
 Mode Selection:
     Interactive Mode (default): Scan directory and select files interactively
     Batch Mode: Process specific files specified via command line
+        - Single Prompt: Use one JSON prompt file
+        - Multi-Prompt: Use comma-separated prompt files combined into master system prompt
 
 Interactive Mode Examples:
     python prompt_runner.py
@@ -351,10 +377,15 @@ Interactive Mode Examples:
     python prompt_runner.py -l debug.log -v -o responses.md
 
 Batch Mode Examples:
+    # Single prompt processing
     python prompt_runner.py -p analysis.json -i document.md
     python prompt_runner.py -p review.json -i code.py -o results.md
     python prompt_runner.py -p analysis.json -i data.txt -o analysis.md -c custom_config.yaml
-    python prompt_runner.py -p review.json -i code.py -l batch.log -o results.md
+
+    # Multi-prompt processing (NEW) - Combines multiple prompts into master system prompt
+    python prompt_runner.py -p "quality.json,grammar.json" -i document.md -o enhanced.md
+    python prompt_runner.py -p "analysis.json,review.json,polish.json" -i code.py -o improved_code.py
+    python prompt_runner.py -p "style.json,tone.json,clarity.json" -i article.md -l multi.log -o final.md
 
 Batch Processing Multiple Files:
     # Process multiple files with the same prompt and config, logging to file
@@ -401,9 +432,9 @@ The program will:
     mode_group = parser.add_argument_group('Mode Selection')
     mode_group.add_argument(
         '-p', '--prompt',
-        type=lambda x: validate_file_path(x, "Prompt"),
-        help='JSON prompt file (enables batch mode)',
-        metavar='PROMPT_FILE'
+        type=validate_prompt_files,
+        help='JSON prompt file(s) - single file or comma-separated list (enables batch mode)',
+        metavar='PROMPT_FILE(S)'
     )
     mode_group.add_argument(
         '-i', '--input',

@@ -1,0 +1,37 @@
+# Multi-Prompt Chain Test Configuration
+# Demonstrates combining multiple JSON prompts in different chain steps
+
+# Input and output configuration
+input_file: test_input.md
+output_file: chain_multi_prompt_output.md
+
+# Global configuration for all steps (can be overridden per step)
+global_config:
+  model: anthropic/claude-4-sonnet-20250522
+  temperature: 0.8
+  max_tokens: 25000
+
+# Chain prompts with different multi-prompt configurations
+prompts:
+  # Step 1: Combine quality analysis and grammar checking
+  prompt 1:
+    name: "comprehensive_analysis"
+    prompt_file: "prompts/test_prompt1.json,prompts/test_prompt2.json"
+    # This step will combine:
+    # - Content quality evaluation (test_prompt1.json)
+    # - Grammar and style editing (test_prompt2.json)
+
+  # Step 2: Apply creative enhancement (single prompt for comparison)
+  prompt 2:
+    name: "creative_enhancement"
+    prompt_file: "prompts/test_prompt1.json"
+    # Single prompt step to show mixed usage
+
+  # Step 3: Final polish combining all three specialized prompts
+  prompt 3:
+    name: "final_comprehensive_polish"
+    prompt_file: "prompts/test_prompt1.json,prompts/test_prompt2.json,prompts/test_prompt3.json"
+    # This step combines all three prompts:
+    # - Quality evaluation (test_prompt1.json)
+    # - Grammar and style (test_prompt2.json)
+    # - Readability enhancement (test_prompt3.json)

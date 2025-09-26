@@ -1,0 +1,15 @@
+# Multi-prompt configuration example
+# This demonstrates using comma-separated prompt files
+
+model: anthropic/claude-4-sonnet-20250522
+api_base_url: https://openrouter.ai/api/v1
+temperature: 0.8
+max_tokens: 25000
+logging_level: INFO
+
+# Example chain configuration using multiple prompts
+# The prompt files will be combined into a master system prompt
+step1:
+  prompt_file: "prompts/test_prompt1.json,prompts/test_prompt2.json"
+  input_file: "test_input.md"
+  output_file: "multi_prompt_output.md"

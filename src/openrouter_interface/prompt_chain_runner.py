@@ -47,6 +47,9 @@ class PromptChainRunner:
         # Track execution state - Initialize before config loading
         self.prompts_executed = 0
         self.total_prompts = 0  # Will be set in _validate_config()
+
+        # Track detailed execution results for final report
+        self.execution_results = []  # List of execution details for each file
         
         # Create unique identifiers for this run
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -73,38 +76,28 @@ class PromptChainRunner:
             logging.warning("Config not yet loaded during initialization")
     
     def _create_temp_dir(self) -> Path:
-        """Create temporary directory using new naming convention: <input_filename>_<date>_<pid>"""
-        # Get input file name (without extension) - use first file for multi-file mode
-        if 'input_files' in self.config:
-            input_file = Path(self.config['input_files'][0])
-            input_basename = f"multi_{len(self.config['input_files'])}_files"
-        else:
-            input_file = self._get_input_file()
-            input_basename = input_file.stem  # filename without extension
-        
-        # Create temp directory name: inputname_date_pid
-        temp_dirname = f"{input_basename}_{self.timestamp}_{self.process_id}"
-        
+        """Create temporary directory using YAML config filename: <config_filename>_<date>_<pid>"""
+        # Get config file name (without extension)
+        config_basename = self.config_file.stem  # filename without extension
+
+        # Create temp directory name: configname_date_pid
+        temp_dirname = f"{config_basename}_{self.timestamp}_{self.process_id}"
+
         temp_base = Path.cwd() / "temp"
         temp_base.mkdir(exist_ok=True)
-        
+
         temp_subdir = temp_base / temp_dirname
         temp_subdir.mkdir(exist_ok=True)
-        
+
         return temp_subdir
     
     def _create_log_file(self) -> Path:
         """Create log file in temp directory using same naming convention."""
-        # Get input file name (without extension) - use first file for multi-file mode
-        if 'input_files' in self.config:
-            input_file = Path(self.config['input_files'][0])
-            input_basename = f"multi_{len(self.config['input_files'])}_files"
-        else:
-            input_file = self._get_input_file()
-            input_basename = input_file.stem
-        
+        # Get config file name (without extension)
+        config_basename = self.config_file.stem
+
         # Create log filename using same convention as directory
-        log_filename = f"{input_basename}_{self.timestamp}_{self.process_id}.log"
+        log_filename = f"{config_basename}_{self.timestamp}_{self.process_id}.log"
         return self.temp_dir / log_filename
     
     def _setup_logging(self):
@@ -216,16 +209,27 @@ class PromptChainRunner:
         if sorted_numbers != expected_numbers:
             raise ValueError(f"Prompts must be numbered sequentially starting from 1. Found: {sorted_numbers}")
         
-        # Validate ALL prompt files exist before any execution
+        # Validate ALL prompt files exist before any execution (supports comma-separated files)
         missing_prompts = []
         for prompt_key, prompt_config in prompts.items():
             # Extract prompt file path (handle both string and dict formats)
             prompt_file = self._get_prompt_file(prompt_config)
-            prompt_path = Path(prompt_file)
-            if not prompt_path.exists():
-                missing_prompts.append(f"{prompt_key}: {prompt_file}")
-            elif not prompt_path.is_file():
-                missing_prompts.append(f"{prompt_key}: {prompt_file} (exists but is not a file)")
+
+            # Handle comma-separated prompt files
+            if ',' in prompt_file:
+                prompt_paths = [Path(p.strip()) for p in prompt_file.split(',')]
+                for i, prompt_path in enumerate(prompt_paths, 1):
+                    if not prompt_path.exists():
+                        missing_prompts.append(f"{prompt_key} (file {i}): {prompt_path}")
+                    elif not prompt_path.is_file():
+                        missing_prompts.append(f"{prompt_key} (file {i}): {prompt_path} (exists but is not a file)")
+            else:
+                # Single prompt file
+                prompt_path = Path(prompt_file)
+                if not prompt_path.exists():
+                    missing_prompts.append(f"{prompt_key}: {prompt_file}")
+                elif not prompt_path.is_file():
+                    missing_prompts.append(f"{prompt_key}: {prompt_file} (exists but is not a file)")
                 
             # Validate config file if specified
             config_file = self._get_prompt_config_file(prompt_config)
@@ -297,6 +301,78 @@ class PromptChainRunner:
         if isinstance(prompt_config, dict):
             return prompt_config.get('model')
         return None
+
+    def _get_prompt_name(self, prompt_config) -> Optional[str]:
+        """Extract name from prompt config (returns None if not specified)."""
+        if isinstance(prompt_config, dict):
+            return prompt_config.get('name')
+        return None
+
+    def _get_output_append(self) -> bool:
+        """Get output_append setting from config (defaults to False)."""
+        return self.config.get('output_append', False)
+
+    def _get_output_format(self) -> str:
+        """Get output_format setting from config (defaults to 'markdown')."""
+        return self.config.get('output_format', 'markdown')
+
+    def _format_file_size(self, file_path: Path) -> str:
+        """Format file size in human-readable format (e.g., 13k, 1.2M)."""
+        try:
+            size_bytes = file_path.stat().st_size
+
+            if size_bytes < 1024:
+                return f"{size_bytes}B"
+            elif size_bytes < 1024 * 1024:
+                return f"{size_bytes // 1024}k"
+            elif size_bytes < 1024 * 1024 * 1024:
+                return f"{size_bytes / (1024 * 1024):.1f}M"
+            else:
+                return f"{size_bytes / (1024 * 1024 * 1024):.1f}G"
+        except Exception:
+            return "unknown"
+
+    def _generate_final_report(self) -> str:
+        """
+        Generate the detailed final report showing all prompt executions and file sizes.
+
+        Returns:
+            Formatted report string
+        """
+        config_name = self.config_file.stem
+        report_lines = [f"\nFinal Report {config_name}"]
+
+        for file_result in self.execution_results:
+            input_file_name = file_result['input_file']
+            prompts = file_result['prompts']
+            original_file_size = file_result['original_file_size']
+
+            # Check if all prompts succeeded for this file
+            all_prompts_succeeded = all(p['success'] for p in prompts)
+
+            if all_prompts_succeeded:
+                report_lines.append(f"✅ Prompt chain completed successfully!")
+            else:
+                report_lines.append(f"❌ Prompt chain Failed!")
+
+            # Show original input file
+            report_lines.append(f"       ✅ original_input_{input_file_name} size: {original_file_size}")
+
+            # Show each prompt step
+            for prompt_info in prompts:
+                step_num = prompt_info['step']
+                prompt_name = prompt_info['name']
+                file_size = prompt_info['file_size']
+                success = prompt_info['success']
+
+                status_icon = "✅" if success else "❌"
+
+                if prompt_name:
+                    report_lines.append(f"       {status_icon} prompt {step_num} {prompt_name} size: {file_size}")
+                else:
+                    report_lines.append(f"       {status_icon} prompt {step_num} size: {file_size}")
+
+        return "\n".join(report_lines)
     
     def _create_step_config_file(self, step: int, step_model: str = None) -> Optional[str]:
         """
@@ -434,14 +510,43 @@ class PromptChainRunner:
         
         return Path(output_filename)
     
+    def _get_intermediate_filename(self, input_file: Path, step: int, prompt_name: str = None) -> str:
+        """
+        Generate intermediate filename using new naming convention.
+        Format: {input_name}_step_{step_number}{_prompt_name}{input_ext}
+
+        Args:
+            input_file: Original input file to get name and extension from
+            step: Current step number
+            prompt_name: Optional prompt name from YAML config
+
+        Returns:
+            Filename string for intermediate file
+        """
+        input_name = input_file.stem
+        input_ext = input_file.suffix
+
+        # Build filename components
+        filename_parts = [input_name, "step", f"{step:02d}"]
+
+        # Add prompt name if provided
+        if prompt_name:
+            # Clean up the prompt name (replace special characters with underscores)
+            clean_name = "".join(c if c.isalnum() else "_" for c in prompt_name)
+            filename_parts.append(clean_name)
+
+        # Combine parts with underscores and add extension
+        filename = "_".join(filename_parts) + input_ext
+        return filename
+
     def _get_temp_file(self, step: int, prompt_name: str = None) -> Path:
         """
         Generate temporary file path for intermediate steps.
-        
+
         Args:
             step: Current step number
             prompt_name: Optional prompt name for more descriptive naming
-            
+
         Returns:
             Path object for temporary file
         """
@@ -454,7 +559,7 @@ class PromptChainRunner:
             temp_filename = f"step{step:02d}_{clean_name}.tmp"
         else:
             temp_filename = f"step{step:02d}.tmp"
-        
+
         temp_file = self.temp_dir / temp_filename
         return temp_file.resolve()
     
@@ -466,6 +571,28 @@ class PromptChainRunner:
             logging.info(f"Original input file copied to temp directory: {input_copy.name}")
         except Exception as e:
             logging.warning(f"Failed to copy input file to temp directory: {e}")
+
+    def _save_initial_file(self, input_file: Path) -> Path:
+        """
+        Save the initial file using the new naming convention.
+        This is step 0 in the chain process.
+
+        Args:
+            input_file: Original input file
+
+        Returns:
+            Path to the saved initial file
+        """
+        initial_filename = self._get_intermediate_filename(input_file, 0)
+        initial_file_path = self.temp_dir / initial_filename
+
+        try:
+            shutil.copy2(input_file, initial_file_path)
+            logging.info(f"Initial file saved: {initial_filename}")
+            return initial_file_path
+        except Exception as e:
+            logging.error(f"Failed to save initial file: {e}")
+            raise
     
     def _copy_output_to_temp(self, output_file: Path):
         """Copy the final output file to temp directory for reference."""
@@ -475,6 +602,81 @@ class PromptChainRunner:
             logging.info(f"Final output file copied to temp directory: {output_copy.name}")
         except Exception as e:
             logging.warning(f"Failed to copy output file to temp directory: {e}")
+
+    def _append_to_output(self, step_output_file: Path, final_output_file: Path, step: int, prompt_name: str = None):
+        """
+        Append the output from a step to the final output file.
+
+        Args:
+            step_output_file: Path to the step's output file
+            final_output_file: Path to the final accumulated output file
+            step: Step number for section headers
+            prompt_name: Optional prompt name for section headers
+        """
+        try:
+            # Read the step output
+            with open(step_output_file, 'r', encoding='utf-8') as f:
+                step_content = f.read().strip()
+
+            if not step_content:
+                logging.warning(f"Step {step} output file is empty, skipping append")
+                return
+
+            # Create section header
+            if prompt_name:
+                section_header = f"# Step {step}: {prompt_name}"
+            else:
+                section_header = f"# Step {step}"
+
+            # Determine if this is the first append (file doesn't exist or is empty)
+            is_first_append = not final_output_file.exists() or final_output_file.stat().st_size == 0
+
+            # Append to final output file
+            with open(final_output_file, 'a', encoding='utf-8') as f:
+                if not is_first_append:
+                    f.write('\n\n---\n\n')  # Add separator between sections
+
+                f.write(f"{section_header}\n\n")
+                f.write(step_content)
+                f.write('\n')
+
+            logging.info(f"Step {step} output appended to final file: {final_output_file}")
+
+        except Exception as e:
+            logging.error(f"Failed to append step {step} output to final file: {e}")
+            raise
+
+    def _create_final_output_header(self, final_output_file: Path, input_file: Path):
+        """
+        Create a header for the final output file in append mode.
+
+        Args:
+            final_output_file: Path to the final output file
+            input_file: Path to the input file being processed
+        """
+        try:
+            # Create header content
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            header_content = f"""# Prompt Chain Output
+
+**Input File:** {input_file.name}
+**Generated:** {timestamp}
+**Config:** {self.config_file.name}
+**Chain Steps:** {self.total_prompts}
+
+---
+
+"""
+
+            # Write header to file
+            with open(final_output_file, 'w', encoding='utf-8') as f:
+                f.write(header_content)
+
+            logging.info(f"Created final output header: {final_output_file}")
+
+        except Exception as e:
+            logging.error(f"Failed to create final output header: {e}")
+            raise
     
     def _run_prompt_runner(self, prompt_config, input_file: Path, output_file: Path, step: int) -> bool:
         """
@@ -638,11 +840,28 @@ class PromptChainRunner:
                 
                 # Copy original input file to temp directory
                 self._copy_input_to_temp(input_file)
-                
+
+                # Save initial file with new naming convention (step 0)
+                initial_file = self._save_initial_file(input_file)
+
                 # Get output file for this input
                 final_output = self._get_output_file(input_file)
                 logging.info(f"Final output for this file: {final_output}")
-                
+
+                # Check if output appending is enabled
+                output_append = self._get_output_append()
+                if output_append:
+                    logging.info("Output appending enabled - will accumulate all step outputs")
+                    # Create header for final output file
+                    self._create_final_output_header(final_output, input_file)
+
+                # Initialize tracking for this file
+                file_result = {
+                    'input_file': input_file.name,
+                    'original_file_size': self._format_file_size(input_file),
+                    'prompts': []
+                }
+
                 # Execute prompts in sequence for this input file
                 current_input = input_file
                 file_successful = True
@@ -650,28 +869,42 @@ class PromptChainRunner:
                 for step, prompt_config in sorted_prompts:
                     prompt_file = self._get_prompt_file(prompt_config)
                     step_config = self._get_prompt_config_file(prompt_config)
-                    
+                    prompt_name = self._get_prompt_name(prompt_config)
+
                     logging.info(f"\n--- File {file_index}, Step {step}/{self.total_prompts} ---")
                     logging.info(f"Executing prompt: {prompt_file}")
+                    if prompt_name:
+                        logging.info(f"Using prompt name: {prompt_name}")
                     if step_config:
                         logging.info(f"Using step-specific config: {step_config}")
-                    
+
                     # Determine output file for this step
-                    if step == self.total_prompts:
-                        # Last step - use final output file
-                        current_output = final_output
-                        logging.info(f"Final step - output to: {current_output}")
+                    if output_append:
+                        # In append mode, all steps output to intermediate files
+                        intermediate_filename = self._get_intermediate_filename(input_file, step, prompt_name)
+                        current_output = self.temp_dir / intermediate_filename
+                        logging.info(f"Step {step} temp output (append mode): {current_output.name}")
                     else:
-                        # Intermediate step - use temp file with file-specific naming
-                        temp_file_name = f"file{file_index:02d}_step{step:02d}_{Path(prompt_file).stem}.tmp"
-                        current_output = self.temp_dir / temp_file_name
-                        logging.info(f"Intermediate step - temp output: {current_output.name}")
-                    
+                        # All steps (including final) create intermediate files in temp directory
+                        intermediate_filename = self._get_intermediate_filename(input_file, step, prompt_name)
+                        current_output = self.temp_dir / intermediate_filename
+                        if step == self.total_prompts:
+                            logging.info(f"Final step - temp output: {current_output.name}")
+                        else:
+                            logging.info(f"Intermediate step - temp output: {current_output.name}")
+
                     # Run prompt_runner.py
                     success = self._run_prompt_runner(prompt_config, current_input, current_output, step)
                     
                     if not success:
                         logging.error(f"Chain execution failed at File {file_index}, Step {step}")
+                        # Track this failed step
+                        file_result['prompts'].append({
+                            'step': step,
+                            'name': prompt_name,
+                            'file_size': 'failed',
+                            'success': False
+                        })
                         file_successful = False
                         all_successful = False
                         break
@@ -679,21 +912,57 @@ class PromptChainRunner:
                     # Verify output file
                     if not self._verify_output_file(current_output, step):
                         logging.error(f"Output verification failed at File {file_index}, Step {step}")
+                        # Track this failed step
+                        file_result['prompts'].append({
+                            'step': step,
+                            'name': prompt_name,
+                            'file_size': 'failed',
+                            'success': False
+                        })
                         file_successful = False
                         all_successful = False
                         break
-                    
+
+                    # Handle output appending if enabled
+                    if output_append:
+                        self._append_to_output(current_output, final_output, step, prompt_name)
+
+                    # Copy final step output to the actual final output location (non-append mode)
+                    if not output_append and step == self.total_prompts:
+                        try:
+                            shutil.copy2(current_output, final_output)
+                            logging.info(f"Final step output copied to: {final_output}")
+                        except Exception as e:
+                            logging.error(f"Failed to copy final output: {e}")
+                            # Track the last step as failed due to copy error
+                            if file_result['prompts']:
+                                file_result['prompts'][-1]['success'] = False
+                                file_result['prompts'][-1]['file_size'] = 'failed'
+                            file_successful = False
+                            all_successful = False
+                            break
+
                     # Log temp file details for tracking
-                    if step < self.total_prompts:
-                        logging.info(f"Step {step} temp file created: {current_output}")
-                        logging.info(f"Temp file size: {current_output.stat().st_size} bytes")
-                    
+                    logging.info(f"Step {step} temp file created: {current_output}")
+                    logging.info(f"Temp file size: {current_output.stat().st_size} bytes")
+
+                    # Track this step's execution result
+                    file_result['prompts'].append({
+                        'step': step,
+                        'name': prompt_name,
+                        'file_size': self._format_file_size(current_output),
+                        'success': True
+                    })
+
                     # Update input for next iteration
                     current_input = current_output
                     self.prompts_executed += 1
-                    
+
                     logging.info(f"File {file_index}, Step {step} completed successfully")
                 
+                # Add this file's results to the overall execution results
+                self.execution_results.append(file_result)
+
                 if file_successful:
                     # Copy final output to temp directory for reference
                     self._copy_output_to_temp(final_output)
@@ -702,20 +971,13 @@ class PromptChainRunner:
                 else:
                     logging.error(f"❌ File {file_index} processing failed")
             
-            # Final summary
-            logging.info("=" * 80)
-            if all_successful:
-                logging.info(f"✓ ALL FILES PROCESSED SUCCESSFULLY!")
-                logging.info(f"Files processed: {total_files_processed}/{len(input_files)}")
-                logging.info(f"Total prompt executions: {self.prompts_executed}")
-            else:
-                logging.error(f"❌ SOME FILES FAILED PROCESSING")
-                logging.info(f"Files processed successfully: {total_files_processed}/{len(input_files)}")
-                logging.info(f"Total prompt executions: {self.prompts_executed}")
-            
-            logging.info(f"Temporary files preserved in: {self.temp_dir}")
+            # Generate and display detailed final report
+            final_report = self._generate_final_report()
+            logging.info(final_report)
+
+            # Additional summary information
+            logging.info(f"\nTemporary files preserved in: {self.temp_dir}")
             logging.info(f"Log file: {self.log_file}")
-            logging.info("=" * 80)
             
             return all_successful
             
@@ -808,12 +1070,15 @@ Examples:
     # Multi-file processing with output pattern
     python prompt_chain_runner.py -c multi_file_config.yaml
     
-    # Multi-LLM chain with different configs per step  
+    # Multi-LLM chain with different configs per step
     python prompt_chain_runner.py -c multi_llm_config.yaml
-    
+
+    # Multi-prompt chain (NEW) - Combines multiple prompts per step
+    python prompt_chain_runner.py -c multi_prompt_chain.yaml
+
     # Keep temporary files for debugging (default behavior)
     python prompt_chain_runner.py -c my_chain.yaml
-    
+
     # Clean up temporary files after execution
     python prompt_chain_runner.py -c my_chain.yaml --clean-temp
     
@@ -841,37 +1106,79 @@ Multiple Files Processing:
         prompt 2: refinement.json
         prompt 3: polish.json
 
-Per-Prompt Configuration (Different LLMs):
+Per-Prompt Configuration (Different LLMs and Custom Names):
     input_file: input_document.md
     output_file: final_output.md
     prompts:
         prompt 1:
+            name: dialogue
             prompt_file: creative_task.json
             config_file: claude_config.yaml
         prompt 2:
             prompt_file: technical_task.json
             config_file: gpt4_config.yaml
-        prompt 3: final_edit.json  # Uses global config
+        prompt 3:
+            name: final_polish
+            prompt_file: final_edit.json  # Uses global config
 
-Execution Flow Examples:
+Multi-Prompt Configuration (Combine Multiple Prompts Per Step):
+    input_file: manuscript.md
+    output_file: polished_output.md
+    prompts:
+        prompt 1:
+            name: quality_analysis
+            prompt_file: "quality_check.json,grammar_check.json"  # Combine two prompts
+        prompt 2:
+            name: style_improvement
+            prompt_file: "style_guide.json,tone_adjustment.json,clarity_check.json"  # Combine three prompts
+        prompt 3:
+            prompt_file: final_polish.json  # Single prompt for final step
 
-Single File:
-    1. input_document.md -> analysis.json -> temp/input_document_20250131_12345/step01_analysis.tmp
-    2. temp/.../step01_analysis.tmp -> refinement.json -> temp/.../step02_refinement.tmp  
-    3. temp/.../step02_refinement.tmp -> polish.json -> final_output.md
+Output Appending Configuration:
+    input_file: input_document.md
+    output_file: combined_output.md
+    output_append: true
+    output_format: markdown  # Optional, defaults to markdown
+    prompts:
+        prompt 1:
+            name: analysis
+            prompt_file: analyze_content.json
+        prompt 2:
+            name: enhancement
+            prompt_file: enhance_content.json
+        prompt 3:
+            name: finalization
+            prompt_file: finalize_content.json
+
+Execution Flow Examples (New Naming Convention):
+
+Single File (Normal Mode):
+    0. input_document.md -> saved as -> input_document_step_00.md (initial file)
+    1. input_document.md -> analysis.json -> input_document_step_01_dialogue.md (with name)
+    2. input_document_step_01_dialogue.md -> refinement.json -> input_document_step_02.md (without name)
+    3. input_document_step_02.md -> polish.json -> final_output.md
+
+Single File (Append Mode - output_append: true):
+    0. input_document.md -> saved as -> input_document_step_00.md (initial file)
+    1. input_document.md -> analysis.json -> input_document_step_01_analysis.md (appended to final)
+    2. input_document.md -> enhancement.json -> input_document_step_02_enhancement.md (appended to final)
+    3. input_document.md -> finalization.json -> input_document_step_03_finalization.md (appended to final)
+    Final: combined_output.md contains all step outputs with headers
 
 Multiple Files:
     For each file (document1.md, document2.md, document3.txt):
-    1. documentN.md -> analysis.json -> temp/.../file01_step01_analysis.tmp
-    2. temp/.../file01_step01_analysis.tmp -> refinement.json -> temp/.../file01_step02_refinement.tmp
-    3. temp/.../file01_step02_refinement.tmp -> polish.json -> processed_documentN_output.md
+    0. documentN.md -> saved as -> documentN_step_00.md (initial file)
+    1. documentN.md -> analysis.json -> documentN_step_01_dialogue.md (with name)
+    2. documentN_step_01_dialogue.md -> refinement.json -> documentN_step_02.md (without name)
+    3. documentN_step_02.md -> polish.json -> processed_documentN_output.md
 
 New File Organization:
-    Temp directory: temp/input_document_20250131_12345/
-    Log file: temp/input_document_20250131_12345/input_document_20250131_12345.log
-    Original input: temp/input_document_20250131_12345/original_input_input_document.md
-    Final output copy: temp/input_document_20250131_12345/final_output_final_output.md
-    Intermediate files: temp/input_document_20250131_12345/step01_analysis.tmp, etc.
+    Temp directory: temp/my_chain_config_20250131_12345/
+    Log file: temp/my_chain_config_20250131_12345/my_chain_config_20250131_12345.log
+    Original input: temp/my_chain_config_20250131_12345/original_input_input_document.md
+    Initial file: temp/my_chain_config_20250131_12345/input_document_step_00.md
+    Intermediate files: temp/my_chain_config_20250131_12345/input_document_step_01_dialogue.md, etc.
+    Final output copy: temp/my_chain_config_20250131_12345/final_output_final_output.md
 
 Requirements:
     - prompt_runner.py must be installed and available in your system PATH
@@ -881,7 +1188,7 @@ Requirements:
 
 File Organization:
     All temporary files, logs, and intermediate outputs are stored in the same
-    temporary directory (temp/input_filename_date_pid/) for easy management and
+    temporary directory (temp/config_filename_date_pid/) for easy management and
     debugging. Each prompt_runner.py execution will use this shared temp directory.
         """
     )

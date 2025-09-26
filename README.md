@@ -149,7 +149,8 @@ openrouter-interface/
 - **Multiple Interfaces**: CLI, Web, and programmatic Python API
 - **400+ AI Models**: Support for Claude, GPT-4, Gemini, DeepSeek, Llama, and more
 - **Prompt Management**: JSON-based prompt system with 25+ included prompts
-- **Chain Processing**: Execute multiple prompts in sequence with web GUI
+- **Multi-Prompt Processing**: Combine multiple JSON prompts into master system prompts
+- **Chain Processing**: Execute multiple prompts in sequence with web GUI and multi-prompt support
 - **Book Generation**: Specialized tools for chapter writing and editing
 
 ### Advanced Features
@@ -237,8 +238,14 @@ bookgen = "openrouter_interface.bookgen:main"
 # Interactive mode - browse and select files
 openrouter-runner
 
-# Batch processing
+# Single prompt processing
 openrouter-runner -p prompts/analysis.json -i document.md -o results.md
+
+# Multi-prompt processing (NEW) - Combines multiple prompts into master system prompt
+openrouter-runner -p "prompts/quality_check.json,prompts/grammar_fix.json" -i document.md -o results.md
+
+# Mix of single and multi-prompt in different operations
+openrouter-runner -p "prompts/analysis.json,prompts/review.json,prompts/polish.json" -i code.py -o enhanced_code.py
 
 # With custom configuration
 openrouter-runner -c config/custom.yaml -p prompts/review.json -i code.py
@@ -310,12 +317,94 @@ success = runner.run_batch_mode("prompts/editor.json", "draft.md")
 ### Prompt Chains
 
 ```bash
-# Multi-step processing
+# Multi-step processing with single prompts per step
 openrouter-chain -c config/writing_chain.yaml -i manuscript.md
+
+# Multi-step processing with multi-prompts per step (NEW)
+openrouter-chain -c config/multi_prompt_chain.yaml -i manuscript.md
 
 # Or use the web interface for visual chain management
 # Navigate to http://localhost:5000/chains
 ```
+
+#### Multi-Prompt Chain Configuration Example
+
+Create sophisticated processing pipelines where each step can combine multiple specialized prompts:
+
+```yaml
+# config/multi_prompt_chain.yaml
+input_file: manuscript.md
+output_file: polished_output.md
+
+prompts:
+  # Step 1: Comprehensive analysis combining quality and grammar checking
+  prompt 1:
+    name: "comprehensive_analysis"
+    prompt_file: "prompts/quality_check.json,prompts/grammar_check.json"
+
+  # Step 2: Style enhancement using multiple specialized prompts
+  prompt 2:
+    name: "style_enhancement"
+    prompt_file: "prompts/style_guide.json,prompts/tone_adjust.json,prompts/readability.json"
+
+  # Step 3: Final polish with single specialized prompt
+  prompt 3:
+    name: "final_polish"
+    prompt_file: "prompts/final_edit.json"
+```
+
+## 🔗 Multi-Prompt Processing (NEW)
+
+### Overview
+
+The OpenRouter Interface now supports combining multiple JSON prompt files into a single master system prompt. This enables sophisticated AI processing pipelines that leverage multiple specialized prompts simultaneously.
+
+### How Multi-Prompt Processing Works
+
+1. **Input**: Specify multiple prompt files separated by commas
+2. **Combination**: System creates a structured master prompt combining all inputs
+3. **Processing**: AI model processes content using the combined prompt expertise
+4. **Output**: Single response incorporating all prompt requirements
+
+### Master System Prompt Structure
+
+When multiple prompts are combined, they're structured as:
+
+```
+MASTER SYSTEM PROMPT - Combined from Multiple Sources
+============================================================
+
+PROMPT SECTION 1: quality_check.json
+----------------------------------------
+[Content quality evaluation instructions]
+
+PROMPT SECTION 2: grammar_fix.json
+----------------------------------------
+[Grammar and style correction instructions]
+
+PROMPT SECTION 3: readability.json
+----------------------------------------
+[Readability enhancement instructions]
+
+END OF COMBINED PROMPTS
+============================================================
+
+Instructions: Apply all the above prompt sections in sequence to the provided input content.
+Each section should be considered as contributing to the overall task requirements.
+```
+
+### Use Cases
+
+- **Content Quality Pipeline**: Combine quality analysis + grammar checking + style improvement
+- **Code Review Process**: Merge security analysis + performance review + style checking
+- **Document Enhancement**: Integrate clarity assessment + technical accuracy + formatting
+- **Creative Writing**: Blend plot analysis + character development + dialogue improvement
+
+### Backward Compatibility
+
+- Single prompt files continue to work exactly as before
+- Existing configurations require no changes
+- Multi-prompt is an additive enhancement
 
 ## 🤖 Supported Models
 

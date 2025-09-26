@@ -1,0 +1,6 @@
+input_file: input_document.md
+output_file: final_output.md
+prompts:
+  prompt 1: step1_analysis.json
+  prompt 2: step2_refinement.json
+  prompt 3: step3_finalization.json

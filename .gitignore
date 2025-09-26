@@ -1,3 +1,17 @@
+# Project specific additions
+github_key
+*.payload.json
+input.md
+output.md
+input-ch?.md
+output.txt
+cache/
+openrouter-venv/
+APIpayload.json
+*.log
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -206,11 +220,4 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-
-github_key
-*.payload.json
-input.md
-output.md
-input-ch?.md
-output.txt
 
