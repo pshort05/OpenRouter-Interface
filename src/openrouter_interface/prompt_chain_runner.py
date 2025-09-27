@@ -302,6 +302,15 @@ class PromptChainRunner:
             return prompt_config.get('model')
         return None
 
+    def _get_prompt_settings(self, prompt_config) -> Dict[str, Any]:
+        """Extract all setting overrides from prompt config."""
+        if isinstance(prompt_config, dict):
+            # Extract all settings except the special keys (prompt_file, config_file, name)
+            special_keys = {'prompt_file', 'config_file', 'name'}
+            settings = {k: v for k, v in prompt_config.items() if k not in special_keys}
+            return settings
+        return {}
+
     def _get_prompt_name(self, prompt_config) -> Optional[str]:
         """Extract name from prompt config (returns None if not specified)."""
         if isinstance(prompt_config, dict):
@@ -374,45 +383,51 @@ class PromptChainRunner:
 
         return "\n".join(report_lines)
     
-    def _create_step_config_file(self, step: int, step_model: str = None) -> Optional[str]:
+    def _create_step_config_file(self, step: int, step_settings: Dict[str, Any] = None) -> Optional[str]:
         """
-        Create a temporary config file for this step with the specified model.
-        
+        Create a temporary config file for this step with the specified settings.
+
         Args:
             step: Step number for filename uniqueness
-            step_model: Model to use for this step (if None, no config file is created)
-            
+            step_settings: Dictionary of settings to override for this step
+
         Returns:
             Path to temporary config file, or None if no step-specific config needed
         """
-        if not step_model and not self.prompt_runner_config:
+        if not step_settings and not self.prompt_runner_config and 'global_config' not in self.config:
             return None
-            
+
         # Create a temporary config file in the temp directory
         step_config_path = self.temp_dir / f"step_{step:02d}_config.yaml"
-        
+
         # Base configuration
         step_config = {}
-        
+
         # Load from global config if provided
         if self.prompt_runner_config and Path(self.prompt_runner_config).exists():
             with open(self.prompt_runner_config, 'r', encoding='utf-8') as f:
                 step_config = yaml.safe_load(f) or {}
-        
+
         # Load from global_config section if it exists
         if 'global_config' in self.config:
             global_config = self.config['global_config']
             step_config.update(global_config)
-        
-        # Override with step-specific model if provided
-        if step_model:
-            step_config['model'] = step_model
-            logging.info(f"Step {step}: Using step-specific model: {step_model}")
-        
+
+        # Override with step-specific settings if provided
+        if step_settings:
+            step_config.update(step_settings)
+
+            # Log the overrides
+            override_list = []
+            for key, value in step_settings.items():
+                override_list.append(f"{key}: {value}")
+            if override_list:
+                logging.info(f"Step {step}: Using step-specific settings: {', '.join(override_list)}")
+
         # Write the temporary config file
         with open(step_config_path, 'w', encoding='utf-8') as f:
             yaml.dump(step_config, f, default_flow_style=False, sort_keys=False)
-        
+
         logging.debug(f"Step {step}: Created temporary config file: {step_config_path}")
         return str(step_config_path)
     
@@ -691,10 +706,10 @@ class PromptChainRunner:
         Returns:
             True if successful, False otherwise
         """
-        # Extract file paths and model from config
+        # Extract file paths and settings from config
         prompt_file = self._get_prompt_file(prompt_config)
         step_config_file = self._get_prompt_config_file(prompt_config)
-        step_model = self._get_prompt_model(prompt_config)
+        step_settings = self._get_prompt_settings(prompt_config)
         
         # Build command - use openrouter-runner entry point
         cmd = [
@@ -705,24 +720,27 @@ class PromptChainRunner:
             "-l", str(self.log_file)  # Use same log file
         ]
         
-        # Create step-specific config file if needed (handles both step-specific model and global config)
+        # Create step-specific config file if needed (handles step-specific settings and global config)
         effective_config_file = None
-        
+
         if step_config_file:
             # User specified a step-specific config file, use it
             effective_config_file = step_config_file
             logging.info(f"Step {step}: Using step-specific config file: {step_config_file}")
-        elif step_model or self.prompt_runner_config or 'global_config' in self.config:
-            # Create a temporary config file with step-specific model and/or global config
-            effective_config_file = self._create_step_config_file(step, step_model)
+        elif step_settings or self.prompt_runner_config or 'global_config' in self.config:
+            # Create a temporary config file with step-specific settings and/or global config
+            effective_config_file = self._create_step_config_file(step, step_settings)
             if effective_config_file:
-                logging.info(f"Step {step}: Created temporary config file with model override")
+                logging.info(f"Step {step}: Created temporary config file with setting overrides")
         
         # Add config file if we have one
         if effective_config_file:
             cmd.extend(["-c", effective_config_file])
-            if step_model:
-                logging.info(f"Step {step}: Using model: {step_model}")
+            if step_settings:
+                settings_summary = []
+                for key, value in step_settings.items():
+                    settings_summary.append(f"{key}={value}")
+                logging.info(f"Step {step}: Using settings: {', '.join(settings_summary)}")
             else:
                 logging.info(f"Step {step}: Using config file: {effective_config_file}")
         
@@ -869,6 +887,7 @@ class PromptChainRunner:
                 for step, prompt_config in sorted_prompts:
                     prompt_file = self._get_prompt_file(prompt_config)
                     step_config = self._get_prompt_config_file(prompt_config)
+                    step_settings = self._get_prompt_settings(prompt_config)
                     prompt_name = self._get_prompt_name(prompt_config)
 
                     logging.info(f"\n--- File {file_index}, Step {step}/{self.total_prompts} ---")
@@ -877,6 +896,9 @@ class PromptChainRunner:
                         logging.info(f"Using prompt name: {prompt_name}")
                     if step_config:
                         logging.info(f"Using step-specific config: {step_config}")
+                    if step_settings:
+                        settings_list = [f"{k}={v}" for k, v in step_settings.items()]
+                        logging.info(f"Using step-specific settings: {', '.join(settings_list)}")
 
                     # Determine output file for this step
                     if output_append:
@@ -1106,20 +1128,27 @@ Multiple Files Processing:
         prompt 2: refinement.json
         prompt 3: polish.json
 
-Per-Prompt Configuration (Different LLMs and Custom Names):
+Per-Prompt Configuration (Different LLMs, Custom Names, and Setting Overrides):
     input_file: input_document.md
     output_file: final_output.md
+    global_config:                    # Global settings applied to all prompts
+        temperature: 0.7
+        max_tokens: 20000
     prompts:
         prompt 1:
             name: dialogue
             prompt_file: creative_task.json
-            config_file: claude_config.yaml
+            config_file: claude_config.yaml     # Override with config file
         prompt 2:
             prompt_file: technical_task.json
-            config_file: gpt4_config.yaml
+            model: openai/gpt-4-turbo          # Override just the model
+            temperature: 0.3                   # Override temperature for precision
+            max_tokens: 30000                  # Override max_tokens for longer output
         prompt 3:
             name: final_polish
-            prompt_file: final_edit.json  # Uses global config
+            prompt_file: final_edit.json
+            temperature: 0.5                   # Override temperature for balance
+            # Uses global model and max_tokens
 
 Multi-Prompt Configuration (Combine Multiple Prompts Per Step):
     input_file: manuscript.md

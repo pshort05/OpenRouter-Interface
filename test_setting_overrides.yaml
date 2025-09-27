@@ -1,0 +1,21 @@
+input_file: "test_input.md"
+output_file: "test_setting_overrides_output.md"
+
+# Global configuration - applied to all steps unless overridden
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+  max_tokens: 15000
+
+prompts:
+  prompt 1:
+    name: "step_with_model_override"
+    prompt_file: "prompts/test_prompt1.json"
+    model: "openai/gpt-4-turbo"        # Override model
+    temperature: 0.3                   # Override temperature
+
+  prompt 2:
+    name: "step_with_token_override"
+    prompt_file: "prompts/test_prompt2.json"
+    max_tokens: 25000                  # Override max_tokens only
+    # Uses global model and temperature

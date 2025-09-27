@@ -1,0 +1,25 @@
+# Precision Configuration
+# Optimized for analytical and technical tasks requiring consistent, focused output
+
+model: "openai/gpt-4-turbo"
+temperature: 0.2         # Low temperature for consistent, precise output
+max_tokens: 20000
+
+# Sampling controls for precision
+top_p: 0.7              # More focused sampling
+top_k: 20               # Limited vocabulary for consistency
+seed: 42                # Deterministic results for reproducibility
+
+# Penalties to reduce repetition
+frequency_penalty: 0.3   # Strong frequency penalty
+presence_penalty: 0.2    # Moderate presence penalty
+
+# Response control
+stream: false           # No streaming for batch processing
+top_logprobs: 3         # Token analysis for debugging
+
+# Usage tracking
+usage:
+  include: true
+
+user: "precision_analysis"

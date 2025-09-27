@@ -1,0 +1,45 @@
+# Enhanced Setting Overrides Example
+# Demonstrates per-phase override of model, temperature, max_tokens, and other settings
+
+input_file: "sample_document.md"
+output_file: "enhanced_output.md"
+
+# Global configuration - default settings for all prompts
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+  max_tokens: 20000
+  api_base_url: "https://openrouter.ai/api/v1"
+  log_level: "INFO"
+
+prompts:
+  # Step 1: Analysis phase - Use precise settings for analytical work
+  prompt 1:
+    name: "detailed_analysis"
+    prompt_file: "prompts/content_analysis.json"
+    model: "openai/gpt-4-turbo"           # Override model for better analysis
+    temperature: 0.2                     # Low temperature for precision
+    max_tokens: 25000                    # More tokens for detailed analysis
+
+  # Step 2: Creative enhancement - Use creative settings
+  prompt 2:
+    name: "creative_enhancement"
+    prompt_file: "prompts/creative_writing.json"
+    temperature: 0.9                     # High temperature for creativity
+    max_tokens: 30000                    # More tokens for creative output
+    # Uses global model (Claude)
+
+  # Step 3: Technical review - Use specialized model with balanced settings
+  prompt 3:
+    name: "technical_review"
+    prompt_file: "prompts/technical_review.json"
+    model: "deepseek/deepseek-coder"     # Specialized coding model
+    temperature: 0.4                     # Balanced temperature
+    # Uses global max_tokens (20000)
+
+  # Step 4: Final polish - Uses mostly global settings with minor tweaks
+  prompt 4:
+    name: "final_polish"
+    prompt_file: "prompts/final_edit.json"
+    temperature: 0.5                     # Slightly creative for polishing
+    # Uses global model (Claude) and max_tokens (20000)

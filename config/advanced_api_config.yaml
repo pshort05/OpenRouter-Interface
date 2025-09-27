@@ -1,0 +1,44 @@
+# Advanced API Configuration Example
+# Demonstrates all available OpenRouter API parameters
+
+# Core API parameters (always included)
+model: "anthropic/claude-4-sonnet-20250522"
+temperature: 0.8
+max_tokens: 25000
+
+# Application settings
+api_base_url: "https://openrouter.ai/api/v1"
+log_level: "INFO"
+
+# Advanced sampling controls (optional - only sent if specified)
+top_p: 0.9              # Top-p nucleus sampling for controlled randomness (0, 1]
+top_k: 50               # Top-k sampling for vocabulary limitation [1, ∞)
+min_p: 0.02             # Minimum probability threshold [0, 1]
+seed: 12345             # Deterministic output control for reproducible results
+
+# Penalty parameters (optional) - Control repetition and diversity
+frequency_penalty: 0.1   # Reduce repetition based on frequency [-2, 2]
+presence_penalty: 0.1    # Reduce repetition based on presence [-2, 2]
+repetition_penalty: 1.1  # Alternative repetition control mechanism (0, 2]
+
+# Response control (optional)
+stream: false           # Enable streaming responses for real-time output
+response_format:        # Force structured JSON output (compatible models only)
+  type: "json_object"
+top_logprobs: 5         # Return token probabilities for analysis
+
+# OpenRouter-specific features (optional)
+models:                 # Fallback model list for automatic failover
+  - "anthropic/claude-4-sonnet-20250522"
+  - "openai/gpt-4-turbo"
+  - "deepseek/deepseek-coder"
+provider:               # Provider routing preferences
+  order: ["Anthropic", "OpenAI", "DeepSeek"]
+  allow_fallbacks: true
+transforms:             # OpenRouter prompt transformations
+  - "middle-out"
+usage:                  # Get detailed usage statistics in response
+  include: true
+
+# Utility parameters (optional)
+user: "advanced_user_001"  # User identifier for tracking and abuse prevention

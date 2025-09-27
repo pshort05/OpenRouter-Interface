@@ -1,0 +1,67 @@
+# Comprehensive Chain Configuration
+# Demonstrates all API parameters in different chain phases
+
+input_file: "comprehensive_test.md"
+output_file: "comprehensive_output.md"
+
+# Global configuration with advanced parameters
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+  max_tokens: 20000
+  top_p: 0.9
+  frequency_penalty: 0.1
+  usage:
+    include: true
+  user: "chain_processor"
+
+prompts:
+  # Phase 1: Analytical phase with precision settings
+  prompt 1:
+    name: "detailed_analysis"
+    prompt_file: "prompts/analysis.json"
+    model: "openai/gpt-4-turbo"        # Override for analytical capability
+    temperature: 0.2                   # Low temperature for precision
+    top_k: 20                         # Focused vocabulary
+    seed: 42                          # Reproducible analysis
+    frequency_penalty: 0.3            # Strong repetition control
+    presence_penalty: 0.2             # Diverse analytical points
+    top_logprobs: 5                   # Token analysis for debugging
+
+  # Phase 2: Creative enhancement with diversity settings
+  prompt 2:
+    name: "creative_enhancement"
+    prompt_file: "prompts/enhance.json"
+    temperature: 0.9                   # High creativity
+    max_tokens: 30000                 # Longer creative output
+    top_p: 0.95                       # Broad sampling
+    min_p: 0.01                       # Allow creative tokens
+    presence_penalty: 0.4             # Encourage novelty
+    stream: true                      # Real-time creative output
+
+  # Phase 3: Technical review with structured output
+  prompt 3:
+    name: "technical_review"
+    prompt_file: "prompts/technical.json"
+    model: "deepseek/deepseek-coder"   # Specialized technical model
+    temperature: 0.4                   # Balanced for technical accuracy
+    response_format:                   # Structured JSON output
+      type: "json_object"
+    repetition_penalty: 1.2           # Alternative repetition control
+
+  # Phase 4: Final polish with failover protection
+  prompt 4:
+    name: "final_polish"
+    prompt_file: "prompts/polish.json"
+    models:                           # Multiple model fallbacks
+      - "anthropic/claude-4-sonnet-20250522"
+      - "openai/gpt-4-turbo"
+      - "meta-llama/llama-3.1-405b-instruct"
+    provider:                         # Provider preferences
+      order: ["Anthropic", "OpenAI", "Meta"]
+      allow_fallbacks: true
+    transforms:                       # OpenRouter transformations
+      - "middle-out"
+    temperature: 0.6                  # Balanced for final output
+    usage:                           # Track final step usage
+      include: true

@@ -1,0 +1,10 @@
+model: anthropic/claude-4-sonnet-20250522
+temperature: 0.3
+max_tokens: 15000
+top_p: 0.9
+seed: 123
+frequency_penalty: 0.1
+usage:
+  include: true
+top_k: 25
+presence_penalty: 0.2

@@ -1,0 +1,28 @@
+# Creative Configuration
+# Optimized for creative writing and diverse content generation
+
+model: "anthropic/claude-4-sonnet-20250522"
+temperature: 0.9         # High temperature for creativity
+max_tokens: 30000        # Longer output for creative content
+
+# Sampling controls for creativity
+top_p: 0.95             # Broader sampling for diversity
+min_p: 0.01             # Allow low-probability tokens for creativity
+
+# Penalties for diverse content
+presence_penalty: 0.3    # Encourage novel content
+frequency_penalty: 0.1   # Light frequency penalty
+
+# Response control
+stream: true            # Streaming for better creative writing experience
+
+# Multiple model fallbacks for reliability
+models:
+  - "anthropic/claude-4-sonnet-20250522"
+  - "openai/gpt-4-turbo"
+
+# Usage tracking
+usage:
+  include: true
+
+user: "creative_writer"

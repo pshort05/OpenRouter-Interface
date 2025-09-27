@@ -1,0 +1,9 @@
+api_base_url: https://api.base.com
+log_level: DEBUG
+max_tokens: 15000
+model: step-model
+temperature: 0.7
+frequency_penalty: 0.1
+top_p: 0.9
+seed: 123
+top_k: 30
