@@ -1,8 +1,0 @@
-model: anthropic/claude-4-sonnet-20250522
-temperature: 0.3
-max_tokens: 1000
-api_base_url: https://openrouter.ai/api/v1
-log_level: INFO
-file_size_validation:
-  enabled: false
-payload_file: /home/paul/data/Dropbox/Writing/OpenRouter-Interface/temp/test_append_config_20250928_002408_477881/step_1_payload_20250928_002408_477881.json

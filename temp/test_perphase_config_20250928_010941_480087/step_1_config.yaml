@@ -1,9 +1,0 @@
-model: anthropic/claude-4-sonnet-20250522
-temperature: 0.2
-max_tokens: 20000
-file_size_validation:
-  enabled: true
-  max_size_difference_percent: 1000
-prescript: touch {input_file}.prescript_marker
-postscript: ls -haltr {output_file}
-payload_file: /home/paul/data/Dropbox/Writing/OpenRouter-Interface/temp/test_perphase_config_20250928_010941_480087/step_1_payload_20250928_010941_480087.json
