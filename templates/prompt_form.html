@@ -36,7 +36,7 @@ document.getElementById('pageTimestamp').textContent = new Date().toLocaleString
         <select name="prompt_selector" id="prompt_selector" onchange="switchPrompt()">
             {% for p in available_prompts %}
                 <option value="{{ p.path }}" {{ 'selected' if p.path == prompt.path }}>
-                    {{ p.title or p.name }} 
+                    {{ p.title or p.name }}
                     {% if p.description %} - {{ p.description[:60] }}{% if p.description|length > 60 %}...{% endif %}{% endif %}
                 </option>
             {% endfor %}
@@ -44,6 +44,26 @@ document.getElementById('pageTimestamp').textContent = new Date().toLocaleString
         <small class="form-text">Select a different prompt to execute</small>
     </div>
     {% endif %}
+
+    <!-- Configuration File Upload -->
+    <div class="form-group">
+        <label for="config_method">Configuration Method:</label>
+        <select name="config_method" id="config_method" onchange="toggleConfigMethod()">
+            <option value="default">Use Default Configuration</option>
+            <option value="upload">Upload YAML Configuration</option>
+        </select>
+        <small class="form-text">Choose how to configure prompt execution parameters</small>
+    </div>
+
+    <div id="config_upload_section" class="form-group" style="display: none;">
+        <label for="config_file">Configuration File:</label>
+        <input type="file" name="config_file" id="config_file" accept=".yaml,.yml" onchange="handleConfigFileUpload()">
+        <small class="form-text">Upload a YAML file containing model, temperature, and other API parameters</small>
+        <div id="config_preview" class="mt-2" style="display: none;">
+            <h6>Configuration Preview:</h6>
+            <pre id="config_content" class="bg-light p-2" style="max-height: 200px; overflow-y: auto; font-size: 0.85em;"></pre>
+        </div>
+    </div>
     
     <div class="form-group">
         <label for="input_method">Input Method:</label>
@@ -137,7 +157,7 @@ function toggleInputMethod() {
 function switchPrompt() {
     const selectedPath = document.getElementById('prompt_selector').value;
     console.log('Switching to prompt:', selectedPath);
-    
+
     // Navigate to the new prompt page
     if (selectedPath) {
         // Construct the URL for the selected prompt
@@ -146,6 +166,55 @@ function switchPrompt() {
         console.log('Navigating to:', url);
         window.location.href = url;
     }
+}
+
+function toggleConfigMethod() {
+    const method = document.getElementById('config_method').value;
+    const uploadSection = document.getElementById('config_upload_section');
+
+    if (method === 'upload') {
+        uploadSection.style.display = 'block';
+    } else {
+        uploadSection.style.display = 'none';
+        document.getElementById('config_preview').style.display = 'none';
+    }
+}
+
+function handleConfigFileUpload() {
+    const fileInput = document.getElementById('config_file');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        document.getElementById('config_preview').style.display = 'none';
+        return;
+    }
+
+    if (!file.name.endsWith('.yaml') && !file.name.endsWith('.yml')) {
+        alert('Please select a YAML file (.yaml or .yml)');
+        fileInput.value = '';
+        return;
+    }
+
+    // Read and preview the file content
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const content = e.target.result;
+            document.getElementById('config_content').textContent = content;
+            document.getElementById('config_preview').style.display = 'block';
+
+            // Validate YAML syntax (basic check)
+            if (content.trim() && !content.includes('\t')) {
+                console.log('YAML file uploaded successfully');
+            } else if (content.includes('\t')) {
+                alert('Warning: YAML files should use spaces, not tabs for indentation');
+            }
+        } catch (error) {
+            alert('Error reading file: ' + error.message);
+            fileInput.value = '';
+        }
+    };
+    reader.readAsText(file);
 }
 
 document.getElementById('promptForm').onsubmit = function(e) {

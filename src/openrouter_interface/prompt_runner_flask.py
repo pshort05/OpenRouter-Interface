@@ -760,11 +760,13 @@ class FlaskPromptRunner:
                 input_method = request.form.get('input_method', 'text')
                 system_prompt = request.form.get('system_prompt', '').strip()
                 output_format = request.form.get('output_format', 'markdown')
-                
+                config_method = request.form.get('config_method', 'default')
+
                 logging.info(f"Executing prompt: {prompt_file}")
                 logging.debug(f"Input method: {input_method}, Output format: {output_format}")
+                logging.debug(f"Config method: {config_method}")
                 logging.debug(f"System prompt provided: {'Yes' if system_prompt else 'No'}")
-                
+
                 if not prompt_file:
                     logging.error("No prompt file specified in form submission")
                     return jsonify({'error': 'No prompt file specified'}), 400
@@ -777,39 +779,76 @@ class FlaskPromptRunner:
                     
                 if not prompt_path.exists():
                     return jsonify({'error': f'Prompt file not found: {prompt_file}'}), 404
-                
+
+                # Handle configuration file upload if provided
+                config_data = None
+                if config_method == 'upload':
+                    if 'config_file' not in request.files:
+                        return jsonify({'error': 'Configuration file not provided'}), 400
+
+                    config_file = request.files['config_file']
+                    if config_file.filename == '':
+                        return jsonify({'error': 'No configuration file selected'}), 400
+
+                    if not config_file.filename.endswith(('.yaml', '.yml')):
+                        return jsonify({'error': 'Configuration file must be in YAML format'}), 400
+
+                    try:
+                        # Read and parse the YAML configuration
+                        config_content = config_file.read().decode('utf-8')
+                        config_data = yaml.safe_load(config_content)
+                        logging.info(f"Loaded configuration from uploaded file: {config_file.filename}")
+                        logging.debug(f"Configuration data: {config_data}")
+                    except yaml.YAMLError as e:
+                        return jsonify({'error': f'Invalid YAML configuration: {str(e)}'}), 400
+                    except Exception as e:
+                        return jsonify({'error': f'Error reading configuration file: {str(e)}'}), 400
+
                 # Get input content
                 if input_method == 'file':
                     if 'input_file' not in request.files:
                         return jsonify({'error': 'No file uploaded'}), 400
-                    
+
                     file = request.files['input_file']
                     if file.filename == '':
                         return jsonify({'error': 'No file selected'}), 400
-                    
+
                     # Read file content
                     input_content = file.read().decode('utf-8')
                     input_name = secure_filename(file.filename)
-                    
+
                 else:  # text input
                     input_content = request.form.get('input_text', '').strip()
                     input_name = 'Text Input'
-                    
+
                     if not input_content:
                         return jsonify({'error': 'No input content provided'}), 400
-                
+
                 # Load prompt
                 prompt_data = self.prompt_loader.load_prompt(prompt_path)
                 
                 # Create full prompt with system prompt and output format
                 full_prompt = self.processor.create_full_prompt(prompt_data, input_content)
-                
+
                 # Add system prompt and output format instructions
                 full_prompt = self._enhance_prompt_with_system_and_format(
                     full_prompt, system_prompt, output_format)
-                
+
+                # Create API client with custom configuration if provided
+                if config_data:
+                    # Create temporary config manager with uploaded configuration
+                    from .config_manager import ConfigManager
+                    temp_config = ConfigManager()
+                    temp_config.config = config_data
+                    api_client = PromptAPIClient(temp_config)
+                    logging.info(f"Using uploaded configuration with model: {config_data.get('model', 'not specified')}")
+                else:
+                    # Use default configuration
+                    api_client = self.api_client
+                    logging.info("Using default configuration")
+
                 # Call API
-                response = self.api_client.call_api(full_prompt)
+                response = api_client.call_api(full_prompt)
                 
                 # Store response for session history
                 response_data = {
@@ -841,6 +880,127 @@ class FlaskPromptRunner:
                 
             except Exception as e:
                 logging.error(f"Error executing prompt: {e}")
+                return jsonify({'error': f'Execution failed: {str(e)}'}), 500
+
+        @self.app.route('/execute_loaded_prompt', methods=['POST'])
+        def execute_loaded_prompt():
+            """Execute a loaded prompt JSON file against input content."""
+            try:
+                prompt_data_json = request.form.get('prompt_data')
+                input_method = request.form.get('input_method', 'text')
+                system_prompt = request.form.get('system_prompt', '').strip()
+                output_format = request.form.get('output_format', 'markdown')
+                config_method = request.form.get('config_method', 'default')
+
+                logging.info("Executing loaded prompt")
+                logging.debug(f"Input method: {input_method}, Output format: {output_format}")
+                logging.debug(f"Config method: {config_method}")
+
+                if not prompt_data_json:
+                    return jsonify({'error': 'No prompt data provided'}), 400
+
+                try:
+                    prompt_data = json.loads(prompt_data_json)
+                except json.JSONDecodeError as e:
+                    return jsonify({'error': f'Invalid prompt JSON: {str(e)}'}), 400
+
+                # Handle configuration file upload if provided
+                config_data = None
+                if config_method == 'upload':
+                    if 'config_file' not in request.files:
+                        return jsonify({'error': 'Configuration file not provided'}), 400
+
+                    config_file = request.files['config_file']
+                    if config_file.filename == '':
+                        return jsonify({'error': 'No configuration file selected'}), 400
+
+                    if not config_file.filename.endswith(('.yaml', '.yml')):
+                        return jsonify({'error': 'Configuration file must be in YAML format'}), 400
+
+                    try:
+                        # Read and parse the YAML configuration
+                        config_content = config_file.read().decode('utf-8')
+                        config_data = yaml.safe_load(config_content)
+                        logging.info(f"Loaded configuration from uploaded file: {config_file.filename}")
+                        logging.debug(f"Configuration data: {config_data}")
+                    except yaml.YAMLError as e:
+                        return jsonify({'error': f'Invalid YAML configuration: {str(e)}'}), 400
+                    except Exception as e:
+                        return jsonify({'error': f'Error reading configuration file: {str(e)}'}), 400
+
+                # Get input content
+                if input_method == 'file':
+                    if 'input_file' not in request.files:
+                        return jsonify({'error': 'No file uploaded'}), 400
+
+                    file = request.files['input_file']
+                    if file.filename == '':
+                        return jsonify({'error': 'No file selected'}), 400
+
+                    # Read file content
+                    input_content = file.read().decode('utf-8')
+                    input_name = secure_filename(file.filename)
+
+                else:  # text input
+                    input_content = request.form.get('input_text', '').strip()
+                    input_name = 'Text Input'
+
+                    if not input_content:
+                        return jsonify({'error': 'No input content provided'}), 400
+
+                # Create full prompt with the loaded prompt data
+                full_prompt = self.processor.create_full_prompt(prompt_data, input_content)
+
+                # Add system prompt and output format instructions
+                full_prompt = self._enhance_prompt_with_system_and_format(
+                    full_prompt, system_prompt, output_format)
+
+                # Create API client with custom configuration if provided
+                if config_data:
+                    # Create temporary config manager with uploaded configuration
+                    from .config_manager import ConfigManager
+                    temp_config = ConfigManager()
+                    temp_config.config = config_data
+                    api_client = PromptAPIClient(temp_config)
+                    logging.info(f"Using uploaded configuration with model: {config_data.get('model', 'not specified')}")
+                else:
+                    # Use default configuration
+                    api_client = self.api_client
+                    logging.info("Using default configuration")
+
+                # Call API
+                response = api_client.call_api(full_prompt)
+
+                # Store response for session history
+                response_data = {
+                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'prompt_name': prompt_data.get('title', 'Loaded Prompt'),
+                    'input_name': input_name,
+                    'response': response,
+                    'input_length': len(input_content),
+                    'response_length': len(response),
+                    'system_prompt': system_prompt if system_prompt else 'None',
+                    'output_format': output_format.title()
+                }
+
+                self.session_responses.append(response_data)
+
+                return jsonify({
+                    'success': True,
+                    'response': response,
+                    'metadata': {
+                        'prompt_name': response_data['prompt_name'],
+                        'input_name': input_name,
+                        'timestamp': response_data['timestamp'],
+                        'input_length': len(input_content),
+                        'response_length': len(response),
+                        'system_prompt': response_data['system_prompt'],
+                        'output_format': response_data['output_format']
+                    }
+                })
+
+            except Exception as e:
+                logging.error(f"Error executing loaded prompt: {e}")
                 return jsonify({'error': f'Execution failed: {str(e)}'}), 500
         
         @self.app.route('/history')

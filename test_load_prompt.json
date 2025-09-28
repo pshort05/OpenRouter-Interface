@@ -1,0 +1,14 @@
+{
+  "title": "Test Content Analysis",
+  "description": "A simple test prompt for analyzing content quality and providing feedback",
+  "persona": "You are a helpful content analyst who provides clear, actionable feedback on written content.",
+  "instructions": "Analyze the provided content for clarity, coherence, and overall quality. Provide specific recommendations for improvement.",
+  "review_criteria": "Evaluate based on: 1) Clarity of message, 2) Logical structure, 3) Grammar and style, 4) Overall effectiveness",
+  "output_format": "Provide a structured analysis with specific examples and recommendations.",
+  "examples": [
+    {
+      "input": "Sample content to analyze",
+      "output": "Analysis: The content demonstrates... Recommendations: Consider improving..."
+    }
+  ]
+}

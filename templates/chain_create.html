@@ -2,6 +2,10 @@
 
 {% block title %}Create Prompt Chain{% endblock %}
 
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row">
@@ -29,26 +33,42 @@
                         <div class="form-group">
                             <label for="config-method"><strong>Configuration Method</strong></label>
                             <select class="form-control" id="config-method" onchange="toggleConfigMethod()">
-                                <option value="upload">Upload Configuration File</option>
-                                <option value="builder">Build Configuration</option>
+                                <option value="upload">Upload Existing YAML Configuration</option>
+                                <option value="builder">Build Configuration Visually</option>
                             </select>
                             <small class="form-text text-muted">
-                                Choose how to define your chain configuration
+                                Upload an existing YAML chain config or build one using the visual editor
                             </small>
                         </div>
 
                         <!-- Upload Configuration -->
                         <div id="config-upload-section">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> Upload an existing YAML chain configuration file from the <code>tests/</code> directory or your custom configs
+                            </div>
+
                             <div class="form-group">
                                 <label for="config-file"><strong>Chain Configuration File</strong></label>
                                 <input type="file" class="form-control-file" id="config-file" accept=".yaml,.yml" onchange="handleConfigUpload()">
                                 <small class="form-text text-muted">
-                                    Upload a YAML file defining your prompt chain sequence
+                                    Upload a YAML file defining your prompt chain sequence with global config, prompts, and processing settings
                                 </small>
                             </div>
+
                             <div id="config-preview" class="mt-3" style="display: none;">
                                 <h6>Configuration Preview:</h6>
-                                <pre id="config-content" class="bg-light p-3" style="max-height: 300px; overflow-y: auto;"></pre>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-muted">Raw YAML:</h6>
+                                        <pre id="config-content" class="bg-light p-3" style="max-height: 300px; overflow-y: auto; font-size: 0.85em;"></pre>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-muted">Configuration Summary:</h6>
+                                        <div id="config-summary" class="bg-light p-3" style="max-height: 300px; overflow-y: auto;">
+                                            <!-- Summary will be populated by JavaScript -->
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -236,15 +256,42 @@ function toggleInputMethod() {
 function handleConfigUpload() {
     const fileInput = document.getElementById('config-file');
     const file = fileInput.files[0];
-    
+
     if (!file) {
         $('#config-preview').hide();
         return;
     }
-    
+
+    if (!file.name.endsWith('.yaml') && !file.name.endsWith('.yml')) {
+        alert('Please select a YAML file (.yaml or .yml)');
+        fileInput.value = '';
+        return;
+    }
+
+    // Read the file content first to show preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const yamlContent = e.target.result;
+            $('#config-content').text(yamlContent);
+
+            // Parse YAML to create summary
+            const config = jsyaml ? jsyaml.load(yamlContent) : JSON.parse('{}');
+            generateConfigSummary(config);
+            $('#config-preview').show();
+        } catch (error) {
+            alert('Error parsing YAML file: ' + error.message);
+            fileInput.value = '';
+            $('#config-preview').hide();
+            return;
+        }
+    };
+    reader.readAsText(file);
+
+    // Upload to server for validation and temporary storage
     const formData = new FormData();
     formData.append('config_file', file);
-    
+
     $.ajax({
         url: '/chains/upload_config',
         type: 'POST',
@@ -253,8 +300,7 @@ function handleConfigUpload() {
         contentType: false,
         success: function(data) {
             uploadedConfigPath = data.config_path;
-            $('#config-content').text(JSON.stringify(data.config_data, null, 2));
-            $('#config-preview').show();
+            console.log('Config uploaded successfully:', data.config_path);
         },
         error: function(xhr) {
             alert('Config upload failed: ' + (xhr.responseJSON?.error || 'Unknown error'));
@@ -262,6 +308,96 @@ function handleConfigUpload() {
             $('#config-preview').hide();
         }
     });
+}
+
+function generateConfigSummary(config) {
+    let summary = '<div class="config-summary">';
+
+    // Global configuration
+    if (config.global_config) {
+        summary += '<h6><i class="fas fa-cog"></i> Global Configuration</h6>';
+        summary += '<ul>';
+        if (config.global_config.model) {
+            summary += `<li><strong>Model:</strong> ${config.global_config.model}</li>`;
+        }
+        if (config.global_config.temperature !== undefined) {
+            summary += `<li><strong>Temperature:</strong> ${config.global_config.temperature}</li>`;
+        }
+        if (config.global_config.max_tokens) {
+            summary += `<li><strong>Max Tokens:</strong> ${config.global_config.max_tokens}</li>`;
+        }
+        summary += '</ul>';
+    }
+
+    // Input/Output files
+    if (config.input_file || config.output_file) {
+        summary += '<h6><i class="fas fa-file"></i> File Configuration</h6>';
+        summary += '<ul>';
+        if (config.input_file) {
+            summary += `<li><strong>Input File:</strong> ${config.input_file}</li>`;
+        }
+        if (config.output_file) {
+            summary += `<li><strong>Output File:</strong> ${config.output_file}</li>`;
+        }
+        summary += '</ul>';
+    }
+
+    // Pre/Post processing
+    if (config.preprocessing || config.postprocessing) {
+        summary += '<h6><i class="fas fa-play-circle"></i> Global Scripts</h6>';
+        summary += '<ul>';
+        if (config.preprocessing) {
+            const scriptCount = Object.keys(config.preprocessing).filter(k => k.startsWith('script')).length;
+            summary += `<li><strong>Preprocessing Scripts:</strong> ${scriptCount}</li>`;
+        }
+        if (config.postprocessing) {
+            const scriptCount = Object.keys(config.postprocessing).filter(k => k.startsWith('script')).length;
+            summary += `<li><strong>Postprocessing Scripts:</strong> ${scriptCount}</li>`;
+        }
+        summary += '</ul>';
+    }
+
+    // Prompts
+    if (config.prompts) {
+        summary += '<h6><i class="fas fa-list"></i> Prompt Chain</h6>';
+        summary += '<ol>';
+        Object.entries(config.prompts).forEach(([key, promptConfig]) => {
+            let stepName = key;
+            let stepInfo = '';
+
+            if (typeof promptConfig === 'object' && promptConfig.name) {
+                stepName = promptConfig.name;
+            }
+
+            if (typeof promptConfig === 'object') {
+                const features = [];
+                if (promptConfig.passes && promptConfig.passes > 1) {
+                    features.push(`${promptConfig.passes} passes`);
+                }
+                if (promptConfig.append) {
+                    features.push('append mode');
+                }
+                if (promptConfig.prescript) {
+                    features.push('prescript');
+                }
+                if (promptConfig.postscript) {
+                    features.push('postscript');
+                }
+                if (promptConfig.temperature !== undefined) {
+                    features.push(`temp: ${promptConfig.temperature}`);
+                }
+                if (features.length > 0) {
+                    stepInfo = ` <small class="text-muted">(${features.join(', ')})</small>`;
+                }
+            }
+
+            summary += `<li><strong>${stepName}</strong>${stepInfo}</li>`;
+        });
+        summary += '</ol>';
+    }
+
+    summary += '</div>';
+    $('#config-summary').html(summary);
 }
 
 function addPromptStep() {

@@ -1,0 +1,27 @@
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+  max_tokens: 20000
+
+input_file: test_input.md
+output_file: test_web_output.md
+
+preprocessing:
+  script01: echo "Starting web-loaded chain"
+  name01: "Initialize Chain"
+
+prompts:
+  prompt 1:
+    name: "test_analysis"
+    prompt_file: "prompts/content_quality.json"
+    temperature: 0.3
+
+  prompt 2:
+    name: "final_polish"
+    prompt_file: "prompts/content_quality.json"
+    temperature: 0.8
+    append: yes
+
+postprocessing:
+  script01: echo "Web chain complete"
+  name01: "Finalize Chain"

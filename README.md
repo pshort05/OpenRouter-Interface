@@ -1,590 +1,649 @@
 # OpenRouter Interface
 
-A comprehensive Python package for executing JSON prompts using the OpenRouter API. Available as both a **command-line interface (CLI)** and a **Flask web application**. Follow Python best practices with proper package structure.
+A comprehensive Python toolkit for working with AI language models through the OpenRouter API. Supports **single prompt processing**, **multi-prompt chaining**, **web interface**, and **advanced automation** with pre/post processing scripts.
 
-[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![OpenRouter API](https://img.shields.io/badge/API-OpenRouter-green.svg)](https://openrouter.ai/)
 
-> **🚀 New Easy Installation**: Just run `./install.sh web` after cloning - handles all permission issues automatically!
+## ✨ Key Features
 
-## ⚡ Quick Start
+- 🚀 **Multiple Interfaces**: CLI, Web UI, and programmatic access
+- 🔗 **Prompt Chaining**: Sequential prompt execution with intermediate file management
+- 🤖 **100+ AI Models**: Support for all OpenRouter-compatible models
+- 📝 **Script Integration**: Pre/post processing scripts at global and per-step levels
+- ⚙️ **Advanced Configuration**: YAML-based configuration with parameter overrides
+- 📁 **File Management**: Automatic chunking, validation, and format handling
+- 🌐 **Web Dashboard**: Real-time monitoring and visual chain builder
+- 📤 **Direct File Loading**: Upload and execute JSON prompts and YAML chains instantly
+- 🎯 **No-Registry Execution**: Run prompts and chains without permanent storage
 
-### 🚀 Local Installation (Virtual Environment)
+## 📖 Table of Contents
+
+- [Quick Start](#-quick-start)
+- [Installation](#-installation)
+  - [Global Installation](#global-installation-recommended)
+  - [Local Development](#local-development)
+  - [Platform-Specific Setup](#platform-specific-setup)
+- [Usage](#-usage)
+  - [Single Prompts](#single-prompts)
+  - [Web Interface](#web-interface)
+  - [Prompt Chaining](#prompt-chaining)
+- [Configuration](#-configuration)
+- [Examples](#-examples)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
+- [Support](#-support)
+
+## 🚀 Quick Start
+
+### 5-Minute Setup
 
 ```bash
-# 1. Clone and install in virtual environment
-git clone <repository-url>
-cd openrouter-interface
-./install.sh web
-
-# 2. Set up API key  
-./setup-api-key.sh
-
-# 3. Start web interface
-./start-web.sh
-```
-
-### 🌍 Global Installation (Use from anywhere)
-
-For system-wide access without virtual environments:
-
-```bash
-# 1. Clone and install globally
-git clone <repository-url>
+# 1. Clone and install
+git clone https://github.com/your-org/openrouter-interface.git
 cd openrouter-interface
 ./install-global.sh
 
-# 2. Set up API key (add to shell profile)
-export OPENROUTER_API_KEY='your-api-key-here'
-echo 'export OPENROUTER_API_KEY="your-key"' >> ~/.bashrc
-
-# 3. Use from any directory
-openrouter-runner --help
-openrouter-chain --help
-openrouter-web --foreground
-```
-
-That's it! Choose local (virtual environment) or global installation based on your needs.
-
-**🌐 Network Features:**
-- **Multi-device Access**: Use from phones, tablets, and other computers on your network
-- **Background Operation**: Server continues running after closing terminal
-- **Production Ready**: Optimized for performance and reliability
-
-### Manual Installation (Alternative)
-
-```bash
-# Use virtual environment manually
-python3 -m venv openrouter-venv
-source openrouter-venv/bin/activate
-pip install -e ".[web]"     # Include web interface
-pip install -e ".[dev]"     # Include development tools  
-pip install -e ".[all]"     # Include everything
-```
-
-### First Run
-
-```bash
-# Set your OpenRouter API key
+# 2. Set up API key
 export OPENROUTER_API_KEY="your-api-key-here"
 
-# Run CLI interface
-openrouter-runner --help
+# 3. Run a single prompt
+openrouter-runner -p prompts/example.json -i input.md -o output.md
 
-# Run web interface with chain runner
+# 4. Create and run a chain
+openrouter-chain --create-sample
+openrouter-chain -c sample_chain.yaml
+
+# 5. Start web interface
 openrouter-web
-# Access at: http://localhost:5000
-# Features: Single prompts, Chain runner, Progress tracking
-
-# Run prompt chains (CLI)
-openrouter-chain --help
-
-# Book generation
-bookgen --help
 ```
 
-### Using as a Python Package
+## 📦 Installation
 
-```python
-from openrouter_interface import PromptRunner, ConfigManager
+### Global Installation (Recommended)
 
-# Initialize
-config = ConfigManager()
-runner = PromptRunner()
-
-# Process a prompt
-success = runner.run_batch_mode("prompts/analysis.json", "input.md")
-```
-
-## 📁 Project Structure
-
-This project follows Python best practices as outlined in the Hitchhiker's Guide to Python:
-
-```
-openrouter-interface/
-├── src/
-│   └── openrouter_interface/          # Main package
-│       ├── __init__.py                # Package initialization
-│       ├── cli.py                     # CLI entry point
-│       ├── web.py                     # Web interface entry point
-│       ├── chain.py                   # Chain runner entry point
-│       ├── bookgen.py                 # BookGen entry point
-│       ├── prompt_runner.py           # Core runner logic
-│       ├── config_manager.py          # Configuration handling
-│       ├── prompt_handler.py          # Prompt processing
-│       ├── api_client.py              # OpenRouter API client
-│       └── ...                        # Other modules
-├── tests/                             # Test files
-│   ├── __init__.py
-│   ├── test_basic.py                  # Basic functionality tests
-│   ├── unit/                          # Unit tests
-│   └── integration/                   # Integration tests
-├── docs/                              # Documentation
-│   ├── README.md                      # Main documentation
-│   ├── QUICK-START.md                 # Quick start guide
-│   └── ...                            # Other documentation
-├── prompts/                           # JSON prompt files
-│   ├── creative_writing_assistant.json
-│   ├── dialogue_editor.json
-│   └── ...                            # 25+ included prompts
-├── config/                            # Configuration files
-│   ├── config.yaml                    # Default configuration
-│   ├── flask_config.yaml             # Web app configuration
-│   └── ...                            # Other configs
-├── examples/                          # Usage examples
-│   ├── basic_usage.py                 # Programming examples
-│   └── sample_input.md               # Sample input file
-├── scripts/                           # Installation/setup scripts
-│   ├── install.sh                     # Installation script
-│   └── dev-setup.sh                   # Development setup
-├── pyproject.toml                     # Modern Python packaging
-├── setup.py                           # Backward compatibility
-├── requirements.txt                   # Core dependencies
-└── MANIFEST.in                        # Package file inclusion
-```
-
-## 🚀 Features
-
-### Core Capabilities
-- **Multiple Interfaces**: CLI, Web, and programmatic Python API
-- **400+ AI Models**: Support for Claude, GPT-4, Gemini, DeepSeek, Llama, and more
-- **Prompt Management**: JSON-based prompt system with 25+ included prompts
-- **Multi-Prompt Processing**: Combine multiple JSON prompts into master system prompts
-- **Chain Processing**: Execute multiple prompts in sequence with web GUI and multi-prompt support
-- **Book Generation**: Specialized tools for chapter writing and editing
-
-### Advanced Features
-- **Smart Text Chunking**: Handle large documents automatically
-- **Flexible Configuration**: YAML config with command-line overrides
-- **Comprehensive Logging**: Multiple log levels with file output
-- **Session Management**: Web interface with history tracking
-- **Real-time Progress Tracking**: Monitor long-running chain executions
-- **Remote Chain Management**: Web-based control for server deployments
-- **File Validation**: Input validation and error handling
-
-## 📖 Documentation
-
-### Quick References
-- **[Quick Start Guide](docs/QUICK-START.md)** - Get running in 3 minutes
-- **[Developer Guide](docs/CLAUDE.md)** - Architecture and development
-- **[Setup Guide](docs/README_setup.md)** - Detailed installation
-
-### Comprehensive Guides
-- **[Setup Guide](docs/README_setup.md)** - Detailed installation
-- **[Prompt Chain Runner](docs/prompt_chain_readme.md)** - Multi-step workflows
-- **[BookGen Utilities](docs/README-BookGen.md)** - Book generation tools
-- **[Developer Guide](docs/CLAUDE.md)** - Architecture and development
-
-## 🛠️ Development
-
-### Setup Development Environment
+Install system-wide for use from anywhere:
 
 ```bash
-# Clone and setup
-git clone <repository-url>
+git clone https://github.com/your-org/openrouter-interface.git
+cd openrouter-interface
+./install-global.sh
+
+# Verify installation
+openrouter-runner --help
+openrouter-web --help
+openrouter-chain --help
+```
+
+### Local Development
+
+For development or isolated environments:
+
+```bash
+./install.sh web
+source openrouter-venv/bin/activate
+PYTHONPATH=src python3 -m openrouter_interface.cli --help
+```
+
+### Platform-Specific Setup
+
+<details>
+<summary><strong>🐧 Linux</strong></summary>
+
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install python3 python3-pip git
+
+# Clone and install
+git clone https://github.com/your-org/openrouter-interface.git
+cd openrouter-interface
+./install-global.sh
+
+# Set API key
+echo 'export OPENROUTER_API_KEY="your-api-key-here"' >> ~/.bashrc
+source ~/.bashrc
+```
+</details>
+
+<details>
+<summary><strong>🍎 macOS</strong></summary>
+
+```bash
+# Using Homebrew
+brew install python git
+
+# Clone and install
+git clone https://github.com/your-org/openrouter-interface.git
+cd openrouter-interface
+./install-global.sh
+
+# Set API key
+echo 'export OPENROUTER_API_KEY="your-api-key-here"' >> ~/.zshrc
+source ~/.zshrc
+```
+</details>
+
+<details>
+<summary><strong>🪟 Windows</strong></summary>
+
+```cmd
+# Install Python 3.8+ and Git
+# Clone repository
+git clone https://github.com/your-org/openrouter-interface.git
 cd openrouter-interface
 
-# Run development setup script
-chmod +x scripts/dev-setup.sh
-./scripts/dev-setup.sh
+# Run PowerShell as administrator
+powershell -ExecutionPolicy Bypass -File install-windows.ps1
+
+# Set API key
+setx OPENROUTER_API_KEY "your-api-key-here"
 ```
+</details>
 
-This creates a virtual environment, installs all dependencies, sets up pre-commit hooks, and configures development tools.
+### API Key Setup
 
-### Available Commands
+Get your API key from [OpenRouter](https://openrouter.ai/) and set it up:
 
 ```bash
-# Testing
-pytest                     # Run tests
-pytest --cov              # Run with coverage
-tox                        # Test across Python versions
+# Method 1: Environment variable
+export OPENROUTER_API_KEY="your-api-key-here"
 
-# Code Quality
-black src tests           # Format code
-flake8 src                # Check style
-mypy src                  # Type checking
-pre-commit run --all      # Run all hooks
+# Method 2: Setup script
+./setup-api-key.sh
 
-# Documentation
-sphinx-build docs docs/_build/html  # Build docs
+# Method 3: Add to shell profile
+echo 'export OPENROUTER_API_KEY="your-api-key-here"' >> ~/.bashrc
 ```
 
-### Package Management
+## 🎯 Usage
 
-This project uses modern Python packaging:
+### Single Prompts
 
-- **pyproject.toml** - Primary configuration (PEP 518/621)
-- **setup.py** - Backward compatibility  
-- **MANIFEST.in** - File inclusion rules
-- **requirements.txt** - Core dependencies
-
-### Entry Points
-
-Console commands are defined in `pyproject.toml`:
-
-```toml
-[project.scripts]
-openrouter-runner = "openrouter_interface.cli:main"
-openrouter-web = "openrouter_interface.web:main"
-openrouter-chain = "openrouter_interface.chain:main"
-bookgen = "openrouter_interface.bookgen:main"
-```
-
-## 🎯 Usage Examples
-
-### Command Line Interface
+Execute individual prompts against AI models:
 
 ```bash
-# Interactive mode - browse and select files
-openrouter-runner
+# Basic usage
+openrouter-runner -p prompts/analysis.json -i document.md -o result.md
 
-# Single prompt processing
-openrouter-runner -p prompts/analysis.json -i document.md -o results.md
+# With model and parameter overrides
+openrouter-runner -p prompts/creative.json -i input.md -o output.md \
+  --model "openai/gpt-4-turbo" \
+  --temperature 0.8 \
+  --max-tokens 25000
 
-# Multi-prompt processing (NEW) - Combines multiple prompts into master system prompt
-openrouter-runner -p "prompts/quality_check.json,prompts/grammar_fix.json" -i document.md -o results.md
-
-# Mix of single and multi-prompt in different operations
-openrouter-runner -p "prompts/analysis.json,prompts/review.json,prompts/polish.json" -i code.py -o enhanced_code.py
-
-# With custom configuration
-openrouter-runner -c config/custom.yaml -p prompts/review.json -i code.py
+# Multiple prompts in sequence
+openrouter-runner -p "prompts/grammar.json,prompts/style.json" \
+  -i draft.md -o final.md
 ```
 
 ### Web Interface
 
+Launch the web dashboard for visual prompt management:
+
 ```bash
-# Start web server
+# Start with default settings
 openrouter-web
 
-# Access at http://localhost:5000
-# Features available:
-# - Single prompt processing
-# - Prompt chain creation and monitoring
-# - Real-time progress tracking
-# - Session history management
-# - Configuration management
+# Custom port and debug mode
+openrouter-web --port 8080 --debug
+
+# With custom configuration
+openrouter-web --config config/web_config.yaml
 ```
 
-#### Web Interface Features
+**Web Features:**
+- 📤 **File Upload**: Drag-and-drop interface
+- ⚙️ **Model Selection**: Choose from 100+ models
+- 🔗 **Chain Builder**: Visual chain creation
+- 📊 **Real-time Monitoring**: Live progress tracking
+- 📁 **File Management**: Browse intermediate results
+- 🎯 **Load Prompt**: Upload and execute JSON prompts instantly
+- 🔗 **Load Chain**: Upload and execute YAML chains directly
 
-**🔗 Prompt Chain Runner:**
-- **Visual Chain Builder**: Drag-and-drop prompt sequencing
-- **Upload Configurations**: Import existing YAML chain configs
-- **Real-time Monitoring**: Live progress updates every 3 seconds
-- **Remote Management**: Perfect for server deployments
-- **Multi-step Workflows**: Connect multiple AI processing steps
+#### Load Prompt Button
+Access from the main page with the green "Load Prompt" button:
 
-**📊 Chain Management Dashboard:**
-```
-/chains                    # Chain overview and monitoring
-/chains/create            # Visual chain creation interface  
-/chains/status/<id>       # Real-time chain status
-```
-
-**🎯 Chain Creation Options:**
-- **Configuration Upload**: Upload pre-built YAML files
-- **Visual Builder**: Select prompts from library in sequence
-- **Input Methods**: Text paste or file upload
-- **Output Control**: Custom filenames and download
-
-**⚡ Real-time Features:**
-- **Progress Tracking**: Visual progress bars and percentages
-- **Log Streaming**: Live execution logs in web interface
-- **Status Updates**: Running, completed, failed, stopped states
-- **Background Processing**: Non-blocking execution with status persistence
-
-**🔧 Chain Operations:**
-- **Start/Stop**: Full chain execution control
-- **Monitor**: Real-time progress and log viewing
-- **Download**: Retrieve completed results
-- **Delete**: Clean up chains with file management
-
-### Programmatic Usage
-
-```python
-from openrouter_interface import PromptRunner, PromptScanner
-
-# Scan available prompts
-scanner = PromptScanner()
-prompts = scanner.scan_for_prompts()
-
-# Process with specific prompt
-runner = PromptRunner()
-success = runner.run_batch_mode("prompts/editor.json", "draft.md")
-```
-
-### Prompt Chains
+1. **Upload JSON Prompt**: Select any JSON prompt file
+2. **Preview**: View prompt details (title, description, instructions, examples)
+3. **Configure**: Optionally upload YAML configuration for API parameters
+4. **Input**: Provide text or upload file
+5. **Execute**: Run immediately and view results in modal
 
 ```bash
-# Multi-step processing with single prompts per step
-openrouter-chain -c config/writing_chain.yaml -i manuscript.md
-
-# Multi-step processing with multi-prompts per step (NEW)
-openrouter-chain -c config/multi_prompt_chain.yaml -i manuscript.md
-
-# Or use the web interface for visual chain management
-# Navigate to http://localhost:5000/chains
+# Example usage flow:
+# 1. Click "Load Prompt" on main page
+# 2. Upload: test_load_prompt.json
+# 3. Configure: test_single_prompt_config.yaml (optional)
+# 4. Input: "This is test content to analyze"
+# 5. Execute and view results
 ```
 
-#### Multi-Prompt Chain Configuration Example
+#### Load Chain Button
+Access from the Chain Runner page next to "New Chain":
 
-Create sophisticated processing pipelines where each step can combine multiple specialized prompts:
+1. **Upload YAML Configuration**: Select any chain configuration file
+2. **Preview**: View configuration summary and raw YAML
+3. **Input**: Provide text or upload file
+4. **Execute**: Start chain and monitor in real-time
 
+```bash
+# Example usage flow:
+# 1. Click "Load Chain" on /chains page
+# 2. Upload: test_web_yaml_config.yaml
+# 3. Input: "Content to process through chain"
+# 4. Execute and monitor progress below
+```
+
+### Prompt Chaining
+
+Chain multiple prompts for complex workflows:
+
+```bash
+# Create sample configuration
+openrouter-chain --create-sample
+
+# Run a chain
+openrouter-chain -c chain_config.yaml
+
+# With debug output
+openrouter-chain -c chain_config.yaml --debug
+```
+
+**Basic Chain Configuration:**
 ```yaml
-# config/multi_prompt_chain.yaml
-input_file: manuscript.md
-output_file: polished_output.md
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+
+input_file: document.md
+output_file: processed_document.md
 
 prompts:
-  # Step 1: Comprehensive analysis combining quality and grammar checking
   prompt 1:
-    name: "comprehensive_analysis"
-    prompt_file: "prompts/quality_check.json,prompts/grammar_check.json"
+    name: "grammar_check"
+    prompt_file: "prompts/grammar.json"
+    temperature: 0.2
 
-  # Step 2: Style enhancement using multiple specialized prompts
   prompt 2:
-    name: "style_enhancement"
-    prompt_file: "prompts/style_guide.json,prompts/tone_adjust.json,prompts/readability.json"
-
-  # Step 3: Final polish with single specialized prompt
-  prompt 3:
-    name: "final_polish"
-    prompt_file: "prompts/final_edit.json"
+    name: "style_improvement"
+    prompt_file: "prompts/style.json"
+    temperature: 0.8
 ```
 
-## 🔗 Multi-Prompt Processing (NEW)
+## ⚙️ Configuration
 
-### Overview
+### Model Support
 
-The OpenRouter Interface now supports combining multiple JSON prompt files into a single master system prompt. This enables sophisticated AI processing pipelines that leverage multiple specialized prompts simultaneously.
+Supports 100+ models through OpenRouter:
 
-### How Multi-Prompt Processing Works
+- **Anthropic**: Claude 4, Claude 3.5 Sonnet, Claude Haiku
+- **OpenAI**: GPT-4 Turbo, GPT-4o, GPT-3.5 Turbo
+- **Google**: Gemini 2.0 Flash, Gemini 1.5 Pro
+- **Specialized**: DeepSeek Coder, Llama models
+- **And many more...**
 
-1. **Input**: Specify multiple prompt files separated by commas
-2. **Combination**: System creates a structured master prompt combining all inputs
-3. **Processing**: AI model processes content using the combined prompt expertise
-4. **Output**: Single response incorporating all prompt requirements
+### Advanced Features
 
-### Master System Prompt Structure
+#### Pre/Post Processing Scripts
 
-When multiple prompts are combined, they're structured as:
-
-```
-MASTER SYSTEM PROMPT - Combined from Multiple Sources
-============================================================
-
-PROMPT SECTION 1: quality_check.json
-----------------------------------------
-[Content quality evaluation instructions]
-
-PROMPT SECTION 2: grammar_fix.json
-----------------------------------------
-[Grammar and style correction instructions]
-
-PROMPT SECTION 3: readability.json
-----------------------------------------
-[Readability enhancement instructions]
-
-END OF COMBINED PROMPTS
-============================================================
-
-Instructions: Apply all the above prompt sections in sequence to the provided input content.
-Each section should be considered as contributing to the overall task requirements.
-```
-
-### Use Cases
-
-- **Content Quality Pipeline**: Combine quality analysis + grammar checking + style improvement
-- **Code Review Process**: Merge security analysis + performance review + style checking
-- **Document Enhancement**: Integrate clarity assessment + technical accuracy + formatting
-- **Creative Writing**: Blend plot analysis + character development + dialogue improvement
-
-### Backward Compatibility
-
-- Single prompt files continue to work exactly as before
-- Existing configurations require no changes
-- Multi-prompt is an additive enhancement
-
-## 🤖 Supported Models
-
-Works with 400+ models through OpenRouter.ai:
-
-- **Claude 4 Sonnet** (anthropic/claude-4-sonnet-20250522) - Default
-- **GPT-4o** (openai/gpt-4o-2024-11-20)
-- **Gemini 2.5 Pro** (google/gemini-2.5-pro-exp-03-25) 
-- **DeepSeek R1** (deepseek/deepseek-r1)
-- **Llama 4 Maverick** (meta-llama/llama-4-maverick)
-- **Grok Beta** (x-ai/grok-beta)
-- And many more...
-
-## 🔧 Configuration
-
-### Default Configuration (`config/config.yaml`)
+Execute custom scripts before and after processing:
 
 ```yaml
-model: anthropic/claude-4-sonnet-20250522
-api_base_url: https://openrouter.ai/api/v1
-temperature: 0.8
-max_tokens: 25000
-log_level: INFO
+# Global scripts (run once per chain)
+preprocessing:
+  script01: echo "Starting processing pipeline"
+  name01: "Initialize Pipeline"
+  script02: python3 scripts/validate_input.py
+  name02: "Validate Input"
+
+postprocessing:
+  script01: python3 scripts/generate_report.py
+  name01: "Generate Report"
+
+# Per-step scripts (run for each prompt)
+prompts:
+  prompt 1:
+    prescript: "touch {input_file}.backup"
+    name: "content_processing"
+    prompt_file: "prompts/process.json"
+    postscript: "wc -l {output_file} > {output_file}.stats"
 ```
 
-### Environment Variables
+#### Multi-Pass Processing
+
+Run prompts multiple times with iterative improvement:
+
+```yaml
+prompts:
+  prompt 1:
+    name: "iterative_improvement"
+    prompt_file: "prompts/improve.json"
+    passes: 3  # Run 3 times
+    append: yes  # Accumulate content
+```
+
+#### File Management
+
+- **Automatic Chunking**: Handle large files automatically
+- **Intermediate Files**: All step outputs preserved
+- **Size Validation**: Detect processing issues
+- **Format Support**: Markdown, text, JSON, YAML
+
+## 📚 Examples
+
+### Content Enhancement Pipeline
+
+```yaml
+# content_enhancement.yaml
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+
+input_file: blog_draft.md
+output_file: enhanced_blog.md
+
+prompts:
+  prompt 1:
+    name: "grammar_foundation"
+    prompt_file: "prompts/grammar.json"
+    temperature: 0.2
+
+  prompt 2:
+    name: "engagement_boost"
+    prompt_file: "prompts/engagement.json"
+    temperature: 0.8
+
+  prompt 3:
+    name: "seo_optimization"
+    prompt_file: "prompts/seo.json"
+    temperature: 0.6
+```
+
+### Technical Documentation
+
+```yaml
+# technical_docs.yaml
+global_config:
+  model: "deepseek/deepseek-coder"
+  temperature: 0.3
+
+preprocessing:
+  script01: python3 scripts/extract_code.py
+  name01: "Extract Code Blocks"
+
+prompts:
+  prompt 1:
+    prescript: "python3 scripts/validate_syntax.py {input_file}"
+    name: "code_documentation"
+    prompt_file: "prompts/document_code.json"
+    postscript: "python3 scripts/test_examples.py {output_file}"
+
+postprocessing:
+  script01: python3 scripts/generate_toc.py
+  name01: "Generate Table of Contents"
+```
+
+### Multi-File Processing
+
+```yaml
+# multi_file_processing.yaml
+input_files:
+  - chapter1.md
+  - chapter2.md
+  - chapter3.md
+output_pattern: "processed_{input_name}.md"
+
+prompts:
+  prompt 1:
+    prescript: "echo 'Processing {input_file}' >> progress.log"
+    name: "content_enhancement"
+    prompt_file: "prompts/enhance.json"
+    postscript: "wc -w {output_file} >> word_counts.log"
+```
+
+### Web Interface Load Examples
+
+#### Load Prompt Example
+
+```json
+// test_load_prompt.json
+{
+  "title": "Content Quality Analysis",
+  "description": "Analyze content for clarity, coherence, and quality",
+  "persona": "You are a professional content analyst who provides clear, actionable feedback.",
+  "instructions": "Analyze the provided content for clarity, coherence, and overall quality. Provide specific recommendations for improvement.",
+  "review_criteria": "Evaluate based on: 1) Clarity of message, 2) Logical structure, 3) Grammar and style, 4) Overall effectiveness",
+  "output_format": "Provide a structured analysis with specific examples and recommendations."
+}
+```
+
+**Web Usage:**
+1. Click "Load Prompt" on main page
+2. Upload `test_load_prompt.json`
+3. Optionally upload `test_single_prompt_config.yaml` for custom API settings
+4. Enter content: "This is my draft article about AI development..."
+5. Execute and view results instantly
+
+#### Load Chain Example
+
+```yaml
+# test_web_yaml_config.yaml
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+  max_tokens: 20000
+
+input_file: test_input.md
+output_file: test_web_output.md
+
+preprocessing:
+  script01: echo "Starting web-loaded chain"
+  name01: "Initialize Chain"
+
+prompts:
+  prompt 1:
+    name: "test_analysis"
+    prompt_file: "prompts/content_quality.json"
+    temperature: 0.3
+
+  prompt 2:
+    name: "final_polish"
+    prompt_file: "prompts/content_quality.json"
+    temperature: 0.8
+    append: yes
+
+postprocessing:
+  script01: echo "Web chain complete"
+  name01: "Finalize Chain"
+```
+
+**Web Usage:**
+1. Navigate to `/chains` page
+2. Click "Load Chain" button
+3. Upload `test_web_yaml_config.yaml`
+4. Preview shows: 2 prompts, preprocessing/postprocessing scripts, append mode
+5. Enter content and start execution
+6. Monitor real-time progress in active chains section
+
+## 📖 Documentation
+
+### Quick References
+
+- **[Complete Documentation](docs/)** - Full guides and API reference
+- **[Configuration Guide](docs/configuration.md)** - YAML configuration options
+- **[Prompt Templates](docs/templates.md)** - Creating reusable prompts
+- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+
+### Common Commands
 
 ```bash
-export OPENROUTER_API_KEY="your-api-key"     # Required
-export OPENROUTER_MODEL="preferred-model"    # Optional override
-export OPENROUTER_LOG_LEVEL="DEBUG"          # Optional override
+# Help and information
+openrouter-runner --help
+openrouter-chain --help
+openrouter-web --help
+
+# Debug and validation
+openrouter-chain -c config.yaml --debug
+python3 -c "import yaml; print(yaml.safe_load(open('config.yaml')))"
+
+# Model and API testing
+openrouter-runner -p prompts/test.json -i test.md -o test_output.md
 ```
 
-## 📦 Installation Options
+## 🛠️ Development
 
-### For Users
+### Project Structure
 
-```bash
-# Basic installation
-pip install openrouter-interface
-
-# With web interface
-pip install "openrouter-interface[web]"
-
-# From source
-pip install -e .
+```
+openrouter-interface/
+├── src/openrouter_interface/     # Main Python package
+│   ├── cli.py                    # CLI interface
+│   ├── web.py                    # Web interface
+│   ├── chain.py                  # Chain runner
+│   ├── prompt_runner.py          # Core processing engine
+│   └── prompt_chain_runner.py    # Chain execution logic
+├── config/                       # Configuration files
+├── prompts/                      # Prompt templates
+├── scripts/                      # Utility scripts
+├── tests/                        # Test suite
+└── docs/                         # Documentation
 ```
 
-### For Developers
-
-```bash
-# Development setup with all tools
-./scripts/dev-setup.sh
-
-# Or manual development install
-pip install -e ".[dev]"
-```
-
-## 🌐 Remote Deployment & Web Chain Management
-
-The web interface is perfect for remote server deployments, allowing team access to AI processing pipelines:
-
-### Server Deployment
-
-```bash
-# Deploy on remote server
-git clone <repository-url>
-cd openrouter-interface
-pip install -e ".[web]"
-
-# Set API key on server
-export OPENROUTER_API_KEY="your-api-key"
-
-# Start web server (public access)
-openrouter-web --host 0.0.0.0 --port 8080
-
-# Or use production WSGI server
-gunicorn -w 4 -b 0.0.0.0:8080 "openrouter_interface.web:create_app()"
-```
-
-### Remote Chain Management Benefits
-
-**📱 Web-based Control:**
-- No SSH or CLI access needed
-- Cross-platform browser compatibility
-- Mobile-friendly responsive design
-
-**⏱️ Long-running Process Management:**
-- Start chains and close browser
-- Return later to check progress
-- Background execution continues
-- Email notifications (configurable)
-
-**👥 Team Collaboration:**
-- Multiple users can access same server
-- Shared chain configurations
-- Centralized processing power
-- Collaborative prompt development
-
-**📊 Monitoring & Analytics:**
-- Real-time progress dashboards
-- Execution history tracking
-- Performance metrics
-- Resource usage monitoring
-
-### Chain Management Workflow
-
-1. **Deploy** server with web interface
-2. **Access** via browser from anywhere
-3. **Create chains** using visual builder
-4. **Upload configs** or build interactively
-5. **Start execution** and monitor progress
-6. **Return later** to check results
-7. **Download outputs** when complete
-8. **Share configurations** with team
-
-## 🧪 Testing
+### Running Tests
 
 ```bash
 # Run all tests
 pytest
 
-# With coverage
+# Run with coverage
 pytest --cov=openrouter_interface
 
-# Specific test categories  
-pytest tests/unit          # Unit tests only
-pytest tests/integration   # Integration tests only
-
-# Test across Python versions
-tox
-
-# Test web interface
-pytest tests/web/          # Web interface tests
-python -m pytest tests/chains/  # Chain runner tests
+# Run specific test files
+pytest tests/test_cli.py
+pytest tests/test_chain.py
 ```
 
-## 🚨 Troubleshooting
-
-### Common Issues
-
-1. **Import Errors**: Ensure package is installed with `pip install -e .`
-2. **API Key Missing**: Set `OPENROUTER_API_KEY` environment variable
-3. **Command Not Found**: Package may not be in PATH, use `python -m openrouter_interface.cli`
-4. **Permission Errors**: Use virtual environment or `--user` flag
-
-### Getting Help
+### Code Quality
 
 ```bash
-# Command help
-openrouter-runner --help
-openrouter-web --help
+# Format code
+black src tests
 
-# Python help
-python -c "import openrouter_interface; help(openrouter_interface)"
+# Type checking
+mypy src
 
-# Version info
-python -c "import openrouter_interface; print(openrouter_interface.__version__)"
+# Linting
+flake8 src
 ```
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature-name`
-3. Setup development environment: `./scripts/dev-setup.sh`
-4. Make changes and add tests
-5. Run quality checks: `pre-commit run --all`
-6. Submit pull request
+We welcome contributions! Here's how to get started:
 
-## 📄 License
+### Quick Contribution Guide
 
-MIT License - see LICENSE file for details.
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes** with tests and documentation
+4. **Run tests**: `pytest && black src tests && flake8 src`
+5. **Submit a pull request**
+
+### Areas for Contribution
+
+- 🎯 **New Features**: Prompt templates, chain configurations
+- 🤖 **Model Support**: Additional model integrations
+- 📚 **Documentation**: Tutorials, examples, guides
+- 🧪 **Testing**: Test coverage improvements
+- ⚡ **Performance**: Optimization and profiling
+- 🎨 **UI/UX**: Web interface improvements
+
+### Development Setup
+
+```bash
+# Clone and install for development
+git clone https://github.com/your-org/openrouter-interface.git
+cd openrouter-interface
+./install.sh dev
+
+# Install pre-commit hooks
+pip install pre-commit
+pre-commit install
+
+# Run development server
+PYTHONPATH=src python3 -m openrouter_interface.web --debug
+```
 
 ## 🆘 Support
 
-- **Documentation**: Check `docs/` directory
-- **Issues**: Report bugs and feature requests via GitHub issues
-- **Examples**: See `examples/` directory for code samples
-- **Configuration**: Reference files in `config/` directory
+### Getting Help
+
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/your-org/openrouter-interface/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/your-org/openrouter-interface/discussions)
+- 📖 **Documentation**: [Complete Docs](docs/)
+- 💡 **Feature Requests**: [GitHub Issues](https://github.com/your-org/openrouter-interface/issues)
+
+### Community
+
+- 💬 **Discord**: Join our community chat
+- 🐦 **Twitter**: Follow for updates and tips
+- 📝 **Blog**: Technical articles and tutorials
+
+### Troubleshooting
+
+**Common Issues:**
+
+```bash
+# API key not set
+echo $OPENROUTER_API_KEY
+
+# Permission issues
+chmod +x install-global.sh
+
+# Python path issues
+which python3
+python3 --version
+```
+
+**Debug Mode:**
+```bash
+# Enable detailed logging
+openrouter-chain -c config.yaml --debug 2>&1 | tee debug.log
+
+# Check configuration validity
+python3 -c "import yaml; yaml.safe_load(open('config.yaml'))"
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [OpenRouter](https://openrouter.ai/) for providing access to multiple AI models
+- The Python community for excellent tools and libraries
+- Contributors who help improve this project
 
 ---
 
-**Built with modern Python best practices** 🐍 **following the Hitchhiker's Guide to Python** 📖
+## 📊 Project Status
+
+- ✅ **Stable**: Core functionality tested and reliable
+- 🚀 **Active Development**: Regular updates and new features
+- 🧪 **Well Tested**: Comprehensive test suite
+- 📚 **Documented**: Complete documentation and examples
+
+### Recent Updates
+
+- ✨ **Per-Phase Scripts**: Individual prescript/postscript for each step
+- 🔗 **Variable Substitution**: Dynamic {input_file}/{output_file} replacement
+- 📊 **Enhanced Monitoring**: Improved web interface with real-time progress
+- 🎯 **Model Compatibility**: Automatic parameter filtering per model
+- 📁 **File Management**: Advanced validation and size checking
+- 📤 **Load Buttons**: Direct upload and execution of JSON prompts and YAML chains
+- 🚀 **No-Registry Execution**: Run files instantly without permanent storage
+
+---
+
+**Ready to get started?** Follow the [Quick Start](#-quick-start) guide above! 🚀
