@@ -1,0 +1,7 @@
+model: anthropic/claude-4-sonnet-20250522
+temperature: 0.5
+max_tokens: 20000
+file_size_validation:
+  enabled: true
+  max_size_difference_percent: 1000
+payload_file: /home/paul/data/Dropbox/Writing/OpenRouter-Interface/temp/test_prepost_config_20250928_004514_478751/step_1_payload_20250928_004514_478751.json

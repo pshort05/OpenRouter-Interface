@@ -1,0 +1,60 @@
+# Test configuration for passes functionality
+# This config tests various passes scenarios including skipping
+
+input_files:
+  - test_input_simple.md
+
+output_pattern: "test_passes_output.md"
+output_append: false
+
+prompts:
+  # Step 1: Normal step with 1 pass (default)
+  prompt 1:
+    name: "single_pass_step"
+    prompt_file: "test_simple_prompt.json"
+
+  # Step 2: Multi-pass step (3 passes)
+  prompt 2:
+    name: "multi_pass_step"
+    prompt_file: "test_simple_prompt.json"
+    passes: 3
+
+  # Step 3: Step with 0 passes (should be skipped)
+  prompt 3:
+    name: "zero_passes_step"
+    prompt_file: "test_simple_prompt.json"
+    passes: 0
+
+  # Step 4: Another normal step to show chain continues
+  prompt 4:
+    name: "final_step"
+    prompt_file: "test_simple_prompt.json"
+    passes: 1
+
+  # Step 5: Step with many passes (testing maximum)
+  prompt 5:
+    name: "many_passes_step"
+    prompt_file: "test_simple_prompt.json"
+    passes: 5
+
+  # Step 6: Step with negative passes (should be skipped)
+  prompt 6:
+    name: "negative_passes_step"
+    prompt_file: "test_simple_prompt.json"
+    passes: -1
+
+  # Step 7: Final step to prove chain completed
+  prompt 7:
+    name: "completion_step"
+    prompt_file: "test_simple_prompt.json"
+
+# Global configuration
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.3
+  max_tokens: 1000
+  api_base_url: "https://openrouter.ai/api/v1"
+  log_level: "INFO"
+  # Disable file size validation for this test so we can focus on passes behavior
+  file_size_validation:
+    enabled: false

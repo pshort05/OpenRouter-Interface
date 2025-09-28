@@ -1,0 +1,43 @@
+# Test configuration for append functionality
+# This config tests append behavior for creating summaries
+
+input_files:
+  - test_input_append.md
+
+output_pattern: "test_append_output.md"
+output_append: false
+
+prompts:
+  # Step 1: Normal step without append
+  prompt 1:
+    name: "initial_processing"
+    prompt_file: "test_simple_prompt.json"
+
+  # Step 2: Append mode step - should append output to input
+  prompt 2:
+    name: "append_step"
+    prompt_file: "test_simple_prompt.json"
+    append: yes
+
+  # Step 3: Multi-pass with append - should accumulate across passes
+  prompt 3:
+    name: "multi_pass_append"
+    prompt_file: "test_simple_prompt.json"
+    passes: 2
+    append: true
+
+  # Step 4: Normal step to see final accumulated content
+  prompt 4:
+    name: "final_step"
+    prompt_file: "test_simple_prompt.json"
+
+# Global configuration
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.3
+  max_tokens: 1000
+  api_base_url: "https://openrouter.ai/api/v1"
+  log_level: "INFO"
+  # Disable file size validation for this test so we can focus on append behavior
+  file_size_validation:
+    enabled: false

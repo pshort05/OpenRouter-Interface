@@ -216,6 +216,10 @@ user: "user123"         # User identifier for tracking
 - Model selection per step
 - **Per-phase setting overrides**: Each step can override any API parameter including model, temperature, max_tokens, sampling controls, penalties, response format, and OpenRouter-specific features
 - **Multi-prompt support**: Each chain step can use comma-separated prompt files
+- **Multi-pass execution**: Each step can run multiple passes with `passes: N` setting
+- **Content append mode**: Each step can append output to input with `append: yes` setting
+- **Pre/post processing**: Execute custom scripts before and after chain processing
+- **Error handling control**: Per-step `on_error: stop/continue` behavior
 - Progress tracking configuration
 
 ### Per-Phase Setting Override Configuration
@@ -254,12 +258,14 @@ prompts:
     stream: true                   # Enable streaming for this step
     # Uses global model, frequency_penalty
 
-  # Phase 3: Technical review with structured output
+  # Phase 3: Technical review with structured output and multi-pass execution
   prompt 3:
     name: "final_review"
     prompt_file: "review.json"
     model: "deepseek/deepseek-coder" # Specialized technical model
     temperature: 0.4               # Balanced for technical accuracy
+    passes: 2                      # Two-pass review for thoroughness
+    on_error: continue             # Skip if technical model fails
     response_format:               # Structured JSON output
       type: "json_object"
     repetition_penalty: 1.2        # Alternative repetition control
@@ -274,6 +280,20 @@ prompts:
       - "middle-out"
     usage:                         # Track usage for this step
       include: true
+
+  # Phase 4: Content accumulation with append mode
+  prompt 4:
+    name: "content_accumulation"
+    prompt_file: "summarize.json"
+    append: yes                    # Append output to input for content accumulation
+    passes: 3                      # Multiple passes with accumulation
+    temperature: 0.6               # Balanced for summarization
+
+  # Phase 5: Disabled optional enhancement
+  prompt 5:
+    name: "optional_enhancement"
+    prompt_file: "enhance.json"
+    passes: 0                      # Skip this step entirely
 ```
 
 ### Multi-Prompt Chain Configuration
@@ -405,6 +425,402 @@ prompts:
     prompt_file: "review.json"
     # This step gets the original input if step 2 was skipped
 ```
+
+## Pre/Post Processing Scripts
+
+### Script Configuration
+
+The system supports execution of custom shell scripts and commands before and after chain processing. This feature enables integration with external tools, data preparation workflows, cleanup operations, and custom automation tasks.
+
+#### Configuration Options
+- **`preprocessing`**: Scripts executed before chain processing begins
+- **`postprocessing`**: Scripts executed after chain processing completes
+- **Script Numbering**: Up to 99 scripts per phase (script01-script99)
+- **Optional Names**: Human-readable names for scripts (name01-name99)
+- **Execution Order**: Scripts execute in numerical order based on suffix
+- **Default Behavior**: No scripts execute if sections not present in config
+
+#### Script Execution Behavior
+- **Sequential Processing**: Scripts execute one at a time in numerical order
+- **Error Propagation**: Script failure halts chain execution immediately
+- **Timeout Protection**: 5-minute timeout per script prevents hanging
+- **Shell Environment**: Full access to system shell and environment variables
+- **Output Capture**: stdout and stderr captured and logged to files
+- **Minimal Console Output**: Clean, concise status reporting with execution times
+- **Working Directory**: Scripts execute from chain configuration directory
+
+#### Pre/Post Processing Configuration Examples
+
+```yaml
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+
+# Input/output configuration
+input_file: documents/source.md
+output_file: documents/processed.md
+
+# Preprocessing scripts - execute before chain starts
+preprocessing:
+  script01: echo "Starting document processing pipeline"
+  name01: "Initialize Pipeline"
+  script02: python3 scripts/validate_input.py
+  name02: "Validate Input Data"
+  script03: ./scripts/prepare_environment.sh
+  name03: "Setup Environment"
+  script04: mkdir -p output/logs
+  name04: "Create Directories"
+  script05: cp source_backup.md backup/
+  name05: "Backup Source Files"
+
+# Postprocessing scripts - execute after chain completes
+postprocessing:
+  script01: python3 scripts/validate_output.py
+  name01: "Validate Results"
+  script02: ./scripts/generate_report.sh
+  name02: "Generate Reports"
+  script03: echo "Processing pipeline completed"
+  name03: "Pipeline Complete"
+
+# Chain configuration
+prompts:
+  prompt 1:
+    name: "content_processing"
+    prompt_file: "analysis.json"
+```
+
+#### Real-World Use Cases
+
+**Data Pipeline Integration:**
+```yaml
+preprocessing:
+  script01: python3 etl/extract_data.py
+  name01: "Extract Raw Data"
+  script02: python3 etl/transform_data.py
+  name02: "Transform Data"
+  script03: python3 etl/validate_schema.py
+  name03: "Validate Schema"
+
+postprocessing:
+  script01: python3 etl/load_results.py
+  name01: "Load to Database"
+  script02: python3 etl/cleanup_temp.py
+  name02: "Cleanup Temp Files"
+  script03: ./scripts/send_notification.sh
+  name03: "Send Notifications"
+```
+
+**Development Workflow:**
+```yaml
+preprocessing:
+  script01: git pull origin main
+  script02: npm install
+  script03: npm run build
+  script04: pytest tests/
+
+postprocessing:
+  script01: npm run test
+  script02: ./scripts/deploy.sh
+  script03: git tag -a "v$(date +%Y%m%d)" -m "Automated release"
+```
+
+**File Management and Backup:**
+```yaml
+preprocessing:
+  script01: ./scripts/backup_inputs.sh
+  script02: python3 scripts/check_disk_space.py
+  script03: mkdir -p logs/$(date +%Y-%m-%d)
+
+postprocessing:
+  script01: ./scripts/archive_outputs.sh
+  script02: python3 scripts/generate_metadata.py
+  script03: rsync -av outputs/ backup_server:/backups/
+```
+
+**Quality Assurance Pipeline:**
+```yaml
+preprocessing:
+  script01: python3 qa/spell_check.py
+  script02: python3 qa/format_validation.py
+  script03: ./scripts/style_guide_check.sh
+
+postprocessing:
+  script01: python3 qa/output_validation.py
+  script02: python3 qa/metrics_calculation.py
+  script03: ./scripts/generate_qa_report.sh
+```
+
+#### Console Output Features
+
+The system provides clean, minimal console output while preserving detailed information in log files.
+
+**Console Output Format:**
+```
+Pre Processing:
+Executing script 1: Initialize Environment
+Result:   ✅ complete:  time 0.5 seconds
+
+Executing script 2: Validate Input Data
+Result:   ✅ complete:  time 2.1 seconds
+
+Executing Prompt 1: content_processing
+Result:   ✅ prompt 1 content_processing output size: 14.5k time: 16.8 seconds
+
+Post Processing:
+Executing script 1: Validate Results
+Result:   ✅ complete:  time 1.3 seconds
+```
+
+**Console Output Features:**
+- **Phase Headers**: Clear "Pre Processing:" and "Post Processing:" section dividers
+- **Script Names**: Human-readable script names displayed instead of commands
+- **Minimal Status**: Simple "✅ complete:" or "❌ failed:" indicators
+- **Execution Timing**: Precise timing information for performance monitoring
+- **Consistent Formatting**: Matches prompt execution result format
+- **Error Details**: Failure reasons shown concisely (exit codes, timeouts, errors)
+
+**Detailed Logging to Files:**
+- **Full Commands**: Complete script commands logged to file
+- **stdout/stderr**: All script output captured in log files
+- **Execution Context**: Script names, numbers, and detailed timing
+- **Debug Information**: Comprehensive execution details for troubleshooting
+
+#### Script Management Best Practices
+- **Executable Permissions**: Ensure script files have proper execute permissions
+- **Error Handling**: Scripts should return appropriate exit codes (0 for success)
+- **Path Management**: Use absolute paths or ensure scripts are in PATH
+- **Logging**: Consider adding logging within scripts for detailed debugging
+- **Idempotency**: Design scripts to be safely re-runnable
+- **Resource Cleanup**: Ensure scripts clean up temporary resources on completion
+
+#### Error Handling and Debugging
+- **Script Failures**: Any script failure immediately halts chain execution
+- **Timeout Handling**: Scripts exceeding 5-minute timeout are terminated
+- **Error Logging**: Detailed error messages logged to chain log file
+- **stdout/stderr Capture**: All script output captured for debugging
+- **Exit Code Reporting**: Non-zero exit codes reported with context
+- **Debugging Support**: Use `--debug` flag for verbose script execution logs
+
+#### Integration with Other Features
+- **Chain Independence**: Scripts execute regardless of prompt chain success/failure
+- **Multi-File Compatibility**: Scripts execute once per chain, not per input file
+- **Config Override**: Scripts use same configuration directory as chain
+- **Temp Directory**: Scripts can access chain temp directory for intermediate files
+- **Environment Access**: Full access to environment variables and system tools
+
+## Content Append Mode
+
+### Append Configuration
+
+The system supports content accumulation through the `append` setting, allowing output to be appended to input instead of replacing it. This feature is ideal for creating summaries of multiple documents or building comprehensive content from multiple processing passes.
+
+#### Configuration Options
+- **`append: yes`**: Append output to input (content accumulation mode)
+- **`append: no`**: Replace input with output (default behavior)
+- **`append: true/false`**: Boolean values also supported
+- **`append: 1/0`**: Numeric string values supported
+- **Default**: `false` (no append behavior)
+
+#### Append Behavior
+- **Content Concatenation**: Output is appended to input with separator: `input + "\n\n" + output`
+- **File Naming**: Appended files get `_appended` suffix in their names
+- **Chain Continuity**: Next step receives the accumulated content as input
+- **Pass Integration**: Works seamlessly with multi-pass execution for iterative accumulation
+- **Intermediate Preservation**: All intermediate files preserved in temp directory
+
+#### Content Append Configuration Examples
+
+```yaml
+prompts:
+  # Normal processing (default behavior)
+  prompt 1:
+    name: "initial_processing"
+    prompt_file: "process.json"
+    # Implicit: append: no
+
+  # Simple append mode
+  prompt 2:
+    name: "content_accumulation"
+    prompt_file: "summarize.json"
+    append: yes                    # Append output to input
+
+  # Append with multi-pass for iterative accumulation
+  prompt 3:
+    name: "iterative_accumulation"
+    prompt_file: "refine_summary.json"
+    append: true                   # Boolean format
+    passes: 3                      # Each pass appends to growing content
+
+  # Append with string values
+  prompt 4:
+    name: "final_accumulation"
+    prompt_file: "finalize.json"
+    append: "yes"                  # String format supported
+```
+
+#### Real-World Use Cases
+
+**Multi-Document Summarization:**
+```yaml
+prompts:
+  prompt 1:
+    name: "document_summary"
+    prompt_file: "create_summary.json"
+    append: yes                    # Accumulate summaries from multiple docs
+    passes: 1                      # Single pass per document
+```
+
+**Iterative Content Building:**
+```yaml
+prompts:
+  prompt 1:
+    name: "content_expansion"
+    prompt_file: "expand_content.json"
+    append: yes                    # Build content progressively
+    passes: 5                      # Multiple expansion passes
+    temperature: 0.7              # Consistent creativity
+```
+
+**Research Compilation:**
+```yaml
+prompts:
+  prompt 1:
+    name: "research_gathering"
+    prompt_file: "gather_research.json"
+    append: yes                    # Compile research findings
+
+  prompt 2:
+    name: "analysis_addition"
+    prompt_file: "add_analysis.json"
+    append: yes                    # Add analysis to research
+    temperature: 0.4              # Analytical processing
+```
+
+#### Console Output Features
+- **Append Indicators**: Shows "(append mode)" in console output
+- **Combined Display**: Shows "(N passes, append mode)" for multi-pass append steps
+- **File Size Tracking**: Displays accumulating file sizes as content grows
+- **Status Reporting**: Clear indication when content is being accumulated vs replaced
+
+#### File Management
+- **Intermediate Files**: Each append creates: `input_step_X_name_appended.ext`
+- **Pass Integration**: Multi-pass append creates: `input_step_X_name_pass_N_appended.ext`
+- **Final Output**: Last append result becomes the step's final output
+- **Chain Continuity**: Next step receives accumulated content as input
+- **Temp Preservation**: All intermediate files preserved for analysis and debugging
+
+#### Integration with Other Features
+- **Multi-Pass Compatibility**: Append works with any number of passes
+- **Error Handling**: Compatible with `on_error: continue` for fault tolerance
+- **File Size Validation**: Append mode considered in size validation calculations
+- **Parameter Overrides**: Append setting can be combined with any API parameter overrides
+
+## Multi-Pass Execution
+
+### Passes Configuration
+
+The system supports iterative processing through the `passes` setting, allowing each step to be executed multiple times with chained output.
+
+#### Configuration Options
+- **`passes: N`**: Execute the step N times (default: 1, maximum: 99)
+- **`passes: 0`**: Skip the step entirely (equivalent to disabling the step)
+- **`passes: <negative>`**: Skip the step entirely (treated same as 0)
+
+#### Pass Execution Behavior
+- **Pass Chaining**: Output from pass 1 becomes input for pass 2, and so on
+- **File Naming**: Each pass creates a separate file: `_pass_1`, `_pass_2`, etc.
+- **Final Output**: The last pass output becomes the step's final output
+- **Timing**: All passes are timed together as a single step execution
+- **Validation**: Each pass is individually validated before proceeding
+
+#### Multi-Pass Configuration Examples
+
+```yaml
+prompts:
+  # Single pass (default behavior)
+  prompt 1:
+    name: "initial_processing"
+    prompt_file: "process.json"
+    # Implicit: passes: 1
+
+  # Multi-pass iterative refinement
+  prompt 2:
+    name: "iterative_improvement"
+    prompt_file: "refine.json"
+    passes: 3                    # Run 3 times, each pass refines the previous
+
+  # Skip step entirely
+  prompt 3:
+    name: "optional_step"
+    prompt_file: "optional.json"
+    passes: 0                    # Step will be skipped
+
+  # High-iteration processing
+  prompt 4:
+    name: "deep_refinement"
+    prompt_file: "polish.json"
+    passes: 10                   # Maximum refinement passes
+
+  # Disabled step (negative passes)
+  prompt 5:
+    name: "disabled_step"
+    prompt_file: "disabled.json"
+    passes: -1                   # Step will be skipped
+```
+
+#### Real-World Use Cases
+
+**Iterative Content Refinement:**
+```yaml
+prompts:
+  prompt 1:
+    name: "content_polish"
+    prompt_file: "polish_text.json"
+    passes: 5                    # Polish text through 5 iterations
+    temperature: 0.7            # Consistent creativity level
+```
+
+**Progressive Style Application:**
+```yaml
+prompts:
+  prompt 1:
+    name: "style_application"
+    prompt_file: "apply_style.json"
+    passes: 3                    # Apply style guide progressively
+    temperature: 0.4            # Consistent style application
+```
+
+**Quality Assurance Pipeline:**
+```yaml
+prompts:
+  prompt 1:
+    name: "grammar_check"
+    prompt_file: "grammar.json"
+    passes: 2                    # Two-pass grammar checking
+
+  prompt 2:
+    name: "fact_check"
+    prompt_file: "facts.json"
+    passes: 3                    # Thorough fact verification
+
+  prompt 3:
+    name: "final_review"
+    prompt_file: "review.json"
+    passes: 1                    # Single final review
+```
+
+#### Console Output Features
+- **Pass Progress**: Shows "Executing Prompt X: name (N passes)" for multi-pass steps
+- **Pass Execution**: Logs each individual pass as "Executing pass X/N"
+- **Results Display**: Shows "(N passes)" in final results
+- **Timing**: Combined execution time across all passes
+- **File Tracking**: Individual pass files preserved in temp directory
+
+#### File Management
+- **Intermediate Files**: Each pass creates: `input_step_X_name_pass_N.ext`
+- **Final Output**: Last pass output becomes the step's result
+- **Chain Continuity**: Next step receives the final pass output as input
+- **Temp Preservation**: All pass files preserved for debugging and analysis
 
 ## File Size Validation
 
@@ -550,7 +966,33 @@ OpenAI models (e.g., `openai/gpt-4-turbo`, `openai/gpt-4o`) offer comprehensive 
 
 ## Recent Feature Additions
 
-### Error Handling and Fault Tolerance (Latest)
+### Pre/Post Processing Scripts (Latest)
+- **Script Execution**: Execute up to 99 preprocessing and postprocessing scripts per chain
+- **Optional Script Names**: Human-readable names (name01-name99) for better console output
+- **Numbered Ordering**: Scripts execute in numerical order (script01-script99)
+- **Shell Command Support**: Full shell command and script file execution capabilities
+- **Minimal Console Output**: Clean status reporting with script names and execution times
+- **Detailed File Logging**: Complete script commands and output captured in log files
+- **Timeout Protection**: 5-minute timeout per script with automatic failure handling
+- **Error Handling**: Script failures halt chain execution with detailed error reporting
+
+### Content Append Mode
+- **Append Configuration**: Per-step `append: yes` setting for content accumulation
+- **Content Accumulation**: Output is appended to input instead of replacing it
+- **Multi-Document Processing**: Ideal for creating summaries by combining multiple documents
+- **Flexible Settings**: Supports boolean (`true/false`) and string (`yes/no`) values
+- **Pass Integration**: Works seamlessly with multi-pass execution for iterative accumulation
+- **Intermediate Preservation**: All intermediate files preserved in temp directory for analysis
+
+### Multi-Pass Execution Control
+- **Passes Configuration**: Per-step `passes: N` setting for iterative processing
+- **Pass Chaining**: Output from pass N becomes input for pass N+1
+- **Skip Behavior**: `passes: 0` or negative values skip the step entirely
+- **Maximum Limit**: Up to 99 passes per step supported
+- **Enhanced Naming**: Pass-specific intermediate files (`_pass_1`, `_pass_2`, etc.)
+- **Console Progress**: Clear indication of passes count and current pass execution
+
+### Error Handling and Fault Tolerance
 - **On-Error Behavior Control**: Per-step configuration with `on_error: stop/continue`
 - **File Passthrough**: Automatic input file copying for skipped steps
 - **Enhanced Console Output**: Colored status indicators (✅⚠️❌) with timing

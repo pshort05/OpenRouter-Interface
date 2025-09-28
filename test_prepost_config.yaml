@@ -1,0 +1,34 @@
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+  max_tokens: 20000
+  file_size_validation:
+    enabled: true
+    max_size_difference_percent: 1000  # Allow large size differences for testing
+
+# Test input and output
+input_file: test_input_prepost.md
+output_file: test_output_prepost.md
+
+# Preprocessing scripts - executed before chain starts
+preprocessing:
+  script01: echo "Starting preprocessing step 1"
+  name01: "Initialize Environment"
+  script02: ls -la
+  name02: "List Directory Contents"
+  script03: echo "Preprocessing step 3 complete"
+  name03: "Finalize Setup"
+
+# Postprocessing scripts - executed after chain completes
+postprocessing:
+  script01: echo "Starting postprocessing step 1"
+  name01: "Cleanup Operations"
+  script02: echo "Postprocessing step 2 complete"
+  name02: "Generate Reports"
+
+# Simple prompt chain for testing
+prompts:
+  prompt 1:
+    name: "test_processing"
+    prompt_file: "prompts/test_prompt1.json"
+    temperature: 0.5
