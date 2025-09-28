@@ -565,6 +565,38 @@ class PromptChainRunner:
             return append
         return False
 
+    def _get_prescript(self, prompt_config) -> Optional[str]:
+        """Extract prescript from prompt config."""
+        if isinstance(prompt_config, dict):
+            prescript = prompt_config.get('prescript')
+            if prescript and isinstance(prescript, str):
+                return prescript.strip()
+        return None
+
+    def _get_postscript(self, prompt_config) -> Optional[str]:
+        """Extract postscript from prompt config."""
+        if isinstance(prompt_config, dict):
+            postscript = prompt_config.get('postscript')
+            if postscript and isinstance(postscript, str):
+                return postscript.strip()
+        return None
+
+    def _substitute_script_variables(self, script_command: str, input_file: Path, output_file: Path) -> str:
+        """
+        Substitute {input_file} and {output_file} variables in script commands.
+
+        Args:
+            script_command: The script command with potential variables
+            input_file: Path to the input file for this step
+            output_file: Path to the output file for this step
+
+        Returns:
+            Script command with variables substituted
+        """
+        substituted = script_command.replace('{input_file}', str(input_file))
+        substituted = substituted.replace('{output_file}', str(output_file))
+        return substituted
+
     def _get_output_append(self) -> bool:
         """Get output_append setting from config (defaults to False)."""
         return self.config.get('output_append', False)
@@ -1242,6 +1274,10 @@ class PromptChainRunner:
                     # Get append behavior for this step
                     step_append = self._get_append(prompt_config)
 
+                    # Get prescript and postscript for this step
+                    prescript = self._get_prescript(prompt_config)
+                    postscript = self._get_postscript(prompt_config)
+
                     # Skip step if passes is 0 or negative
                     if passes <= 0:
                         logging.info(f"Step {step_display}: Skipping step (passes={passes})")
@@ -1282,6 +1318,31 @@ class PromptChainRunner:
                         logging.info(f"Using step-specific settings: {', '.join(settings_list)}")
                     if passes > 1:
                         logging.info(f"Step will run {passes} passes")
+
+                    # Execute prescript if configured
+                    if prescript:
+                        # Use current input as both input and output for prescript variable substitution
+                        if not self._execute_single_script(prescript, "prescript", step_display, current_input, current_input):
+                            logging.error(f"Step {step_display}: Prescript failed, aborting step")
+                            step_success = False
+                            step_error_message = "Prescript execution failed"
+                            step_execution_time = time.time() - step_start_time
+
+                            # Show failed result for the prompt step
+                            self.console.print_step_result(step_display, prompt_name, 'failed', False, step_execution_time, step_error_message)
+                            logging.error(f"Chain execution failed at File {file_index}, Step {step_display}")
+
+                            # Track this failed step
+                            file_result['prompts'].append({
+                                'step': step_display,
+                                'name': prompt_name,
+                                'file_size': 'failed',
+                                'success': False,
+                                'error': step_error_message
+                            })
+
+                            file_successful = False
+                            break
 
                     # Execute multiple passes for this step
                     step_pass_input = current_input
@@ -1475,6 +1536,13 @@ class PromptChainRunner:
                                 logging.info(f"Final step output copied to: {final_output}")
                             except Exception as e:
                                 logging.error(f"Failed to copy final output: {e}")
+
+                        # Execute postscript if configured
+                        if postscript:
+                            # Use the step input and final output for postscript variable substitution
+                            if not self._execute_single_script(postscript, "postscript", step_display, step_pass_input, final_output_for_step):
+                                logging.error(f"Step {step_display}: Postscript failed after successful prompt execution")
+                                # Note: We continue execution even if postscript fails, but log it
 
                         # Get formatted file size for display
                         formatted_size = self._format_file_size(final_output_for_step)
@@ -1736,6 +1804,83 @@ class PromptChainRunner:
 
         logging.info(f"All {phase} scripts completed successfully")
         return True
+
+    def _execute_single_script(self, script_command: str, script_type: str, step_display: str, input_file: Path, output_file: Path) -> bool:
+        """
+        Execute a single prescript or postscript for a specific step.
+
+        Args:
+            script_command: The script command to execute
+            script_type: 'prescript' or 'postscript' for logging
+            step_display: Step identifier for logging (e.g., "1", "2.1")
+            input_file: Input file path for variable substitution
+            output_file: Output file path for variable substitution
+
+        Returns:
+            True if script executed successfully, False otherwise
+        """
+        # Substitute variables in the script command
+        substituted_command = self._substitute_script_variables(script_command, input_file, output_file)
+
+        # Detailed logging to file
+        logging.info(f"Step {step_display}: Executing {script_type}: {substituted_command}")
+        logging.info(f"Step {step_display}: Original command: {substituted_command}")
+        logging.info(f"Step {step_display}: Input file: {input_file}")
+        logging.info(f"Step {step_display}: Output file: {output_file}")
+
+        # Track execution time
+        start_time = time.time()
+
+        try:
+            # Execute the script
+            result = subprocess.run(
+                substituted_command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=300  # 5 minute timeout
+            )
+
+            # Calculate execution time
+            execution_time = time.time() - start_time
+
+            if result.returncode == 0:
+                # Detailed logging to file
+                logging.info(f"Step {step_display}: {script_type} completed successfully in {execution_time:.1f} seconds")
+                if result.stdout.strip():
+                    logging.info(f"Step {step_display}: {script_type} stdout: {result.stdout.strip()}")
+                if result.stderr.strip():
+                    logging.info(f"Step {step_display}: {script_type} stderr: {result.stderr.strip()}")
+
+                # Minimal console output - success
+                script_label = "preprocessing script" if script_type == "prescript" else "postprocessing script"
+                print(f"{script_label}:   ✅  successfully run")
+                return True
+            else:
+                # Detailed logging to file
+                logging.error(f"Step {step_display}: {script_type} failed with exit code {result.returncode} in {execution_time:.1f} seconds")
+                if result.stdout.strip():
+                    logging.error(f"Step {step_display}: {script_type} stdout: {result.stdout.strip()}")
+                if result.stderr.strip():
+                    logging.error(f"Step {step_display}: {script_type} stderr: {result.stderr.strip()}")
+
+                # Minimal console output - failure
+                script_label = "preprocessing script" if script_type == "prescript" else "postprocessing script"
+                print(f"{script_label}:   ❌  failed (exit code {result.returncode})")
+                return False
+
+        except subprocess.TimeoutExpired:
+            execution_time = time.time() - start_time
+            logging.error(f"Step {step_display}: {script_type} timed out after {execution_time:.1f} seconds")
+            script_label = "preprocessing script" if script_type == "prescript" else "postprocessing script"
+            print(f"{script_label}:   ❌  timeout")
+            return False
+        except Exception as e:
+            execution_time = time.time() - start_time
+            logging.error(f"Step {step_display}: Failed to execute {script_type}: {e}")
+            script_label = "preprocessing script" if script_type == "prescript" else "postprocessing script"
+            print(f"{script_label}:   ❌  error: {e}")
+            return False
 
     def _run_preprocessing(self) -> bool:
         """Execute preprocessing scripts before chain execution."""
