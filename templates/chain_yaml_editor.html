@@ -1,0 +1,703 @@
+{% extends "base.html" %}
+
+{% block title %}Chain YAML Editor{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/mode-yaml.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/theme-github.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/theme-monokai.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-edit"></i> Chain YAML Editor</h1>
+                <div>
+                    <button type="button" class="btn btn-success" onclick="saveAndExecute()">
+                        <i class="fas fa-rocket"></i> Save & Execute
+                    </button>
+                    <a href="{{ url_for('chain_load') }}" class="btn btn-secondary ml-2">
+                        <i class="fas fa-upload"></i> Load File
+                    </a>
+                    <a href="{{ url_for('chains_index') }}" class="btn btn-secondary ml-2">
+                        <i class="fas fa-arrow-left"></i> Back to Chains
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-code"></i> YAML Configuration Editor</h5>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="formatYaml()">
+                                <i class="fas fa-magic"></i> Format
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="validateYaml()">
+                                <i class="fas fa-check"></i> Validate
+                            </button>
+                            <div class="btn-group ml-2" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setTheme('github')">Light</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setTheme('monokai')">Dark</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="yaml-editor" style="height: 600px; width: 100%;"></div>
+                </div>
+                <div class="card-footer">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Ctrl+S to save, Ctrl+Shift+F to format
+                            </small>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <span id="editor-status" class="badge badge-secondary">Ready</span>
+                            <span id="line-info" class="badge badge-info ml-2">Line 1:1</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-3">
+                <button type="button" class="btn btn-primary" onclick="saveConfiguration()">
+                    <i class="fas fa-save"></i> Save Configuration
+                </button>
+                <button type="button" class="btn btn-success ml-2" onclick="validateAndPreview()">
+                    <i class="fas fa-eye"></i> Preview & Validate
+                </button>
+                <button type="button" class="btn btn-warning ml-2" onclick="loadTemplate()">
+                    <i class="fas fa-file-alt"></i> Load Template
+                </button>
+                <button type="button" class="btn btn-secondary ml-2" onclick="downloadYaml()">
+                    <i class="fas fa-download"></i> Download
+                </button>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Validation Results -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-check-circle"></i> Validation & Preview
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="validation-results">
+                        <p class="text-muted">Click "Preview & Validate" to check your configuration.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Templates -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-file-code"></i> Templates
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadTemplate('basic')">
+                            <i class="fas fa-file"></i> Basic Chain
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadTemplate('advanced')">
+                            <i class="fas fa-cogs"></i> Advanced Chain
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadTemplate('scripts')">
+                            <i class="fas fa-play"></i> With Scripts
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadTemplate('multipass')">
+                            <i class="fas fa-repeat"></i> Multi-pass
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadTemplate('append')">
+                            <i class="fas fa-plus"></i> Append Mode
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documentation -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-book"></i> Quick Reference
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h6>Required Fields:</h6>
+                    <ul class="small">
+                        <li><code>prompts</code> - Chain steps</li>
+                    </ul>
+
+                    <h6>Common Fields:</h6>
+                    <ul class="small">
+                        <li><code>global_config</code> - Model settings</li>
+                        <li><code>input_file</code> - Input file path</li>
+                        <li><code>output_file</code> - Output file path</li>
+                        <li><code>preprocessing</code> - Global scripts</li>
+                        <li><code>postprocessing</code> - Global scripts</li>
+                    </ul>
+
+                    <h6>Per-Step Features:</h6>
+                    <ul class="small">
+                        <li><code>passes</code> - Multi-pass execution</li>
+                        <li><code>append</code> - Content accumulation</li>
+                        <li><code>prescript</code> - Step script</li>
+                        <li><code>postscript</code> - Step script</li>
+                        <li><code>temperature</code> - Override setting</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Recent Files -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-history"></i> Recent Files
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="recent-files">
+                        <p class="text-muted small">No recent files</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template Modal -->
+<div class="modal fade" id="templateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-alt"></i> Select Template
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="template-content">
+                    <!-- Template content will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="applyTemplate()">
+                    <i class="fas fa-check"></i> Apply Template
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save Modal -->
+<div class="modal fade" id="saveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-save"></i> Save Configuration
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="save-filename">Filename:</label>
+                    <input type="text" class="form-control" id="save-filename" placeholder="my_chain_config.yaml">
+                    <small class="form-text text-muted">Enter a filename for your configuration</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSave()">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let editor;
+let currentTemplate = null;
+
+// Initialize the editor
+$(document).ready(function() {
+    // Initialize ACE editor
+    editor = ace.edit("yaml-editor");
+    editor.setTheme("ace/theme/github");
+    editor.session.setMode("ace/mode/yaml");
+    editor.setOptions({
+        fontSize: 14,
+        showPrintMargin: false,
+        wrap: true,
+        enableBasicAutocompletion: true,
+        enableLiveAutocompletion: true
+    });
+
+    // Set default content
+    const defaultConfig = getTemplate('basic');
+    editor.setValue(defaultConfig, -1);
+
+    // Add event listeners
+    editor.session.on('change', function() {
+        updateStatus('Modified');
+        realTimeValidation();
+    });
+
+    editor.session.selection.on('changeCursor', function() {
+        const cursor = editor.getCursorPosition();
+        $('#line-info').text(`Line ${cursor.row + 1}:${cursor.column + 1}`);
+    });
+
+    // Keyboard shortcuts
+    editor.commands.addCommand({
+        name: 'save',
+        bindKey: {win: 'Ctrl-S', mac: 'Command-S'},
+        exec: function(editor) {
+            saveConfiguration();
+        }
+    });
+
+    editor.commands.addCommand({
+        name: 'format',
+        bindKey: {win: 'Ctrl-Shift-F', mac: 'Command-Shift-F'},
+        exec: function(editor) {
+            formatYaml();
+        }
+    });
+
+    // Check if we're editing an existing config
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'edit') {
+        const editingConfig = sessionStorage.getItem('editingConfig');
+        if (editingConfig) {
+            try {
+                const config = JSON.parse(editingConfig);
+                const yamlContent = jsyaml.dump(config, {indent: 2});
+                editor.setValue(yamlContent, -1);
+                sessionStorage.removeItem('editingConfig');
+                updateStatus('Loaded from preview');
+            } catch (e) {
+                console.error('Error loading editing config:', e);
+            }
+        }
+    }
+});
+
+function updateStatus(status) {
+    $('#editor-status').removeClass('badge-secondary badge-success badge-warning badge-danger')
+                      .addClass('badge-secondary')
+                      .text(status);
+}
+
+function realTimeValidation() {
+    try {
+        const content = editor.getValue();
+        if (content.trim()) {
+            jsyaml.load(content);
+            $('#editor-status').removeClass('badge-secondary badge-warning badge-danger')
+                              .addClass('badge-success')
+                              .text('Valid YAML');
+        }
+    } catch (e) {
+        $('#editor-status').removeClass('badge-secondary badge-success badge-warning')
+                          .addClass('badge-danger')
+                          .text('Invalid YAML');
+    }
+}
+
+function setTheme(theme) {
+    editor.setTheme(`ace/theme/${theme}`);
+}
+
+function formatYaml() {
+    try {
+        const content = editor.getValue();
+        const parsed = jsyaml.load(content);
+        const formatted = jsyaml.dump(parsed, {indent: 2, lineWidth: 80});
+        editor.setValue(formatted, -1);
+        updateStatus('Formatted');
+    } catch (e) {
+        alert('Cannot format invalid YAML: ' + e.message);
+    }
+}
+
+function validateYaml() {
+    try {
+        const content = editor.getValue();
+        const parsed = jsyaml.load(content);
+
+        let results = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> YAML is valid!</div>';
+
+        // Basic validation
+        let warnings = [];
+        let errors = [];
+
+        if (!parsed.prompts) {
+            errors.push('Missing required "prompts" section');
+        } else if (Object.keys(parsed.prompts).length === 0) {
+            errors.push('No prompts defined');
+        }
+
+        if (parsed.global_config && parsed.global_config.model && parsed.global_config.model.includes('gemini')) {
+            if (parsed.global_config.user) {
+                warnings.push('Gemini models do not support the "user" parameter');
+            }
+        }
+
+        if (errors.length > 0) {
+            results = '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Configuration has errors:</div>';
+            results += '<ul>';
+            errors.forEach(error => results += `<li class="text-danger">${error}</li>`);
+            results += '</ul>';
+        }
+
+        if (warnings.length > 0) {
+            results += '<div class="alert alert-warning mt-2"><i class="fas fa-exclamation-triangle"></i> Warnings:</div>';
+            results += '<ul>';
+            warnings.forEach(warning => results += `<li class="text-warning">${warning}</li>`);
+            results += '</ul>';
+        }
+
+        $('#validation-results').html(results);
+        updateStatus(errors.length > 0 ? 'Has Errors' : 'Valid');
+
+    } catch (e) {
+        const results = `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> Invalid YAML: ${e.message}</div>`;
+        $('#validation-results').html(results);
+        updateStatus('Invalid YAML');
+    }
+}
+
+function validateAndPreview() {
+    validateYaml();
+
+    try {
+        const content = editor.getValue();
+        const parsed = jsyaml.load(content);
+
+        // Generate preview
+        let preview = '<h6 class="mt-3">Configuration Preview:</h6>';
+
+        if (parsed.global_config) {
+            preview += '<p><strong>Model:</strong> ' + (parsed.global_config.model || 'Not specified') + '</p>';
+        }
+
+        if (parsed.prompts) {
+            preview += '<p><strong>Prompts:</strong> ' + Object.keys(parsed.prompts).length + '</p>';
+        }
+
+        if (parsed.preprocessing) {
+            const scripts = Object.keys(parsed.preprocessing).filter(k => k.startsWith('script')).length;
+            preview += '<p><strong>Preprocessing Scripts:</strong> ' + scripts + '</p>';
+        }
+
+        if (parsed.postprocessing) {
+            const scripts = Object.keys(parsed.postprocessing).filter(k => k.startsWith('script')).length;
+            preview += '<p><strong>Postprocessing Scripts:</strong> ' + scripts + '</p>';
+        }
+
+        $('#validation-results').append(preview);
+
+    } catch (e) {
+        // Already handled in validateYaml
+    }
+}
+
+function loadTemplate(type = null) {
+    if (type) {
+        currentTemplate = getTemplate(type);
+        if (editor.getValue().trim() && !confirm('This will replace your current configuration. Continue?')) {
+            return;
+        }
+        editor.setValue(currentTemplate, -1);
+        updateStatus('Template Loaded');
+    } else {
+        $('#templateModal').modal('show');
+        showTemplateOptions();
+    }
+}
+
+function showTemplateOptions() {
+    const templates = {
+        'basic': 'Basic Chain - Simple multi-step processing',
+        'advanced': 'Advanced Chain - With global config and overrides',
+        'scripts': 'With Scripts - Pre/post processing scripts',
+        'multipass': 'Multi-pass - Iterative processing',
+        'append': 'Append Mode - Content accumulation'
+    };
+
+    let content = '<div class="list-group">';
+    Object.entries(templates).forEach(([key, desc]) => {
+        content += `
+            <button type="button" class="list-group-item list-group-item-action" onclick="selectTemplate('${key}')">
+                <strong>${key.charAt(0).toUpperCase() + key.slice(1)}</strong><br>
+                <small class="text-muted">${desc}</small>
+            </button>
+        `;
+    });
+    content += '</div>';
+
+    $('#template-content').html(content);
+}
+
+function selectTemplate(type) {
+    currentTemplate = getTemplate(type);
+    const preview = `<pre class="bg-light p-3 mt-3">${currentTemplate}</pre>`;
+    $('#template-content').append(preview);
+}
+
+function applyTemplate() {
+    if (currentTemplate) {
+        editor.setValue(currentTemplate, -1);
+        $('#templateModal').modal('hide');
+        updateStatus('Template Applied');
+    }
+}
+
+function getTemplate(type) {
+    const templates = {
+        basic: `global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+  max_tokens: 20000
+
+input_file: input.md
+output_file: output.md
+
+prompts:
+  prompt 1:
+    name: "first_step"
+    prompt_file: "prompts/example.json"
+
+  prompt 2:
+    name: "second_step"
+    prompt_file: "prompts/example2.json"`,
+
+        advanced: `global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+  max_tokens: 20000
+  top_p: 0.9
+  frequency_penalty: 0.1
+  user: "chain_processor"
+
+input_file: input.md
+output_file: output.md
+
+file_size_validation:
+  enabled: true
+  max_size_difference_percent: 30
+  min_file_size_bytes: 100
+
+prompts:
+  prompt 1:
+    name: "analysis"
+    prompt_file: "prompts/analysis.json"
+    model: "openai/gpt-4-turbo"
+    temperature: 0.2
+
+  prompt 2:
+    name: "enhancement"
+    prompt_file: "prompts/enhance.json"
+    temperature: 0.9
+    max_tokens: 30000`,
+
+        scripts: `global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+
+input_file: input.md
+output_file: output.md
+
+preprocessing:
+  script01: echo "Starting chain processing"
+  name01: "Initialize Processing"
+  script02: python3 scripts/validate_input.py
+  name02: "Validate Input"
+
+prompts:
+  prompt 1:
+    prescript: "touch {input_file}.backup"
+    name: "process_content"
+    prompt_file: "prompts/process.json"
+    postscript: "wc -l {output_file} > {output_file}.stats"
+
+postprocessing:
+  script01: python3 scripts/generate_report.py
+  name01: "Generate Report"`,
+
+        multipass: `global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+
+input_file: input.md
+output_file: output.md
+
+prompts:
+  prompt 1:
+    name: "iterative_improvement"
+    prompt_file: "prompts/improve.json"
+    passes: 3
+    temperature: 0.8
+
+  prompt 2:
+    name: "final_polish"
+    prompt_file: "prompts/polish.json"
+    passes: 2`,
+
+        append: `global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+
+input_file: input.md
+output_file: output.md
+
+prompts:
+  prompt 1:
+    name: "analysis"
+    prompt_file: "prompts/analyze.json"
+    temperature: 0.3
+
+  prompt 2:
+    name: "summary"
+    prompt_file: "prompts/summarize.json"
+    append: yes
+    temperature: 0.6`
+    };
+
+    return templates[type] || templates.basic;
+}
+
+function saveConfiguration() {
+    $('#saveModal').modal('show');
+}
+
+function confirmSave() {
+    const filename = $('#save-filename').val();
+    if (!filename) {
+        alert('Please enter a filename');
+        return;
+    }
+
+    if (!filename.endsWith('.yaml') && !filename.endsWith('.yml')) {
+        $('#save-filename').val(filename + '.yaml');
+    }
+
+    try {
+        const content = editor.getValue();
+        jsyaml.load(content); // Validate before saving
+
+        // Here you would implement the actual save functionality
+        // For now, we'll just download the file
+        downloadYaml(filename);
+
+        $('#saveModal').modal('hide');
+        updateStatus('Saved');
+
+    } catch (e) {
+        alert('Cannot save invalid YAML: ' + e.message);
+    }
+}
+
+function downloadYaml(filename = null) {
+    try {
+        const content = editor.getValue();
+        jsyaml.load(content); // Validate before download
+
+        const blob = new Blob([content], { type: 'text/yaml' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || 'chain_config.yaml';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        updateStatus('Downloaded');
+
+    } catch (e) {
+        alert('Cannot download invalid YAML: ' + e.message);
+    }
+}
+
+function saveAndExecute() {
+    try {
+        const content = editor.getValue();
+        const config = jsyaml.load(content);
+
+        // Validate configuration
+        if (!config.prompts || Object.keys(config.prompts).length === 0) {
+            alert('Configuration must have at least one prompt');
+            return;
+        }
+
+        // Store configuration and redirect to load page
+        sessionStorage.setItem('yamlToExecute', content);
+        window.location.href = '{{ url_for("chain_load") }}?mode=execute';
+
+    } catch (e) {
+        alert('Cannot execute invalid YAML: ' + e.message);
+    }
+}
+
+// Auto-save to localStorage every 30 seconds
+setInterval(function() {
+    if (editor.getValue().trim()) {
+        localStorage.setItem('yamlEditor_autosave', editor.getValue());
+        localStorage.setItem('yamlEditor_autosave_time', new Date().toISOString());
+    }
+}, 30000);
+
+// Load autosave on page load if exists
+$(document).ready(function() {
+    const autosave = localStorage.getItem('yamlEditor_autosave');
+    const autosaveTime = localStorage.getItem('yamlEditor_autosave_time');
+
+    if (autosave && autosaveTime && !editor.getValue().trim()) {
+        const timeDiff = Date.now() - new Date(autosaveTime).getTime();
+        if (timeDiff < 86400000) { // Less than 24 hours
+            if (confirm('Found autosaved content from ' + new Date(autosaveTime).toLocaleString() + '. Load it?')) {
+                editor.setValue(autosave, -1);
+                updateStatus('Autosave Loaded');
+            }
+        }
+    }
+});
+</script>
+
+<style>
+#yaml-editor {
+    border: 1px solid #dee2e6;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.ace_editor {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace !important;
+}
+</style>
+{% endblock %}

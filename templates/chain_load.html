@@ -1,0 +1,919 @@
+{% extends "base.html" %}
+
+{% block title %}Load Chain Configuration{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-upload"></i> Load Chain Configuration</h1>
+                <a href="{{ url_for('chains_index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Chains
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-upload"></i> Upload Chain Configuration
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="load-chain-form">
+                        <!-- Configuration Upload -->
+                        <div class="form-group">
+                            <label for="config-file"><strong>Chain Configuration File</strong></label>
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="config-file" accept=".yaml,.yml" onchange="handleConfigUpload()">
+                                <label class="custom-file-label" for="config-file">Choose YAML file...</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Upload a YAML file defining your prompt chain sequence, or
+                                <a href="{{ url_for('chain_yaml_editor') }}" class="btn btn-sm btn-outline-primary ml-1">
+                                    <i class="fas fa-edit"></i> Create/Edit YAML
+                                </a>
+                            </small>
+                        </div>
+
+                        <!-- Configuration Preview -->
+                        <div id="config-preview" class="mt-4" style="display: none;">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0"><i class="fas fa-eye"></i> Configuration Preview</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="text-muted">Configuration Summary</h6>
+                                            <div id="config-summary" class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;">
+                                                <!-- Summary will be populated by JavaScript -->
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <h6 class="text-muted mb-0">Raw YAML</h6>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="editYaml()">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                            </div>
+                                            <pre id="config-content" class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto; font-size: 0.85em;"></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Execution Configuration -->
+                        <div id="execution-config" class="mt-4" style="display: none;">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-cog"></i> Execution Configuration</h6>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Input Method -->
+                                    <div class="form-group">
+                                        <label for="input-method"><strong>Input Method</strong></label>
+                                        <select class="form-control" id="input-method" onchange="toggleInputMethod()">
+                                            <option value="text">Text Input</option>
+                                            <option value="file">File Upload</option>
+                                            <option value="config">Use Configuration File Input</option>
+                                        </select>
+                                        <small class="form-text text-muted">
+                                            Choose how to provide input content for the chain
+                                        </small>
+                                    </div>
+
+                                    <!-- Text Input -->
+                                    <div id="text-input-section">
+                                        <div class="form-group">
+                                            <label for="input-content"><strong>Input Content</strong></label>
+                                            <textarea class="form-control" id="input-content" rows="8" placeholder="Enter your content here..."></textarea>
+                                            <small class="form-text text-muted">
+                                                This content will be processed through your prompt chain
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <!-- File Input -->
+                                    <div id="file-input-section" style="display: none;">
+                                        <div class="form-group">
+                                            <label for="input-file"><strong>Input File</strong></label>
+                                            <div class="custom-file">
+                                                <input type="file" class="custom-file-input" id="input-file" accept=".txt,.md,.doc,.docx,.json">
+                                                <label class="custom-file-label" for="input-file">Choose file...</label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                Upload a file to process through your prompt chain
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <!-- Config File Input Notice -->
+                                    <div id="config-input-section" style="display: none;">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle"></i>
+                                            Using input file specified in configuration: <span id="config-input-file"></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Output Configuration -->
+                                    <div class="form-group">
+                                        <label for="output-filename"><strong>Output Filename (Optional)</strong></label>
+                                        <input type="text" class="form-control" id="output-filename" placeholder="chain_result.md">
+                                        <small class="form-text text-muted">
+                                            Override the output filename from configuration, or leave empty for auto-generated
+                                        </small>
+                                    </div>
+
+                                    <!-- Advanced Options -->
+                                    <div class="form-group">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="debug-mode">
+                                            <label class="form-check-label" for="debug-mode">
+                                                Enable debug mode
+                                            </label>
+                                        </div>
+                                        <small class="form-text text-muted">Show detailed execution logs</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-rocket"></i> Start Chain Execution
+                            </button>
+                            <button type="button" class="btn btn-success ml-2" onclick="validateConfiguration()">
+                                <i class="fas fa-check-circle"></i> Validate Configuration
+                            </button>
+                            <button type="button" class="btn btn-secondary ml-2" onclick="resetForm()">
+                                <i class="fas fa-undo"></i> Reset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-question-circle"></i> Load Chain Configuration
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p><small>
+                        Load an existing YAML chain configuration file to execute immediately.
+                        This allows you to run pre-configured chains without building them from scratch.
+                    </small></p>
+
+                    <h6>Supported Features:</h6>
+                    <ul class="small">
+                        <li>Global configuration (model, temperature, etc.)</li>
+                        <li>Multi-step prompt chains</li>
+                        <li>Pre/post processing scripts</li>
+                        <li>Per-step parameter overrides</li>
+                        <li>Multi-pass execution</li>
+                        <li>Content append mode</li>
+                        <li>Variable substitution</li>
+                    </ul>
+
+                    <h6>Configuration Sources:</h6>
+                    <ul class="small">
+                        <li>Upload existing YAML files</li>
+                        <li>Use configurations from tests/ directory</li>
+                        <li>Create new configurations with YAML editor</li>
+                        <li>Export configurations from chain builder</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-lightbulb"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('chain_yaml_editor') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-edit"></i> YAML Editor
+                        </a>
+                        <a href="{{ url_for('chains_create') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-plus"></i> Visual Builder
+                        </a>
+                        <button class="btn btn-outline-info btn-sm" onclick="loadSampleConfig()">
+                            <i class="fas fa-download"></i> Load Sample
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="showUploadHelp()">
+                            <i class="fas fa-help"></i> Upload Help
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Configurations -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-history"></i> Recent Configurations
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="recent-configs">
+                        <p class="text-muted small">No recent configurations</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Validation Modal -->
+<div class="modal fade" id="validationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle"></i> Configuration Validation
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="validation-results">
+                    <!-- Validation results will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-help"></i> Upload Help
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h6>Supported File Types</h6>
+                <ul>
+                    <li><strong>.yaml, .yml</strong> - Chain configuration files</li>
+                </ul>
+
+                <h6>Configuration Examples</h6>
+                <p>You can find example configurations in:</p>
+                <ul>
+                    <li><code>tests/</code> directory - Test configurations</li>
+                    <li><code>config/</code> directory - Base configurations</li>
+                    <li><code>examples/</code> directory - Example chains</li>
+                </ul>
+
+                <h6>Required Structure</h6>
+                <pre class="bg-light p-3"><code>global_config:
+  model: "model-name"
+  temperature: 0.7
+
+input_file: input.md
+output_file: output.md
+
+prompts:
+  prompt 1:
+    name: "step_name"
+    prompt_file: "prompts/example.json"</code></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <a href="{{ url_for('chain_yaml_editor') }}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Open YAML Editor
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let uploadedConfigData = null;
+let uploadedConfigPath = null;
+
+// Handle file input labels
+$('.custom-file-input').on('change', function() {
+    let fileName = $(this).val().split('\\').pop();
+    $(this).siblings('.custom-file-label').addClass('selected').html(fileName);
+});
+
+function handleConfigUpload() {
+    const fileInput = document.getElementById('config-file');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        $('#config-preview').hide();
+        $('#execution-config').hide();
+        uploadedConfigData = null;
+        return;
+    }
+
+    if (!file.name.endsWith('.yaml') && !file.name.endsWith('.yml')) {
+        alert('Please select a YAML file (.yaml or .yml)');
+        fileInput.value = '';
+        return;
+    }
+
+    // Read the file content
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const yamlContent = e.target.result;
+            $('#config-content').text(yamlContent);
+
+            // Parse YAML to create summary
+            if (typeof jsyaml !== 'undefined') {
+                console.log('Parsing YAML content:', yamlContent.substring(0, 200) + '...');
+
+                uploadedConfigData = jsyaml.load(yamlContent);
+                console.log('Parsed YAML data:', uploadedConfigData);
+                console.log('Type of parsed data:', typeof uploadedConfigData);
+                console.log('Has prompts property:', 'prompts' in uploadedConfigData);
+                console.log('Prompts value:', uploadedConfigData?.prompts);
+
+                // Validate the parsed data
+                if (!uploadedConfigData) {
+                    throw new Error('YAML file appears to be empty or invalid');
+                }
+
+                if (typeof uploadedConfigData !== 'object') {
+                    throw new Error('YAML file must contain an object/dictionary at the root level');
+                }
+
+                generateConfigSummary(uploadedConfigData);
+                populateConfigDefaults(uploadedConfigData);
+            } else {
+                $('#config-summary').html('<p class="text-warning">YAML parsing library not loaded. Preview unavailable.</p>');
+            }
+
+            $('#config-preview').show();
+            $('#execution-config').show();
+
+            // Add to recent configurations
+            addToRecentConfigs(file.name, uploadedConfigData);
+
+        } catch (error) {
+            console.error('YAML parsing error:', error);
+            console.error('YAML content that failed:', yamlContent);
+            alert('Error parsing YAML file: ' + error.message + '\n\nPlease check that your YAML file is properly formatted.');
+            fileInput.value = '';
+            uploadedConfigData = null;
+            $('#config-preview').hide();
+            $('#execution-config').hide();
+        }
+    };
+    reader.readAsText(file);
+
+    // Upload to server for validation and temporary storage
+    const formData = new FormData();
+    formData.append('config_file', file);
+
+    $.ajax({
+        url: '/chains/upload_config',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(data) {
+            uploadedConfigPath = data.config_path;
+            console.log('Config uploaded successfully:', data.config_path);
+        },
+        error: function(xhr) {
+            console.error('Config upload failed:', xhr.responseJSON?.error || 'Unknown error');
+        }
+    });
+}
+
+function generateConfigSummary(config) {
+    console.log('Generating summary for config:', config);
+
+    if (!config || typeof config !== 'object') {
+        $('#config-summary').html('<div class="alert alert-danger">Invalid configuration data</div>');
+        return;
+    }
+
+    let summary = '<div class="config-summary">';
+
+    // Global configuration
+    if (config.global_config && typeof config.global_config === 'object') {
+        summary += '<div class="mb-3">';
+        summary += '<h6 class="text-primary"><i class="fas fa-cog"></i> Global Configuration</h6>';
+        summary += '<ul class="mb-0">';
+        if (config.global_config.model) {
+            summary += `<li><strong>Model:</strong> <code>${config.global_config.model}</code></li>`;
+        }
+        if (config.global_config.temperature !== undefined) {
+            summary += `<li><strong>Temperature:</strong> ${config.global_config.temperature}</li>`;
+        }
+        if (config.global_config.max_tokens) {
+            summary += `<li><strong>Max Tokens:</strong> ${config.global_config.max_tokens.toLocaleString()}</li>`;
+        }
+        Object.keys(config.global_config).forEach(key => {
+            if (!['model', 'temperature', 'max_tokens'].includes(key)) {
+                const value = config.global_config[key];
+                summary += `<li><strong>${key}:</strong> ${typeof value === 'object' ? JSON.stringify(value) : value}</li>`;
+            }
+        });
+        summary += '</ul></div>';
+    }
+
+    // Input/Output files
+    if (config.input_file || config.output_file) {
+        summary += '<div class="mb-3">';
+        summary += '<h6 class="text-success"><i class="fas fa-file"></i> File Configuration</h6>';
+        summary += '<ul class="mb-0">';
+        if (config.input_file) {
+            summary += `<li><strong>Input File:</strong> <code>${config.input_file}</code></li>`;
+        }
+        if (config.output_file) {
+            summary += `<li><strong>Output File:</strong> <code>${config.output_file}</code></li>`;
+        }
+        summary += '</ul></div>';
+    }
+
+    // Pre/Post processing
+    if (config.preprocessing || config.postprocessing) {
+        summary += '<div class="mb-3">';
+        summary += '<h6 class="text-info"><i class="fas fa-play-circle"></i> Global Scripts</h6>';
+        summary += '<ul class="mb-0">';
+        if (config.preprocessing) {
+            const scriptCount = Object.keys(config.preprocessing).filter(k => k.startsWith('script')).length;
+            summary += `<li><strong>Preprocessing Scripts:</strong> ${scriptCount}</li>`;
+        }
+        if (config.postprocessing) {
+            const scriptCount = Object.keys(config.postprocessing).filter(k => k.startsWith('script')).length;
+            summary += `<li><strong>Postprocessing Scripts:</strong> ${scriptCount}</li>`;
+        }
+        summary += '</ul></div>';
+    }
+
+    // Prompts
+    if (config.prompts && typeof config.prompts === 'object') {
+        summary += '<div class="mb-3">';
+        summary += '<h6 class="text-warning"><i class="fas fa-list"></i> Prompt Chain</h6>';
+        summary += '<ol class="mb-0">';
+
+        try {
+            Object.entries(config.prompts).forEach(([key, promptConfig]) => {
+                let stepName = key;
+                let stepInfo = '';
+
+                if (typeof promptConfig === 'object' && promptConfig && promptConfig.name) {
+                    stepName = promptConfig.name;
+                }
+
+                if (typeof promptConfig === 'object' && promptConfig) {
+                    const features = [];
+                    if (promptConfig.passes && promptConfig.passes > 1) {
+                        features.push(`${promptConfig.passes} passes`);
+                    }
+                    if (promptConfig.append) {
+                        features.push('append mode');
+                    }
+                    if (promptConfig.prescript) {
+                        features.push('prescript');
+                    }
+                    if (promptConfig.postscript) {
+                        features.push('postscript');
+                    }
+                    if (promptConfig.temperature !== undefined) {
+                        features.push(`temp: ${promptConfig.temperature}`);
+                    }
+                    if (promptConfig.model) {
+                        features.push(`model: ${promptConfig.model}`);
+                    }
+                    if (features.length > 0) {
+                        stepInfo = ` <small class="text-muted">(${features.join(', ')})</small>`;
+                    }
+                }
+
+                summary += `<li><strong>${stepName}</strong>${stepInfo}</li>`;
+            });
+        } catch (e) {
+            console.error('Error processing prompts section:', e);
+            summary += '<li class="text-danger">Error processing prompts configuration</li>';
+        }
+
+        summary += '</ol></div>';
+    } else if (config.prompts !== undefined) {
+        summary += '<div class="mb-3">';
+        summary += '<h6 class="text-danger"><i class="fas fa-exclamation-triangle"></i> Invalid Prompts Configuration</h6>';
+        summary += '<p class="text-danger">Prompts section is not properly formatted as an object.</p>';
+        summary += '</div>';
+    }
+
+    // File size validation
+    if (config.file_size_validation || (config.global_config && config.global_config.file_size_validation)) {
+        const fsv = config.file_size_validation || config.global_config.file_size_validation;
+        summary += '<div class="mb-3">';
+        summary += '<h6 class="text-secondary"><i class="fas fa-shield-alt"></i> File Size Validation</h6>';
+        summary += '<ul class="mb-0">';
+        summary += `<li><strong>Enabled:</strong> ${fsv.enabled !== false ? 'Yes' : 'No'}</li>`;
+        if (fsv.max_size_difference_percent !== undefined) {
+            summary += `<li><strong>Max Size Difference:</strong> ${fsv.max_size_difference_percent}%</li>`;
+        }
+        if (fsv.min_file_size_bytes !== undefined) {
+            summary += `<li><strong>Min File Size:</strong> ${fsv.min_file_size_bytes} bytes</li>`;
+        }
+        summary += '</ul></div>';
+    }
+
+    summary += '</div>';
+    $('#config-summary').html(summary);
+}
+
+function populateConfigDefaults(config) {
+    // Populate output filename from config
+    if (config.output_file) {
+        $('#output-filename').val(config.output_file);
+    }
+
+    // Set input method based on config
+    if (config.input_file) {
+        $('#input-method').val('config');
+        $('#config-input-file').text(config.input_file);
+        toggleInputMethod();
+    }
+}
+
+function toggleInputMethod() {
+    const method = $('#input-method').val();
+    const textSection = $('#text-input-section');
+    const fileSection = $('#file-input-section');
+    const configSection = $('#config-input-section');
+
+    textSection.hide();
+    fileSection.hide();
+    configSection.hide();
+
+    if (method === 'text') {
+        textSection.show();
+    } else if (method === 'file') {
+        fileSection.show();
+    } else if (method === 'config') {
+        configSection.show();
+    }
+}
+
+function editYaml() {
+    if (uploadedConfigData) {
+        // Store current config in session storage
+        sessionStorage.setItem('editingConfig', JSON.stringify(uploadedConfigData));
+        // Navigate to YAML editor
+        window.location.href = '{{ url_for("chain_yaml_editor") }}?mode=edit';
+    }
+}
+
+function validateConfiguration() {
+    if (!uploadedConfigData) {
+        alert('Please upload a configuration file first');
+        return;
+    }
+
+    // Perform client-side validation
+    let results = '<div class="validation-results">';
+    let isValid = true;
+    let warnings = [];
+    let errors = [];
+
+    // Check required fields
+    if (!uploadedConfigData.prompts || Object.keys(uploadedConfigData.prompts).length === 0) {
+        errors.push('No prompts defined in configuration');
+        isValid = false;
+    }
+
+    // Check prompt files exist (placeholder - would need server validation)
+    if (uploadedConfigData.prompts) {
+        Object.entries(uploadedConfigData.prompts).forEach(([key, promptConfig]) => {
+            if (typeof promptConfig === 'object' && promptConfig.prompt_file) {
+                // This would need server-side validation
+                // For now, just check if it looks like a valid path
+                if (!promptConfig.prompt_file.includes('.json')) {
+                    warnings.push(`Prompt file "${promptConfig.prompt_file}" may not be a JSON file`);
+                }
+            }
+        });
+    }
+
+    // Check model compatibility
+    if (uploadedConfigData.global_config && uploadedConfigData.global_config.model) {
+        const model = uploadedConfigData.global_config.model;
+        if (model.includes('gemini') && uploadedConfigData.global_config.user) {
+            warnings.push('Gemini models do not support the "user" parameter');
+        }
+    }
+
+    // Display results
+    if (isValid) {
+        results += '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Configuration is valid!</div>';
+    } else {
+        results += '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Configuration has errors that must be fixed.</div>';
+    }
+
+    if (errors.length > 0) {
+        results += '<h6 class="text-danger">Errors:</h6><ul>';
+        errors.forEach(error => {
+            results += `<li class="text-danger">${error}</li>`;
+        });
+        results += '</ul>';
+    }
+
+    if (warnings.length > 0) {
+        results += '<h6 class="text-warning">Warnings:</h6><ul>';
+        warnings.forEach(warning => {
+            results += `<li class="text-warning">${warning}</li>`;
+        });
+        results += '</ul>';
+    }
+
+    if (isValid && errors.length === 0 && warnings.length === 0) {
+        results += '<p class="text-success">No issues found. Configuration is ready for execution.</p>';
+    }
+
+    results += '</div>';
+
+    $('#validation-results').html(results);
+    $('#validationModal').modal('show');
+}
+
+function resetForm() {
+    if (confirm('Are you sure you want to reset the form? This will clear all current settings.')) {
+        document.getElementById('load-chain-form').reset();
+        $('#config-preview').hide();
+        $('#execution-config').hide();
+        uploadedConfigData = null;
+        uploadedConfigPath = null;
+        $('.custom-file-label').removeClass('selected').html('Choose YAML file...');
+    }
+}
+
+function loadSampleConfig() {
+    // Load a basic sample configuration for testing
+    const sampleYaml = `global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+  max_tokens: 20000
+
+input_file: test_input.md
+output_file: test_output.md
+
+prompts:
+  prompt 1:
+    name: "test_step_1"
+    prompt_file: "prompts/content_quality.json"
+    temperature: 0.3
+
+  prompt 2:
+    name: "test_step_2"
+    prompt_file: "prompts/content_quality.json"
+    temperature: 0.8`;
+
+    try {
+        console.log('Loading sample config:', sampleYaml);
+
+        $('#config-content').text(sampleYaml);
+
+        if (typeof jsyaml !== 'undefined') {
+            uploadedConfigData = jsyaml.load(sampleYaml);
+            console.log('Parsed sample config:', uploadedConfigData);
+
+            if (!uploadedConfigData) {
+                throw new Error('Sample configuration parsed as null/undefined');
+            }
+
+            generateConfigSummary(uploadedConfigData);
+            populateConfigDefaults(uploadedConfigData);
+        }
+
+        $('#config-preview').show();
+        $('#execution-config').show();
+
+        // Simulate server upload for sample config
+        const blob = new Blob([sampleYaml], { type: 'text/yaml' });
+        const formData = new FormData();
+        formData.append('config_file', blob, 'sample_config.yaml');
+
+        $.ajax({
+            url: '/chains/upload_config',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(data) {
+                uploadedConfigPath = data.config_path;
+                console.log('Sample config uploaded successfully');
+            },
+            error: function(xhr) {
+                console.error('Sample config upload failed:', xhr.responseJSON?.error);
+            }
+        });
+
+    } catch (error) {
+        console.error('Error loading sample config:', error);
+        alert('Error loading sample configuration: ' + error.message);
+    }
+}
+
+function showUploadHelp() {
+    $('#helpModal').modal('show');
+}
+
+function addToRecentConfigs(filename, configData) {
+    // Add to recent configurations list
+    const recentDiv = $('#recent-configs');
+    const configItem = `
+        <div class="recent-config-item mb-2 p-2 border rounded" style="cursor: pointer;" onclick="loadRecentConfig('${filename}')">
+            <small><strong>${filename}</strong></small><br>
+            <small class="text-muted">
+                ${configData.prompts ? Object.keys(configData.prompts).length : 0} prompts,
+                ${configData.global_config?.model || 'No model specified'}
+            </small>
+        </div>
+    `;
+
+    if (recentDiv.find('.recent-config-item').length === 0) {
+        recentDiv.html(configItem);
+    } else {
+        recentDiv.prepend(configItem);
+    }
+
+    // Keep only last 3 items
+    const items = recentDiv.find('.recent-config-item');
+    if (items.length > 3) {
+        items.slice(3).remove();
+    }
+}
+
+function loadRecentConfig(filename) {
+    alert(`Loading recent config "${filename}" is not yet implemented.`);
+}
+
+// Form submission
+$('#load-chain-form').on('submit', function(e) {
+    e.preventDefault();
+
+    if (!uploadedConfigData) {
+        alert('Please upload a configuration file first');
+        return;
+    }
+
+    if (!uploadedConfigPath) {
+        alert('Configuration file upload is still in progress. Please wait.');
+        return;
+    }
+
+    // Validate input
+    const inputMethod = $('#input-method').val();
+    if (inputMethod === 'text') {
+        const inputText = $('#input-content').val().trim();
+        if (!inputText) {
+            alert('Please enter input content');
+            return;
+        }
+    } else if (inputMethod === 'file') {
+        const inputFile = $('#input-file')[0].files[0];
+        if (!inputFile) {
+            alert('Please select an input file');
+            return;
+        }
+    }
+
+    // Prepare chain data
+    const chainData = {
+        config_path: uploadedConfigPath,
+        input_file: inputMethod === 'text' ? $('#input-content').val() : (inputMethod === 'file' ? $('#input-file')[0].files[0].name : uploadedConfigData.input_file),
+        output_file: $('#output-filename').val() || uploadedConfigData.output_file || 'loaded_chain_result.md',
+        debug: $('#debug-mode').is(':checked')
+    };
+
+    // Start the chain
+    $.ajax({
+        url: '/chains/start',
+        type: 'POST',
+        data: JSON.stringify(chainData),
+        contentType: 'application/json',
+        success: function(data) {
+            alert('Chain started successfully! Redirecting to chain monitor...');
+            window.location.href = '/chains';
+        },
+        error: function(xhr) {
+            alert('Failed to start chain: ' + (xhr.responseJSON?.error || 'Unknown error'));
+        }
+    });
+});
+
+// Initialize
+$(document).ready(function() {
+    toggleInputMethod();
+
+    // Check if js-yaml library is loaded
+    if (typeof jsyaml === 'undefined') {
+        console.error('js-yaml library not loaded');
+        $('#config-summary').html('<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> YAML parsing library not loaded. Please refresh the page.</div>');
+    } else {
+        console.log('js-yaml library loaded successfully:', jsyaml);
+    }
+
+    // Check if we're executing a config from YAML editor
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'execute') {
+        const yamlToExecute = sessionStorage.getItem('yamlToExecute');
+        if (yamlToExecute) {
+            try {
+                uploadedConfigData = jsyaml.load(yamlToExecute);
+                $('#config-content').text(yamlToExecute);
+                generateConfigSummary(uploadedConfigData);
+                populateConfigDefaults(uploadedConfigData);
+                $('#config-preview').show();
+                $('#execution-config').show();
+                sessionStorage.removeItem('yamlToExecute');
+
+                // Simulate file upload for the backend
+                const blob = new Blob([yamlToExecute], { type: 'text/yaml' });
+                const formData = new FormData();
+                formData.append('config_file', blob, 'editor_config.yaml');
+
+                $.ajax({
+                    url: '/chains/upload_config',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(data) {
+                        uploadedConfigPath = data.config_path;
+                        console.log('YAML editor config uploaded successfully');
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to upload YAML editor config:', xhr.responseJSON?.error);
+                    }
+                });
+
+            } catch (e) {
+                console.error('Error loading YAML from editor:', e);
+                alert('Error loading configuration from YAML editor: ' + e.message);
+            }
+        }
+    }
+});
+</script>
+
+<style>
+.config-summary h6 {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.recent-config-item {
+    background: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.recent-config-item:hover {
+    background: #e9ecef;
+    border-color: #007bff !important;
+}
+
+.custom-file-label.selected {
+    color: #495057;
+}
+
+.validation-results h6 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+#config-content {
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+</style>
+{% endblock %}

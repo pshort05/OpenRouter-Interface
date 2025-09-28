@@ -206,8 +206,10 @@ The web interface now supports uploading YAML configuration files for:
 ### Web UI Navigation
 - **Main Page**: `/` - "Load Prompt" button for uploading and executing JSON prompt files directly
 - **Single Prompts**: `/prompt/<prompt_file>` - Select "Upload YAML Configuration" option
-- **Prompt Chains**: `/chains` - "Load Chain" button for uploading and executing YAML chain configurations directly
-- **Chain Creation**: `/chains/create` - Choose "Upload Existing YAML Configuration" method
+- **Prompt Chains**: `/chains` - "Load Chain" button navigates to dedicated load page
+- **Chain Load Page**: `/chains/load` - Full-featured YAML configuration upload and execution page
+- **YAML Editor**: `/chains/yaml-editor` - Advanced YAML editor with syntax highlighting and templates
+- **Chain Creation**: `/chains/create` - Visual chain builder with upload configuration option
 - **Configuration Management**: `/config` - Manage default Flask application settings
 
 ### Load Buttons Features
@@ -220,9 +222,11 @@ The web interface now supports uploading YAML configuration files for:
 - **Immediate Execution**: Execute and view results in modal dialog with copy functionality
 
 #### Load Chain Button (Chain Runner Page)
-- **Direct YAML Upload**: Upload chain configuration files for immediate execution
-- **Rich Preview**: Shows parsed configuration summary and raw YAML content
-- **Configuration Analysis**: Displays global config, file settings, scripts, and prompt steps
-- **Input Handling**: Text input or file upload for chain processing
-- **Background Execution**: Starts chain execution and displays in active chains list
-- **Real-time Monitoring**: Progress tracking and log viewing through existing chain interface
+- **Dedicated Load Page**: Full-featured page similar to "Create New Prompt Chain" at `/chains/load`
+- **YAML Editor Integration**: Built-in YAML editor at `/chains/yaml-editor` with syntax highlighting and validation
+- **Rich Configuration Analysis**: Detailed breakdown of global config, scripts, prompts, and validation settings
+- **Advanced Input Options**: Text, file upload, or use configuration file input
+- **Validation & Preview**: Client-side YAML validation with comprehensive error reporting
+- **Template Support**: Quick access to configuration templates (basic, advanced, scripts, multi-pass, append)
+- **Execution Control**: Debug mode, output filename override, and validation checks
+- **Editor Features**: Auto-save, keyboard shortcuts, theme selection, format validation

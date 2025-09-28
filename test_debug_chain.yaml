@@ -1,0 +1,18 @@
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+  max_tokens: 20000
+
+input_file: test_input.md
+output_file: test_output.md
+
+prompts:
+  prompt 1:
+    name: "test_step_1"
+    prompt_file: "prompts/content_quality.json"
+    temperature: 0.3
+
+  prompt 2:
+    name: "test_step_2"
+    prompt_file: "prompts/content_quality.json"
+    temperature: 0.8

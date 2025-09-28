@@ -1104,6 +1104,16 @@ class FlaskPromptRunner:
             prompts = self._get_available_prompts()
             configs = self._get_available_configs()
             return render_template('chain_create.html', prompts=prompts, configs=configs)
+
+        @self.app.route('/chains/load')
+        def chain_load():
+            """Show chain load configuration page."""
+            return render_template('chain_load.html')
+
+        @self.app.route('/chains/yaml-editor')
+        def chain_yaml_editor():
+            """Show chain YAML editor page."""
+            return render_template('chain_yaml_editor.html')
         
         @self.app.route('/chains/upload_config', methods=['POST'])
         def chains_upload_config():

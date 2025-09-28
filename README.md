@@ -1,12 +1,14 @@
 # OpenRouter Interface
-
+---
 A comprehensive Python toolkit for working with AI language models through the OpenRouter API. Supports **single prompt processing**, **multi-prompt chaining**, **web interface**, and **advanced automation** with pre/post processing scripts.
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![OpenRouter API](https://img.shields.io/badge/API-OpenRouter-green.svg)](https://openrouter.ai/)
 
+---
 ## ✨ Key Features
+---
 
 - 🚀 **Multiple Interfaces**: CLI, Web UI, and programmatic access
 - 🔗 **Prompt Chaining**: Sequential prompt execution with intermediate file management
@@ -18,7 +20,9 @@ A comprehensive Python toolkit for working with AI language models through the O
 - 📤 **Direct File Loading**: Upload and execute JSON prompts and YAML chains instantly
 - 🎯 **No-Registry Execution**: Run prompts and chains without permanent storage
 
+---
 ## 📖 Table of Contents
+---
 
 - [Quick Start](#-quick-start)
 - [Installation](#-installation)
@@ -35,7 +39,9 @@ A comprehensive Python toolkit for working with AI language models through the O
 - [Contributing](#-contributing)
 - [Support](#-support)
 
+---
 ## 🚀 Quick Start
+---
 
 ### 5-Minute Setup
 
@@ -59,7 +65,9 @@ openrouter-chain -c sample_chain.yaml
 openrouter-web
 ```
 
+---
 ## 📦 Installation
+---
 
 ### Global Installation (Recommended)
 
@@ -157,7 +165,9 @@ export OPENROUTER_API_KEY="your-api-key-here"
 echo 'export OPENROUTER_API_KEY="your-api-key-here"' >> ~/.bashrc
 ```
 
+---
 ## 🎯 Usage
+---
 
 ### Single Prompts
 
@@ -220,21 +230,52 @@ Access from the main page with the green "Load Prompt" button:
 # 5. Execute and view results
 ```
 
-#### Load Chain Button
-Access from the Chain Runner page next to "New Chain":
+#### Load Chain Configuration (Expanded)
+Access from the Chain Runner page - navigates to dedicated full-page interface:
 
-1. **Upload YAML Configuration**: Select any chain configuration file
-2. **Preview**: View configuration summary and raw YAML
-3. **Input**: Provide text or upload file
-4. **Execute**: Start chain and monitor in real-time
+**🎯 Dedicated Load Page (`/chains/load`)**
+1. **Navigate**: Click "Load Chain" to go to comprehensive load interface
+2. **Upload Options**:
+   - File upload with drag-and-drop support
+   - Text area for direct YAML input
+   - Configuration-based upload with template selection
+3. **Rich Configuration Analysis**:
+   - Detailed breakdown showing prompts, models, and parameters
+   - Raw YAML preview with syntax highlighting
+   - Template usage detection and description
+4. **Advanced Execution Options**:
+   - Multiple input methods (text input, file upload, config-specified)
+   - Custom output filename overrides
+   - Debug mode toggle for detailed logging
+   - Validation checks before execution
+5. **Template Management**: Access to pre-built configuration templates
+6. **Direct Execution**: Start chains immediately from the load interface
+
+**🎨 YAML Editor Integration (`/chains/yaml-editor`)**
+- Professional code editor with full YAML syntax highlighting
+- Five built-in templates: Basic, Advanced, Scripts, Multi-pass, Append
+- Real-time validation with error detection and reporting
+- Auto-save functionality and keyboard shortcuts (Ctrl+S, Ctrl+Shift+F)
+- Light and dark themes for comfortable editing
+- Direct execution: Save & Execute for immediate chain deployment
+
+**🔧 Enhanced Features**:
+- **Configuration Validation**: Pre-execution YAML and config validation
+- **Error Handling**: Comprehensive error reporting with specific line numbers
+- **Template System**: Quick-start templates for common workflow patterns
+- **Seamless Integration**: Edit, validate, and execute in unified interface
 
 ```bash
-# Example usage flow:
-# 1. Click "Load Chain" on /chains page
-# 2. Upload: test_web_yaml_config.yaml
-# 3. Input: "Content to process through chain"
-# 4. Execute and monitor progress below
+# Complete workflow example:
+# 1. Click "Load Chain" on /chains page → Full-page load interface
+# 2. Upload: complex_chain.yaml → Rich analysis shows 5 prompts, 3 models
+# 3. Preview: Raw YAML with syntax highlighting, template detection
+# 4. Configure: Custom input method, debug mode enabled
+# 5. Validate: Check for YAML errors and missing files
+# 6. Execute: Start chain with comprehensive monitoring
+# 7. Edit: Jump to YAML editor for quick modifications
 ```
+
 
 ### Prompt Chaining
 
@@ -272,7 +313,9 @@ prompts:
     temperature: 0.8
 ```
 
+---
 ## ⚙️ Configuration
+---
 
 ### Model Support
 
@@ -331,7 +374,9 @@ prompts:
 - **Size Validation**: Detect processing issues
 - **Format Support**: Markdown, text, JSON, YAML
 
+---
 ## 📚 Examples
+---
 
 ### Content Enhancement Pipeline
 
@@ -467,7 +512,9 @@ postprocessing:
 5. Enter content and start execution
 6. Monitor real-time progress in active chains section
 
+---
 ## 📖 Documentation
+---
 
 ### Quick References
 
@@ -492,7 +539,9 @@ python3 -c "import yaml; print(yaml.safe_load(open('config.yaml')))"
 openrouter-runner -p prompts/test.json -i test.md -o test_output.md
 ```
 
+---
 ## 🛠️ Development
+---
 
 ### Project Structure
 
@@ -538,7 +587,9 @@ mypy src
 flake8 src
 ```
 
+---
 ## 🤝 Contributing
+---
 
 We welcome contributions! Here's how to get started:
 
@@ -575,7 +626,9 @@ pre-commit install
 PYTHONPATH=src python3 -m openrouter_interface.web --debug
 ```
 
+---
 ## 🆘 Support
+---
 
 ### Getting Help
 
@@ -615,19 +668,23 @@ openrouter-chain -c config.yaml --debug 2>&1 | tee debug.log
 python3 -c "import yaml; yaml.safe_load(open('config.yaml'))"
 ```
 
+---
 ## 📄 License
+---
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+---
 ## 🙏 Acknowledgments
+---
 
 - [OpenRouter](https://openrouter.ai/) for providing access to multiple AI models
 - The Python community for excellent tools and libraries
 - Contributors who help improve this project
 
 ---
-
 ## 📊 Project Status
+---
 
 - ✅ **Stable**: Core functionality tested and reliable
 - 🚀 **Active Development**: Regular updates and new features
@@ -643,6 +700,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📁 **File Management**: Advanced validation and size checking
 - 📤 **Load Buttons**: Direct upload and execution of JSON prompts and YAML chains
 - 🚀 **No-Registry Execution**: Run files instantly without permanent storage
+- 🎨 **Expanded Load Chain**: Full-page configuration interface with rich preview and validation
+- ⚙️ **YAML Editor**: Professional code editor with templates, syntax highlighting, and real-time validation
+- 🔧 **Enhanced Error Handling**: Comprehensive YAML parsing error detection and reporting
 
 ---
 
