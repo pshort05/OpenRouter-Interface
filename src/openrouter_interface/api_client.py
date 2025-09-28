@@ -5,6 +5,7 @@ API Client
 Handles OpenRouter API communication for OpenRouter Text Editor.
 """
 
+import json
 import logging
 import re
 import time
@@ -80,6 +81,57 @@ class APIClient:
             data['user'] = self.config.get('user')
 
         return data
+
+    def _process_streaming_response(self, response) -> str:
+        """Process a streaming SSE response and extract the content."""
+        content_parts = []
+
+        try:
+            for line in response.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+
+                # Handle different SSE line formats
+                if line.startswith('data: '):
+                    data_str = line[6:]  # Remove 'data: ' prefix
+                elif line.startswith('data:'):
+                    data_str = line[5:]  # Remove 'data:' prefix
+                else:
+                    continue
+
+                data_str = data_str.strip()
+
+                if data_str == '[DONE]':
+                    break
+
+                if not data_str:
+                    continue
+
+                try:
+                    data = json.loads(data_str)
+                    if 'choices' in data and len(data['choices']) > 0:
+                        delta = data['choices'][0].get('delta', {})
+                        if 'content' in delta:
+                            content_parts.append(delta['content'])
+                except json.JSONDecodeError as e:
+                    logging.debug(f"Skipping malformed JSON chunk: {data_str[:100]}...")
+                    continue
+                except Exception as e:
+                    logging.debug(f"Error processing streaming chunk: {e}")
+                    continue
+
+        except Exception as e:
+            logging.error(f"Error processing streaming response: {e}")
+            # Fallback: try to parse as regular JSON
+            try:
+                result = response.json()
+                if 'choices' in result and len(result['choices']) > 0:
+                    return result['choices'][0]['message']['content']
+            except:
+                pass
+            raise Exception(f"Failed to process streaming response: {e}")
+
+        return ''.join(content_parts)
 
     def _log_api_parameters(self, data: dict) -> None:
         """Log the API parameters being used."""
@@ -262,21 +314,40 @@ class APIClient:
         
         try:
             logging.debug("Sending request to OpenRouter API...")
-            response = requests.post(url, headers=headers, json=data, timeout=30)
+            is_streaming = data.get('stream', False)
+            logging.debug(f"Streaming mode: {is_streaming}")
+
+            if is_streaming:
+                # For streaming requests, we need to handle SSE
+                logging.debug("Making streaming request...")
+                response = requests.post(url, headers=headers, json=data, timeout=30, stream=True)
+            else:
+                logging.debug("Making regular request...")
+                response = requests.post(url, headers=headers, json=data, timeout=30)
+
+            logging.debug(f"Response status: {response.status_code}")
+            logging.debug(f"Response headers: {dict(response.headers)}")
             response.raise_for_status()
-            
+
             end_time = time.time()
             elapsed_time = end_time - start_time
-            
+
             logging.debug("HTTP response status: " + str(response.status_code))
-            
-            result = response.json()
-            
-            if 'error' in result:
-                logging.error("API returned error: " + str(result['error']))
-                raise Exception("API Error: " + str(result['error']))
-            
-            raw_content = result['choices'][0]['message']['content']
+
+            if is_streaming:
+                # Process streaming response
+                raw_content = self._process_streaming_response(response)
+                if not raw_content:
+                    raise Exception("Streaming API returned empty content")
+            else:
+                # Process regular JSON response
+                result = response.json()
+
+                if 'error' in result:
+                    logging.error("API returned error: " + str(result['error']))
+                    raise Exception("API Error: " + str(result['error']))
+
+                raw_content = result['choices'][0]['message']['content']
             
             logging.info("API call completed in " + "{:.2f}".format(elapsed_time) + " seconds")
             logging.info("Raw response length: " + str(len(raw_content)) + " characters")
@@ -299,6 +370,9 @@ class APIClient:
             logging.error("API HTTP error " + str(response.status_code) + ": " + str(e))
             raise
         except requests.exceptions.RequestException as e:
+            logging.error("API request failed: " + str(e))
+            raise
+        except json.JSONDecodeError as e:
             logging.error("API request failed: " + str(e))
             raise
         except (KeyError, IndexError) as e:

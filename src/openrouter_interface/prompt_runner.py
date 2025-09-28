@@ -173,6 +173,9 @@ class PromptRunner:
                 if path.suffix.lower() != '.json':
                     logging.warning(f"Prompt file does not have .json extension: {path}")
 
+            # Use first prompt file for response handler
+            prompt_path = Path(prompt_paths[0])
+
             logging.info(f"✓ Files validated successfully")
 
             # Load prompt(s) - PromptLoader handles single/multiple files

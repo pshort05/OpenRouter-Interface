@@ -1,0 +1,6 @@
+input_file: test_input_simple.md
+output_file: test_output_error.md
+prompts:
+  prompt 1:
+    name: invalid_prompt_test
+    prompt_file: test_invalid_prompt.json

@@ -73,10 +73,13 @@ mypy src
 - Used by all interfaces (CLI, web, chain)
 
 **Chain Runner (prompt_chain_runner.py)**
-- Multi-step workflow execution engine
+- Multi-step workflow execution engine with fault tolerance
 - YAML-based configuration for prompt sequences
-- Progress tracking and intermediate file management
+- Progress tracking and intermediate file management with colored console output
 - Background execution support for long-running processes
+- Error handling with `on_error` behavior (stop/continue)
+- Automatic file size validation and quality control
+- Substep support (e.g., 6.1, 6.2) for complex workflows
 
 **Web Interface (prompt_runner_flask.py)**
 - Flask-based web UI with real-time progress tracking
@@ -288,10 +291,177 @@ prompts:
     prompt_file: "final_polish.json"  # Single prompt
 ```
 
+### Substep Support and Advanced Chain Features
+
+#### Substep Configuration
+The system supports decimal substeps (e.g., 6.1, 6.2) for complex workflows that require multiple phases within a logical step:
+
+```yaml
+prompts:
+  # Main dialogue enhancement phase
+  prompt 6:
+    name: "dialogue_enhancement"
+    prompt_file: "6_dialogue_enhancement.json"
+    model: "openai/gpt-4.1"
+    temperature: 1.2
+
+  # Optional character-specific dialogue pass
+  prompt 6.1:
+    name: "character_dialogue_pass"
+    prompt_file: "6.5_character_dialogue_pass.json"
+    model: "openai/gpt-4o"
+    temperature: 0.8
+    on_error: continue  # Optional enhancement that can be skipped
+
+  # Additional dialogue refinement
+  prompt 6.2:
+    name: "dialogue_polish"
+    prompt_file: "dialogue_polish.json"
+    temperature: 0.6
+
+  # Continue with next main phase
+  prompt 7:
+    name: "weak_language_cleanup"
+    prompt_file: "7_weak_language_cleanup.json"
+```
+
+#### Enhanced Console Output
+- **Colored Status Indicators**: Green ✅, Yellow ⚠️, Red ❌
+- **Timing Information**: Execution time for each step
+- **Progress Tracking**: "File X, Step Y/Total" format
+- **File Size Reporting**: Decimal precision (52B, 14.5k, 1.2M)
+- **Step Identification**: Clear display of step numbers including substeps (1, 6.1, 6.2, etc.)
+
+#### Chain Execution Features
+- **Automatic File Management**: Intermediate files preserved in temp directories
+- **Step-by-Step Validation**: Each step verified before proceeding
+- **Comprehensive Logging**: Detailed execution logs with timestamps
+- **Background Processing**: Long-running chains with progress persistence
+- **Final Reports**: Summary of all steps with file sizes and status indicators
+
 ## Environment Variables
 - **OPENROUTER_API_KEY**: Required for API access
 - **OPENROUTER_MODEL**: Override default model
 - **OPENROUTER_LOG_LEVEL**: Override logging level
+
+## Error Handling and Fault Tolerance
+
+### On-Error Behavior Control
+
+The system now supports configurable error handling behavior for each step in a prompt chain, providing robust fault tolerance for complex workflows.
+
+#### Configuration Options
+- **`on_error: stop`** (default): Stop execution when a step fails
+- **`on_error: continue`**: Skip failed step and pass input file through unchanged
+
+#### Per-Step Error Handling
+```yaml
+prompts:
+  # Normal step that will stop on failure (default behavior)
+  prompt 1:
+    name: "critical_step"
+    prompt_file: "analysis.json"
+    # Implicit: on_error: stop
+
+  # Step that will continue on failure
+  prompt 2:
+    name: "optional_enhancement"
+    prompt_file: "enhancement.json"
+    on_error: continue
+
+  # Subsequent steps continue normally
+  prompt 3:
+    name: "final_step"
+    prompt_file: "finalize.json"
+```
+
+#### Error Handling Features
+- **Execution Error Handling**: API failures, invalid models, network issues
+- **File Verification Error Handling**: File size validation failures, output verification issues
+- **File Passthrough**: When a step is skipped, input file is copied unchanged to output location
+- **Visual Indicators**: Clear console output with colored status indicators:
+  - ✅ **Green**: Successful steps
+  - ⚠️ **Yellow**: Skipped steps with "(on_error: continue)" message
+  - ❌ **Red**: Failed steps that stop execution
+- **Detailed Logging**: Comprehensive logging of skip reasons and actions taken
+- **Final Reports**: Updated reports show "skipped" status with appropriate icons
+
+#### Example Error Handling Scenario
+```yaml
+prompts:
+  prompt 1:
+    name: "grammar_check"
+    prompt_file: "grammar.json"
+    # This step must succeed
+
+  prompt 2:
+    name: "style_enhancement"
+    prompt_file: "style.json"
+    model: "advanced/experimental-model"  # Might fail
+    on_error: continue                    # Skip if it fails
+
+  prompt 3:
+    name: "final_review"
+    prompt_file: "review.json"
+    # This step gets the original input if step 2 was skipped
+```
+
+## File Size Validation
+
+The system includes automatic file size validation to detect when processing significantly changes file sizes, which can indicate issues like incomplete processing, truncated output, or AI hallucination.
+
+### Configuration
+```yaml
+# Global configuration or in individual config files
+file_size_validation:
+  enabled: true                        # Enable/disable validation (default: true)
+  max_size_difference_percent: 50      # Maximum size difference % (default: 50%, updated from 30%)
+  min_file_size_bytes: 100            # Minimum acceptable file size (default: 100)
+```
+
+### Chain Configuration Example
+```yaml
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+  max_tokens: 20000
+  file_size_validation:
+    enabled: true
+    max_size_difference_percent: 25    # Stricter validation (25% instead of 30%)
+    min_file_size_bytes: 200          # Higher minimum size requirement
+
+prompts:
+  prompt 1:
+    name: "content_analysis"
+    prompt_file: "analysis.json"
+    # Inherits global file size validation settings
+```
+
+### Validation Behavior
+- **Size Comparison**: Output file size is compared to input file size
+- **Percentage Check**: Fails if output is more than `max_size_difference_percent` larger or smaller
+- **Minimum Size**: Fails if output is smaller than `min_file_size_bytes`
+- **Chain Failure**: File size validation failure causes chain to fail at that step (unless `on_error: continue`)
+- **Error Handling Integration**: Works with `on_error` behavior - validation failures can be skipped
+- **Logging**: Detailed logging shows input size, output size, and percentage difference with decimal precision (e.g., 14.5k vs 14k)
+- **File Size Display**: Human-readable format with 1 decimal place (B, k, M, G)
+
+### Common Use Cases
+- **Content Processing**: Detect truncated or incomplete AI responses
+- **Text Enhancement**: Ensure content isn't dramatically shortened or expanded unexpectedly
+- **Quality Control**: Catch cases where AI returns error messages instead of processed content
+- **Pipeline Reliability**: Fail fast when processing pipeline produces unexpected results
+
+### Disabling Validation
+```yaml
+# Disable globally
+file_size_validation:
+  enabled: false
+
+# Or per-step (if needed for specific prompts that legitimately change size dramatically)
+# Note: Per-step file size validation overrides are not currently supported
+# but can be requested as a feature enhancement
+```
 
 ## API Parameter Usage Patterns
 
@@ -332,6 +502,82 @@ provider:
 usage:
   include: true              # Track costs
 ```
+
+## Model Compatibility and Parameter Filtering
+
+The system provides intelligent, automatic parameter filtering based on the specific model being used. You can configure any parameters in your config files - incompatible ones will be automatically filtered out without causing errors.
+
+### Automatic Parameter Management
+- **Smart Filtering**: Incompatible parameters are automatically removed for each model
+- **Parameter Conversion**: Model-specific parameter names are automatically converted (e.g., `max_tokens` → `max_output_tokens` for Gemini)
+- **Comprehensive Logging**: All filtering and conversion actions are logged for transparency
+- **Zero Configuration**: No need to create model-specific configs - use any parameter combination
+
+### Google Gemini Models
+When using Google Gemini models (e.g., `google/gemini-1.5-pro`, `google/gemini-2.0-flash-001`):
+
+**Automatic Parameter Conversion:**
+- `max_tokens` → `max_output_tokens` - Gemini uses different parameter name
+
+**Automatically Filtered Parameters:**
+- `user` - User identifier not supported by Gemini API
+- `top_k` - Uses different sampling approach than OpenRouter standard
+- `frequency_penalty` - Not supported in Gemini API
+- `presence_penalty` - Not supported in Gemini API
+- `repetition_penalty` - Alternative repetition control not available
+- `top_logprobs` - Token probability logging not supported
+- `seed` - Deterministic output control not available
+- `min_p` - Minimum probability threshold not supported
+
+### Anthropic Claude Models
+Claude models (e.g., `anthropic/claude-4-sonnet-20250522`) support most API parameters with minimal restrictions:
+- **Full Support**: Most OpenRouter API parameters work natively
+- **High Compatibility**: Advanced sampling controls, penalties, and response formatting supported
+
+### OpenAI Models
+OpenAI models (e.g., `openai/gpt-4-turbo`, `openai/gpt-4o`) offer comprehensive API parameter support:
+- **Complete Feature Set**: All advanced sampling controls supported
+- **Structured Output**: JSON response formatting available
+- **Token Analysis**: Top logprobs and detailed response analysis
+- **Deterministic Output**: Seed-based reproducible results
+
+### DeepSeek and Other Models
+- **Automatic Detection**: System identifies model capabilities automatically
+- **Best Effort**: Maximum compatible parameter set is used
+- **Graceful Fallback**: Unsupported parameters are silently filtered
+
+**Important**: Parameter filtering is completely transparent and logged. You can use comprehensive parameter sets in your configurations - the system ensures only compatible parameters reach each model's API.
+
+## Recent Feature Additions
+
+### Error Handling and Fault Tolerance (Latest)
+- **On-Error Behavior Control**: Per-step configuration with `on_error: stop/continue`
+- **File Passthrough**: Automatic input file copying for skipped steps
+- **Enhanced Console Output**: Colored status indicators (✅⚠️❌) with timing
+- **Intelligent Error Recovery**: Handles both execution and validation failures
+
+### File Size Validation and Quality Control
+- **Automatic Output Validation**: Detects truncated or malformed AI responses
+- **Configurable Thresholds**: Customizable size difference percentages and minimum sizes
+- **Integration with Error Handling**: Validation failures can be skipped with `on_error: continue`
+- **Improved Default**: Updated from 30% to 50% size difference threshold for better usability
+
+### Substep Support and Advanced Workflows
+- **Decimal Step Numbers**: Support for 6.1, 6.2, etc. for complex multi-phase processing
+- **Enhanced Sorting**: Proper ordering of main steps and substeps
+- **String-Based Step Handling**: Improved internal processing for mixed step formats
+
+### Enhanced API Parameter Support
+- **Complete OpenRouter API Coverage**: All available parameters now supported
+- **Intelligent Model Compatibility**: Automatic parameter filtering per model
+- **Parameter Conversion**: Automatic handling of model-specific parameter names
+- **Comprehensive Logging**: Full transparency of parameter handling
+
+### Console and Reporting Improvements
+- **Decimal Precision File Sizes**: Display with 1 decimal place (14.5k vs 14k)
+- **Colored Output**: Green/Yellow/Red status indicators throughout
+- **Execution Timing**: Per-step timing information
+- **Enhanced Final Reports**: Comprehensive status summaries with visual indicators
 
 ## Package Entry Points
 Defined in pyproject.toml:

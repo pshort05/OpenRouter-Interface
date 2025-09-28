@@ -1,0 +1,7 @@
+input_file: test_input_simple.md
+output_file: test_output_timing.md
+prompts:
+  prompt 1:
+    name: formatting_test
+    prompt_file: test_simple_prompt.json
+    temperature: 0.5

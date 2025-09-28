@@ -20,3 +20,14 @@ api_key: null
 # This file is now read directly from the configuration.
 payload_file: prompt.json
 max_tokens: 25000
+
+# File size validation settings
+file_size_validation:
+  # Enable/disable file size validation (default: true)
+  enabled: true
+  # Maximum allowed size difference percentage (default: 30)
+  # Files that are 30% larger or smaller than input will trigger failure
+  max_size_difference_percent: 30
+  # Minimum file size threshold in bytes (default: 100)
+  # Files smaller than this will always trigger validation failure
+  min_file_size_bytes: 100

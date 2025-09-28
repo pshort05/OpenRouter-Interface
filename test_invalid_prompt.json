@@ -1,0 +1,6 @@
+{
+    "task": "invalid_test",
+    "system_message": "This is an invalid prompt file",
+    // This comment will make it invalid JSON
+    "user_prompt": "Test prompt with invalid JSON"
+}

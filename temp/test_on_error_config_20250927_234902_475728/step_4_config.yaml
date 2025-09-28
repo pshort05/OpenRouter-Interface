@@ -1,0 +1,8 @@
+model: invalid/another-non-existent-model
+temperature: 0.3
+max_tokens: 1000
+api_base_url: https://openrouter.ai/api/v1
+log_level: INFO
+file_size_validation:
+  enabled: false
+payload_file: /home/paul/data/Dropbox/Writing/OpenRouter-Interface/temp/test_on_error_config_20250927_234902_475728/step_4_payload_20250927_234905_475728.json

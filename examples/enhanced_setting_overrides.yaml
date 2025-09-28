@@ -11,6 +11,11 @@ global_config:
   max_tokens: 20000
   api_base_url: "https://openrouter.ai/api/v1"
   log_level: "INFO"
+  # File size validation settings
+  file_size_validation:
+    enabled: true
+    max_size_difference_percent: 30
+    min_file_size_bytes: 100
 
 prompts:
   # Step 1: Analysis phase - Use precise settings for analytical work

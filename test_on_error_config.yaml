@@ -1,0 +1,49 @@
+# Test configuration for on_error functionality
+# This config tests both 'stop' (default) and 'continue' behaviors
+
+input_files:
+  - test_input_simple.md
+
+output_pattern: "test_on_error_output.md"
+output_append: false
+
+prompts:
+  # Step 1: Normal step that should succeed
+  prompt 1:
+    name: "normal_step"
+    prompt_file: "test_simple_prompt.json"
+
+  # Step 2: This step will fail (invalid model) but should continue
+  prompt 2:
+    name: "failing_step_continue"
+    prompt_file: "test_simple_prompt.json"
+    model: "invalid/non-existent-model"
+    on_error: continue
+
+  # Step 3: Another normal step that should succeed (proving the chain continued)
+  prompt 3:
+    name: "final_step"
+    prompt_file: "test_simple_prompt.json"
+
+  # Step 4: This step will fail (invalid model) and should stop the chain
+  prompt 4:
+    name: "failing_step_stop"
+    prompt_file: "test_simple_prompt.json"
+    model: "invalid/another-non-existent-model"
+    on_error: stop
+
+  # Step 5: This should never be reached due to step 4 failure
+  prompt 5:
+    name: "unreachable_step"
+    prompt_file: "test_simple_prompt.json"
+
+# Global configuration
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.3
+  max_tokens: 1000
+  api_base_url: "https://openrouter.ai/api/v1"
+  log_level: "INFO"
+  # Disable file size validation for this test so we can focus on on_error behavior
+  file_size_validation:
+    enabled: false

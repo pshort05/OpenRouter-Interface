@@ -1,0 +1,6 @@
+input_file: test_input_simple.md
+output_file: test_output_error.md
+prompts:
+  prompt 1:
+    name: test_failure
+    prompt_file: nonexistent_prompt.json  # This will cause execution failure

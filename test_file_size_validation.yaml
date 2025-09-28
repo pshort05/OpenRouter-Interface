@@ -1,0 +1,13 @@
+input_file: test_input_simple.md
+output_file: test_file_size_output.md
+
+# Test new 50% default (instead of old 30%)
+file_size_validation:
+  enabled: true
+  # Not setting max_size_difference_percent to test 50% default
+  min_file_size_bytes: 50
+
+prompts:
+  prompt 1:
+    name: normal_step
+    prompt_file: test_simple_prompt.json

@@ -1,0 +1,9 @@
+input_file: test_input_simple.md
+output_file: test_output_simple.md
+prompts:
+  prompt 1:
+    name: formatting_enhancement
+    prompt_file: test_simple_prompt.json
+  prompt 2:
+    name: final_review
+    prompt_file: test_simple_prompt.json

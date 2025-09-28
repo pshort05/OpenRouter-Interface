@@ -1,0 +1,19 @@
+{
+    "task": "simple_test",
+    "system_message": "You are a helpful assistant. Return the input text with minor formatting improvements.",
+    "user_prompt": "Please review this text and return it with any minor formatting improvements. Keep the content essentially the same but enhance readability.",
+    "output_format": {
+        "artifact_only_system": {
+            "no_commentary": "Provide enhanced text only without analysis, explanation, or commentary about changes",
+            "artifact_creation": "Complete text formatted as clean Markdown document with enhancements applied"
+        },
+        "artifact_specifications": {
+            "format": "Markdown document preserving original structure and formatting",
+            "content": "Complete enhanced text with specific changes applied",
+            "structure": "Preserve entire original structure including all content with improvements integrated",
+            "completeness_requirement": "Include 100% of original text with only specific aspects enhanced"
+        },
+        "output_restrictions": "Do not respond with JSON formatted data. Only respond in Markdown format. Always output the complete text content."
+    },
+    "CRITICAL_FINAL_INSTRUCTION": "Always output the complete text content in Markdown format. Never output JSON, analysis, or summaries."
+}

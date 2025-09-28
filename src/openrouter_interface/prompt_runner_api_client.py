@@ -24,8 +24,8 @@ class PromptAPIClient:
         self.api_key = config.get_api_key()
     
     def _build_api_payload(self, prompt: str) -> dict:
-        """Build API request payload with all configured parameters."""
-        # Core required parameters
+        """Build API request payload with only explicitly configured parameters."""
+        # Required parameters (model and messages are always required)
         data = {
             'model': self.config.get('model'),
             'messages': [
@@ -33,10 +33,14 @@ class PromptAPIClient:
                     'role': 'user',
                     'content': prompt
                 }
-            ],
-            'temperature': self.config.get('temperature', 0.8),
-            'max_tokens': self.config.get('max_tokens', 25000)
+            ]
         }
+
+        # Core parameters (only include if explicitly configured by user)
+        if self.config.is_user_specified('temperature'):
+            data['temperature'] = self.config.get('temperature')
+        if self.config.is_user_specified('max_tokens'):
+            data['max_tokens'] = self.config.get('max_tokens')
 
         # Advanced sampling controls (only include if specified)
         if self.config.get('top_p') is not None:
@@ -80,24 +84,93 @@ class PromptAPIClient:
 
         return data
 
+    def _filter_incompatible_parameters(self, data: dict) -> dict:
+        """
+        Filter out parameters that are incompatible with specific model families.
+
+        Args:
+            data: Original API payload
+
+        Returns:
+            Filtered API payload with incompatible parameters removed
+        """
+        model = data.get('model', '').lower()
+        filtered_data = data.copy()
+
+        # Google Gemini models have specific parameter restrictions
+        if 'google/' in model or 'gemini' in model:
+            # Parameters known to be incompatible with Gemini models
+            incompatible_params = [
+                'user',  # Gemini doesn't support user parameter
+                'top_k',  # Gemini uses different sampling approach
+                'frequency_penalty',  # Not supported by Gemini
+                'presence_penalty',   # Not supported by Gemini
+                'repetition_penalty', # Not supported by Gemini
+                'top_logprobs',      # Not supported by Gemini
+                'seed',              # Not supported by Gemini
+                'min_p',             # Not supported by Gemini
+                'max_tokens'         # Gemini uses max_output_tokens instead
+            ]
+
+            removed_params = []
+            gemini_converted_params = []
+
+            # Handle max_tokens conversion for Gemini
+            if 'max_tokens' in filtered_data:
+                max_tokens_value = filtered_data['max_tokens']
+                filtered_data['max_output_tokens'] = max_tokens_value
+                del filtered_data['max_tokens']
+                gemini_converted_params.append(f"max_tokens → max_output_tokens ({max_tokens_value})")
+
+            # Remove other incompatible parameters
+            for param in incompatible_params:
+                if param in filtered_data and param != 'max_tokens':  # max_tokens already handled above
+                    removed_params.append(f"{param}={filtered_data[param]}")
+                    del filtered_data[param]
+
+            if removed_params:
+                logging.info(f"Removed parameters incompatible with {model}: {', '.join(removed_params)}")
+            if gemini_converted_params:
+                logging.info(f"Converted parameters for {model}: {', '.join(gemini_converted_params)}")
+
+        # Claude models (Anthropic) are generally compatible with most parameters
+        # OpenAI models are compatible with most parameters
+        # Add other model-specific filtering as needed
+
+        return filtered_data
+
     def _log_api_parameters(self, data: dict) -> None:
         """Log the API parameters being used."""
         # Always log core parameters
         logging.info(f"Model: {data.get('model')}")
-        logging.info(f"Temperature: {data.get('temperature')}")
-        logging.info(f"Max tokens: {data.get('max_tokens')}")
+
+        # Log core parameters only if they're included
+        core_params = []
+        if 'temperature' in data:
+            core_params.append(f"Temperature: {data['temperature']}")
+        if 'max_tokens' in data:
+            core_params.append(f"Max tokens: {data['max_tokens']}")
+        if 'max_output_tokens' in data:
+            core_params.append(f"Max output tokens: {data['max_output_tokens']}")
+
+        if core_params:
+            logging.info(f"Core parameters: {', '.join(core_params)}")
 
         # Log optional parameters if present
         optional_params = []
         for param in ['top_p', 'top_k', 'min_p', 'seed', 'frequency_penalty',
                      'presence_penalty', 'repetition_penalty', 'stream',
                      'response_format', 'top_logprobs', 'models', 'provider',
-                     'transforms', 'usage', 'user']:
+                     'transforms', 'usage', 'user', 'max_output_tokens']:
             if param in data:
                 optional_params.append(f"{param}={data[param]}")
 
         if optional_params:
             logging.info(f"Additional parameters: {', '.join(optional_params)}")
+
+        # Log total parameter count
+        param_count = len(data) - 2  # Subtract model and messages
+        logging.info(f"Sending {param_count} optional parameters to API")
 
     def call_api(self, prompt: str) -> str:
         """
@@ -120,7 +193,10 @@ class PromptAPIClient:
         
         # Build API data payload with all supported parameters
         data = self._build_api_payload(prompt)
-        
+
+        # Filter out parameters incompatible with the selected model
+        data = self._filter_incompatible_parameters(data)
+
         logging.info("Making API call to OpenRouter")
         self._log_api_parameters(data)
         logging.debug("Prompt length: " + str(len(prompt)) + " characters")

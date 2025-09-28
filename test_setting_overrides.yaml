@@ -1,21 +1,27 @@
-input_file: "test_input.md"
-output_file: "test_setting_overrides_output.md"
+input_file: test_input_simple.md
+output_file: test_override_output.md
 
-# Global configuration - applied to all steps unless overridden
+# Global file size validation settings
 global_config:
-  model: "anthropic/claude-4-sonnet-20250522"
-  temperature: 0.7
-  max_tokens: 15000
+  file_size_validation:
+    enabled: true
+    max_size_difference_percent: 40  # Global setting
+    min_file_size_bytes: 100
 
 prompts:
   prompt 1:
-    name: "step_with_model_override"
-    prompt_file: "prompts/test_prompt1.json"
-    model: "openai/gpt-4-turbo"        # Override model
-    temperature: 0.3                   # Override temperature
+    name: strict_validation
+    prompt_file: test_simple_prompt.json
+    max_size_difference_percent: 20  # Override to be more strict for this step
 
   prompt 2:
-    name: "step_with_token_override"
-    prompt_file: "prompts/test_prompt2.json"
-    max_tokens: 25000                  # Override max_tokens only
-    # Uses global model and temperature
+    name: lenient_validation
+    prompt_file: test_simple_prompt.json
+    file_size_validation:
+      max_size_difference_percent: 60  # Override to be more lenient for this step
+      min_file_size_bytes: 50
+
+  prompt 3:
+    name: default_validation
+    prompt_file: test_simple_prompt.json
+    # Uses global setting (40%)

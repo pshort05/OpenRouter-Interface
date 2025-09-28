@@ -20,6 +20,7 @@ class ConfigManager:
     def __init__(self, config_file: str = None):
         """Initialize configuration manager."""
         self.config_file = config_file or "openrouter_editor.yaml"
+        self.user_specified_keys = set()  # Track which keys were explicitly set by user
         self.config = self._load_config()
         
     def _load_config(self) -> Dict[str, Any]:
@@ -72,18 +73,43 @@ class ConfigManager:
 
             # Utility parameters (optional)
             # 'user': None,               # (string) - User identifier for tracking
+
+            # File size validation settings
+            'file_size_validation': {
+                'enabled': True,
+                'max_size_difference_percent': 30,
+                'min_file_size_bytes': 100
+            }
         }
         
         if config_path.exists():
             logging.info("Loading configuration from " + self.config_file)
             with open(config_path, 'r', encoding='utf-8') as f:
                 user_config = yaml.safe_load(f) or {}
+
+            # Track which keys were explicitly set by the user
+            self.user_specified_keys = self._get_all_keys(user_config)
+
             default_config.update(user_config)
         else:
             logging.info("Configuration file " + self.config_file + " not found, using defaults")
             
         return default_config
-    
+
+    def _get_all_keys(self, config_dict: Dict[str, Any], prefix: str = '') -> set:
+        """Recursively get all keys from a nested dictionary."""
+        keys = set()
+        for key, value in config_dict.items():
+            full_key = f"{prefix}.{key}" if prefix else key
+            keys.add(full_key)
+            if isinstance(value, dict):
+                keys.update(self._get_all_keys(value, full_key))
+        return keys
+
+    def is_user_specified(self, key: str) -> bool:
+        """Check if a configuration key was explicitly set by the user."""
+        return key in self.user_specified_keys
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value."""
         return self.config.get(key, default)

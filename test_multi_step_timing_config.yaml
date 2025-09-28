@@ -1,0 +1,11 @@
+input_file: test_input_simple.md
+output_file: test_multi_output.md
+prompts:
+  prompt 1:
+    name: grammar_foundation
+    prompt_file: test_simple_prompt.json
+    temperature: 0.2
+  prompt 2:
+    name: final_polish
+    prompt_file: test_simple_prompt.json
+    temperature: 0.5

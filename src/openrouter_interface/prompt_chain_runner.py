@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 import yaml
 from datetime import datetime
@@ -23,10 +24,112 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 
+class ConsoleOutputManager:
+    """Manages clean console output with colored status indicators."""
+
+    # ANSI color codes
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+
+    def __init__(self):
+        self.step_results = []
+
+    def print_header(self, config_name: str, temp_dir: Path):
+        """Print the initial header with basic setup info."""
+        print(f"Prompt Chain Runner initialized - using Temp directory: {temp_dir}")
+        print(f"Using Configuration file: {config_name}")
+        print("Verifying prompts and input file\n")
+
+    def print_step_start(self, step: int, prompt_name: str = None):
+        """Print step execution start."""
+        if prompt_name:
+            print(f"Executing Prompt {step}: {prompt_name}")
+        else:
+            print(f"Executing Prompt {step}:")
+
+    def print_step_result(self, step, prompt_name: str, file_size: str, success: bool, execution_time: float, error_message: str = None, skipped: bool = False):
+        """Print step execution result with colored status indicator, timing, and optional error or skip status."""
+        if skipped:
+            status = f"{self.YELLOW}⚠️{self.RESET}"
+            if prompt_name:
+                print(f"Result:   {status} prompt {step} {prompt_name} {self.YELLOW}SKIPPED{self.RESET} (on_error: continue) time: {execution_time:.1f} seconds")
+            else:
+                print(f"Result:   {status} prompt {step} {self.YELLOW}SKIPPED{self.RESET} (on_error: continue) time: {execution_time:.1f} seconds")
+        elif success:
+            status = f"{self.GREEN}✅{self.RESET}"
+            if prompt_name:
+                print(f"Result:   {status} prompt {step} {prompt_name} output size: {file_size} time: {execution_time:.1f} seconds")
+            else:
+                print(f"Result:   {status} prompt {step} output size: {file_size} time: {execution_time:.1f} seconds")
+        else:
+            status = f"{self.RED}❌{self.RESET}"
+            if prompt_name:
+                print(f"Result:   {status} prompt {step} {prompt_name} {self.RED}FAILED{self.RESET} time: {execution_time:.1f} seconds")
+            else:
+                print(f"Result:   {status} prompt {step} {self.RED}FAILED{self.RESET} time: {execution_time:.1f} seconds")
+
+            # Show error message on the next line if provided
+            if error_message:
+                print(f"          {self.RED}Error: {error_message}{self.RESET}")
+
+        print()  # Add blank line after each result
+
+        # Store result for final report
+        self.step_results.append({
+            'step': step,
+            'name': prompt_name,
+            'file_size': file_size,
+            'success': success,
+            'execution_time': execution_time,
+            'skipped': skipped
+        })
+
+    def print_final_report(self, config_name: str, original_file_name: str, original_file_size: str, overall_success: bool):
+        """Print the final report with all step results."""
+        print(f"Final Report {config_name}")
+
+        if overall_success:
+            print(f"{self.GREEN}✅ Prompt chain completed successfully!{self.RESET}")
+        else:
+            print(f"{self.RED}❌ Prompt chain Failed!{self.RESET}")
+
+        # Show original input file
+        print(f"       {self.GREEN}✅{self.RESET} original_input_{original_file_name} size: {original_file_size}")
+
+        # Show each step result
+        for result in self.step_results:
+            step = result['step']
+            name = result['name']
+            file_size = result['file_size']
+            success = result['success']
+            execution_time = result.get('execution_time', 0)
+            skipped = result.get('skipped', False)
+
+            if skipped:
+                status_icon = f"{self.YELLOW}⚠️{self.RESET}"
+                display_size = "skipped"
+            elif success:
+                status_icon = f"{self.GREEN}✅{self.RESET}"
+                display_size = f"size: {file_size}"
+            else:
+                status_icon = f"{self.RED}❌{self.RESET}"
+                display_size = "failed"
+
+            if name:
+                print(f"       {status_icon} prompt {step} {name} {display_size}")
+            else:
+                print(f"       {status_icon} prompt {step} {display_size}")
+
+
 class PromptChainRunner:
     """Manages sequential execution of multiple prompts."""
-    
-    def __init__(self, config_file: str, input_file: str = None, output_file: str = None, 
+
+    def __init__(self, config_file: str, input_file: str = None, output_file: str = None,
                  prompt_runner_config: str = None, debug: bool = False):
         """
         Initialize the prompt chain runner.
@@ -64,7 +167,13 @@ class PromptChainRunner:
         # Create log file in temp directory
         self.log_file = self._create_log_file()
         self._setup_logging()
-        
+
+        # Initialize console output manager
+        self.console = ConsoleOutputManager()
+
+        # Print clean console header
+        self.console.print_header(self.config_file.name, self.temp_dir)
+
         logging.info(f"Prompt Chain Runner initialized - Process ID: {self.process_id}")
         logging.info(f"Configuration file: {self.config_file}")
         logging.info(f"Temp directory: {self.temp_dir}")
@@ -117,15 +226,16 @@ class PromptChainRunner:
         file_handler.setFormatter(formatter)
         file_handler.setLevel(logging.DEBUG)
         
-        # Console handler
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(formatter)
-        console_handler.setLevel(logging.DEBUG if self.debug else logging.INFO)
-        
+        # Console handler - only show minimal output unless debug mode
+        if self.debug:
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setFormatter(formatter)
+            console_handler.setLevel(logging.DEBUG)
+            logging.root.addHandler(console_handler)
+
         # Configure root logger
         logging.root.setLevel(logging.DEBUG)
         logging.root.addHandler(file_handler)
-        logging.root.addHandler(console_handler)
         
         logging.info(f"Logging initialized - Log file: {self.log_file}")
     
@@ -183,31 +293,64 @@ class PromptChainRunner:
         if not prompts:
             raise ValueError("At least one prompt must be specified")
         
-        # Validate prompt numbering (1-99)
+        # Validate prompt numbering (1-99) and substeps (N.1-N.9)
         valid_numbers = set(range(1, 100))
         prompt_numbers = set()
-        
+        substep_numbers = set()  # Track substeps like 6.1, 6.2, etc.
+
         for key, prompt_config in prompts.items():
             if not key.startswith('prompt '):
-                raise ValueError(f"Invalid prompt key format: {key}. Expected 'prompt N' where N is 1-99")
-            
+                raise ValueError(f"Invalid prompt key format: {key}. Expected 'prompt N' or 'prompt N.S' where N is 1-99 and S is 1-9")
+
             try:
-                number = int(key.split()[1])
-                if number not in valid_numbers:
-                    raise ValueError(f"Prompt number must be 1-99, got: {number}")
-                prompt_numbers.add(number)
+                number_part = key.split()[1]  # Get the number part after 'prompt '
+
+                if '.' in number_part:
+                    # Handle substeps like "6.1", "6.2"
+                    main_num, sub_num = number_part.split('.')
+                    main_number = int(main_num)
+                    sub_number = int(sub_num)
+
+                    if main_number not in valid_numbers:
+                        raise ValueError(f"Main prompt number must be 1-99, got: {main_number}")
+                    if sub_number < 1 or sub_number > 9:
+                        raise ValueError(f"Substep number must be 1-9, got: {sub_number}")
+
+                    substep_numbers.add((main_number, sub_number))
+                else:
+                    # Handle regular prompts like "6"
+                    number = int(number_part)
+                    if number not in valid_numbers:
+                        raise ValueError(f"Prompt number must be 1-99, got: {number}")
+                    prompt_numbers.add(number)
+
             except (IndexError, ValueError) as e:
-                raise ValueError(f"Invalid prompt key format: {key}. Expected 'prompt N' where N is 1-99")
-            
+                if isinstance(e, ValueError) and "Substep number must be" in str(e):
+                    raise e
+                if isinstance(e, ValueError) and "Main prompt number must be" in str(e):
+                    raise e
+                raise ValueError(f"Invalid prompt key format: {key}. Expected 'prompt N' or 'prompt N.S' where N is 1-99 and S is 1-9")
+
             # Validate prompt configuration (can be string or dict)
             self._validate_prompt_config(prompt_config, key)
         
-        # Check for sequential numbering starting from 1
-        sorted_numbers = sorted(prompt_numbers)
-        expected_numbers = list(range(1, len(sorted_numbers) + 1))
-        
-        if sorted_numbers != expected_numbers:
-            raise ValueError(f"Prompts must be numbered sequentially starting from 1. Found: {sorted_numbers}")
+        # Check for sequential numbering starting from 1 (main prompts only)
+        if prompt_numbers:  # Only validate if there are main prompts
+            sorted_numbers = sorted(prompt_numbers)
+            expected_numbers = list(range(1, len(sorted_numbers) + 1))
+
+            if sorted_numbers != expected_numbers:
+                raise ValueError(f"Main prompts must be numbered sequentially starting from 1. Found: {sorted_numbers}")
+
+        # Validate substeps - substeps can only exist if their main prompt exists
+        for main_num, sub_num in substep_numbers:
+            if main_num not in prompt_numbers:
+                raise ValueError(f"Substep {main_num}.{sub_num} requires main prompt {main_num} to exist")
+
+        # Update total prompts count to include substeps
+        total_main_prompts = len(prompt_numbers)
+        total_substeps = len(substep_numbers)
+        self.total_prompts = total_main_prompts + total_substeps
         
         # Validate ALL prompt files exist before any execution (supports comma-separated files)
         missing_prompts = []
@@ -247,8 +390,7 @@ class PromptChainRunner:
             error_msg += "\nAll prompt files and config files must exist before execution can begin."
             raise FileNotFoundError(error_msg)
         
-        # Set total_prompts AFTER validation passes
-        self.total_prompts = len(prompts)
+        # total_prompts is already set in the validation logic above
     
     def _validate_input_files(self, input_files: List[str]):
         """Validate multiple input files configuration."""
@@ -305,17 +447,50 @@ class PromptChainRunner:
     def _get_prompt_settings(self, prompt_config) -> Dict[str, Any]:
         """Extract all setting overrides from prompt config."""
         if isinstance(prompt_config, dict):
-            # Extract all settings except the special keys (prompt_file, config_file, name)
-            special_keys = {'prompt_file', 'config_file', 'name'}
+            # Extract all settings except the special keys (prompt_file, config_file, name, on_error)
+            special_keys = {'prompt_file', 'config_file', 'name', 'on_error'}
             settings = {k: v for k, v in prompt_config.items() if k not in special_keys}
             return settings
         return {}
+
+    def _build_sorted_prompt_list(self, prompts: Dict[str, Any]) -> List[tuple]:
+        """Build sorted list of prompts including substeps in proper order."""
+        prompt_items = []
+
+        for key, prompt_config in prompts.items():
+            number_part = key.split()[1]
+
+            if '.' in number_part:
+                main_num, sub_num = number_part.split('.')
+                main_number = int(main_num)
+                sub_number = int(sub_num)
+                sort_key = main_number + (sub_number / 10.0)
+                display_step = f"{main_number}.{sub_number}"
+            else:
+                main_number = int(number_part)
+                sort_key = float(main_number)
+                display_step = str(main_number)
+
+            prompt_items.append((sort_key, display_step, prompt_config))
+
+        prompt_items.sort(key=lambda x: x[0])
+        return [(item[1], item[2]) for item in prompt_items]
 
     def _get_prompt_name(self, prompt_config) -> Optional[str]:
         """Extract name from prompt config (returns None if not specified)."""
         if isinstance(prompt_config, dict):
             return prompt_config.get('name')
         return None
+
+    def _get_on_error_behavior(self, prompt_config) -> str:
+        """Extract on_error behavior from prompt config (defaults to 'stop')."""
+        if isinstance(prompt_config, dict):
+            on_error = prompt_config.get('on_error', 'stop')
+            if on_error not in ['stop', 'continue']:
+                logging.warning(f"Invalid on_error value '{on_error}', defaulting to 'stop'")
+                return 'stop'
+            return on_error
+        return 'stop'
 
     def _get_output_append(self) -> bool:
         """Get output_append setting from config (defaults to False)."""
@@ -326,14 +501,14 @@ class PromptChainRunner:
         return self.config.get('output_format', 'markdown')
 
     def _format_file_size(self, file_path: Path) -> str:
-        """Format file size in human-readable format (e.g., 13k, 1.2M)."""
+        """Format file size in human-readable format with 1 decimal place (e.g., 13.5k, 1.2M)."""
         try:
             size_bytes = file_path.stat().st_size
 
             if size_bytes < 1024:
                 return f"{size_bytes}B"
             elif size_bytes < 1024 * 1024:
-                return f"{size_bytes // 1024}k"
+                return f"{size_bytes / 1024:.1f}k"
             elif size_bytes < 1024 * 1024 * 1024:
                 return f"{size_bytes / (1024 * 1024):.1f}M"
             else:
@@ -398,7 +573,8 @@ class PromptChainRunner:
             return None
 
         # Create a temporary config file in the temp directory
-        step_config_path = self.temp_dir / f"step_{step:02d}_config.yaml"
+        step_formatted = str(step).replace('.', '_')
+        step_config_path = self.temp_dir / f"step_{step_formatted}_config.yaml"
 
         # Base configuration
         step_config = {}
@@ -423,6 +599,17 @@ class PromptChainRunner:
                 override_list.append(f"{key}: {value}")
             if override_list:
                 logging.info(f"Step {step}: Using step-specific settings: {', '.join(override_list)}")
+
+        # Ensure payload file is created in temp directory
+        import os
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        process_id = os.getpid()
+        step_formatted = str(step).replace('.', '_')
+        temp_payload_filename = f'step_{step_formatted}_payload_{timestamp}_{process_id}.json'
+        temp_payload_path = self.temp_dir / temp_payload_filename
+        step_config['payload_file'] = str(temp_payload_path)
+        logging.debug(f"Step {step}: Using temp payload file: {temp_payload_filename}")
 
         # Write the temporary config file
         with open(step_config_path, 'w', encoding='utf-8') as f:
@@ -541,8 +728,10 @@ class PromptChainRunner:
         input_name = input_file.stem
         input_ext = input_file.suffix
 
-        # Build filename components
-        filename_parts = [input_name, "step", f"{step:02d}"]
+        # Build filename components - handle substeps by replacing . with _
+        step_str = str(step)
+        step_formatted = step_str.replace('.', '_')
+        filename_parts = [input_name, "step", step_formatted]
 
         # Add prompt name if provided
         if prompt_name:
@@ -571,9 +760,11 @@ class PromptChainRunner:
             clean_name = Path(prompt_name).stem
             # Replace spaces and special characters with underscores
             clean_name = "".join(c if c.isalnum() else "_" for c in clean_name)
-            temp_filename = f"step{step:02d}_{clean_name}.tmp"
+            step_formatted = str(step).replace('.', '_')
+            temp_filename = f"step{step_formatted}_{clean_name}.tmp"
         else:
-            temp_filename = f"step{step:02d}.tmp"
+            step_formatted = str(step).replace('.', '_')
+            temp_filename = f"step{step_formatted}.tmp"
 
         temp_file = self.temp_dir / temp_filename
         return temp_file.resolve()
@@ -598,7 +789,7 @@ class PromptChainRunner:
         Returns:
             Path to the saved initial file
         """
-        initial_filename = self._get_intermediate_filename(input_file, 0)
+        initial_filename = self._get_intermediate_filename(input_file, "00")
         initial_file_path = self.temp_dir / initial_filename
 
         try:
@@ -693,18 +884,18 @@ class PromptChainRunner:
             logging.error(f"Failed to create final output header: {e}")
             raise
     
-    def _run_prompt_runner(self, prompt_config, input_file: Path, output_file: Path, step: int) -> bool:
+    def _run_prompt_runner(self, prompt_config, input_file: Path, output_file: Path, step: int) -> tuple[bool, str]:
         """
         Run prompt_runner.py with specified parameters.
-        
+
         Args:
             prompt_config: Prompt configuration (string or dict with prompt_file, optional config_file, and optional model)
             input_file: Input file for this step
             output_file: Output file for this step
             step: Current step number for logging
-            
+
         Returns:
-            True if successful, False otherwise
+            Tuple of (success: bool, error_message: str or None)
         """
         # Extract file paths and settings from config
         prompt_file = self._get_prompt_file(prompt_config)
@@ -767,37 +958,120 @@ class PromptChainRunner:
                 logging.info(f"Step {step}: SUCCESS - openrouter-runner completed")
                 if result.stdout:
                     logging.debug(f"Step {step} stdout: {result.stdout}")
-                return True
+                return True, None
             else:
                 logging.error(f"Step {step}: FAILED - openrouter-runner returned code {result.returncode}")
+                error_message = "Unknown error"
                 if result.stderr:
                     logging.error(f"Step {step} stderr: {result.stderr}")
+                    # Extract a concise error message from stderr
+                    error_lines = result.stderr.strip().split('\n')
+                    for line in reversed(error_lines):
+                        if line.strip() and not line.startswith('  '):
+                            error_message = line.strip()
+                            break
                 if result.stdout:
                     logging.error(f"Step {step} stdout: {result.stdout}")
-                return False
+                return False, error_message
                 
         except subprocess.TimeoutExpired:
-            logging.error(f"Step {step}: TIMEOUT - openrouter-runner timed out after 5 minutes")
-            return False
+            error_message = "openrouter-runner timed out after 5 minutes"
+            logging.error(f"Step {step}: TIMEOUT - {error_message}")
+            return False, error_message
         except FileNotFoundError:
-            logging.error(f"Step {step}: ERROR - openrouter-runner not found in PATH")
+            error_message = "openrouter-runner not found in PATH"
+            logging.error(f"Step {step}: ERROR - {error_message}")
             logging.error("Make sure openrouter-runner is installed and accessible in your system PATH")
-            return False
+            return False, error_message
         except Exception as e:
-            logging.error(f"Step {step}: ERROR - Failed to execute openrouter-runner: {e}")
-            return False
+            error_message = f"Failed to execute openrouter-runner: {e}"
+            logging.error(f"Step {step}: ERROR - {error_message}")
+            return False, error_message
     
-    def _verify_output_file(self, file_path: Path, step: int) -> bool:
+    def _validate_file_size(self, input_file: Path, output_file: Path, step: str, step_config: dict = None) -> bool:
+        """
+        Validate that output file size is within acceptable range compared to input.
+
+        Args:
+            input_file: Original input file for comparison
+            output_file: Output file to validate
+            step: Current step number (can be "1", "6.1", "6.2", etc.) for logging
+            step_config: Optional step-specific configuration for overrides
+
+        Returns:
+            True if file size is acceptable, False otherwise
+        """
+        # Start with base config
+        validation_config = self.config.get('file_size_validation', {})
+
+        # Override with global_config if present
+        if 'global_config' in self.config and 'file_size_validation' in self.config['global_config']:
+            validation_config.update(self.config['global_config']['file_size_validation'])
+
+        # Override with step-specific config if present
+        if step_config and 'file_size_validation' in step_config:
+            validation_config.update(step_config['file_size_validation'])
+
+        # Check for individual step-level settings (max_size_difference_percent can be set directly)
+        if step_config and 'max_size_difference_percent' in step_config:
+            validation_config['max_size_difference_percent'] = step_config['max_size_difference_percent']
+
+        # Default values if not configured (updated default from 30% to 50%)
+        enabled = validation_config.get('enabled', True)
+        max_diff_percent = validation_config.get('max_size_difference_percent', 50)
+        min_file_size = validation_config.get('min_file_size_bytes', 100)
+
+        if not enabled:
+            logging.debug(f"Step {step}: File size validation disabled")
+            return True
+
+        try:
+            input_size = input_file.stat().st_size
+            output_size = output_file.stat().st_size
+
+            # Check minimum file size threshold
+            if output_size < min_file_size:
+                logging.error(f"Step {step}: Output file too small ({output_size} bytes < {min_file_size} bytes minimum)")
+                return False
+
+            # Calculate size difference percentage
+            if input_size == 0:
+                # Handle edge case of empty input file
+                logging.warning(f"Step {step}: Input file is empty, skipping size comparison")
+                return output_size >= min_file_size
+
+            size_diff_percent = abs(output_size - input_size) / input_size * 100
+
+            if size_diff_percent > max_diff_percent:
+                direction = "larger" if output_size > input_size else "smaller"
+                logging.error(f"Step {step}: Output file is {size_diff_percent:.1f}% {direction} than input "
+                             f"(input: {input_size} bytes, output: {output_size} bytes, max allowed: {max_diff_percent}%)")
+                return False
+
+            logging.info(f"Step {step}: File size validation passed - {size_diff_percent:.1f}% difference "
+                        f"(input: {input_size} bytes, output: {output_size} bytes)")
+            return True
+
+        except Exception as e:
+            logging.error(f"Step {step}: File size validation failed due to error: {e}")
+            return False
+
+    def _verify_output_file(self, file_path: Path, step: str, input_file: Path = None, step_config: dict = None) -> bool:
         """Verify that output file was created and has content."""
         if not file_path.exists():
             logging.error(f"Step {step}: Output file not created: {file_path}")
             return False
-        
+
         file_size = file_path.stat().st_size
         if file_size == 0:
             logging.error(f"Step {step}: Output file is empty: {file_path}")
             return False
-        
+
+        # Perform file size validation if input file is provided
+        if input_file and not self._validate_file_size(input_file, file_path, step, step_config):
+            logging.error(f"Step {step}: File size validation failed")
+            return False
+
         logging.info(f"Step {step}: Output file verified - {file_size} bytes: {file_path}")
         return True
     
@@ -819,27 +1093,21 @@ class PromptChainRunner:
         logging.info("=" * 80)
         
         try:
-            # Get sorted prompt list
+            # Get sorted prompt list (including substeps)
             prompts = self.config['prompts']
             logging.info(f"Processing {len(prompts)} prompts from config")
-            
+
             # Check if we have prompts to execute
             if self.total_prompts == 0:
                 logging.error("No prompts found to execute!")
                 logging.error(f"Config prompts section: {prompts}")
                 return False
-            
-            sorted_prompts = []
-            for i in range(1, self.total_prompts + 1):
-                prompt_key = f"prompt {i}"
-                if prompt_key in prompts:
-                    sorted_prompts.append((i, prompts[prompt_key]))
-                else:
-                    logging.error(f"Missing {prompt_key} in prompts configuration")
-                    logging.error(f"Available keys: {list(prompts.keys())}")
-            
+
+            # Build sorted list that includes both main prompts and substeps
+            sorted_prompts = self._build_sorted_prompt_list(prompts)
+
             logging.info(f"Sorted prompts list has {len(sorted_prompts)} entries")
-            
+
             if not sorted_prompts:
                 logging.error("No prompts to execute - this should not happen after validation")
                 return False
@@ -884,13 +1152,20 @@ class PromptChainRunner:
                 current_input = input_file
                 file_successful = True
                 
-                for step, prompt_config in sorted_prompts:
+                for step_display, prompt_config in sorted_prompts:
                     prompt_file = self._get_prompt_file(prompt_config)
                     step_config = self._get_prompt_config_file(prompt_config)
                     step_settings = self._get_prompt_settings(prompt_config)
                     prompt_name = self._get_prompt_name(prompt_config)
 
-                    logging.info(f"\n--- File {file_index}, Step {step}/{self.total_prompts} ---")
+                    # Clean console output
+                    self.console.print_step_start(step_display, prompt_name)
+
+                    # Start timing this step
+                    step_start_time = time.time()
+
+                    # Detailed logging to file
+                    logging.info(f"\n--- File {file_index}, Step {step_display}/{self.total_prompts} ---")
                     logging.info(f"Executing prompt: {prompt_file}")
                     if prompt_name:
                         logging.info(f"Using prompt name: {prompt_name}")
@@ -903,54 +1178,168 @@ class PromptChainRunner:
                     # Determine output file for this step
                     if output_append:
                         # In append mode, all steps output to intermediate files
-                        intermediate_filename = self._get_intermediate_filename(input_file, step, prompt_name)
+                        intermediate_filename = self._get_intermediate_filename(input_file, step_display, prompt_name)
                         current_output = self.temp_dir / intermediate_filename
-                        logging.info(f"Step {step} temp output (append mode): {current_output.name}")
+                        logging.info(f"Step {step_display} temp output (append mode): {current_output.name}")
                     else:
                         # All steps (including final) create intermediate files in temp directory
-                        intermediate_filename = self._get_intermediate_filename(input_file, step, prompt_name)
+                        intermediate_filename = self._get_intermediate_filename(input_file, step_display, prompt_name)
                         current_output = self.temp_dir / intermediate_filename
-                        if step == self.total_prompts:
+                        # Check if this is the final step (last in sorted list)
+                        is_final_step = (step_display, prompt_config) == sorted_prompts[-1]
+                        if is_final_step:
                             logging.info(f"Final step - temp output: {current_output.name}")
                         else:
                             logging.info(f"Intermediate step - temp output: {current_output.name}")
 
                     # Run prompt_runner.py
-                    success = self._run_prompt_runner(prompt_config, current_input, current_output, step)
-                    
+                    success, error_message = self._run_prompt_runner(prompt_config, current_input, current_output, step_display)
+
+                    # Calculate execution time
+                    step_execution_time = time.time() - step_start_time
+
                     if not success:
-                        logging.error(f"Chain execution failed at File {file_index}, Step {step}")
-                        # Track this failed step
-                        file_result['prompts'].append({
-                            'step': step,
-                            'name': prompt_name,
-                            'file_size': 'failed',
-                            'success': False
-                        })
-                        file_successful = False
-                        all_successful = False
-                        break
+                        # Check on_error behavior for this step
+                        on_error_behavior = self._get_on_error_behavior(prompt_config)
+
+                        if on_error_behavior == 'continue':
+                            # Skip this step and pass input file through unchanged
+                            logging.warning(f"Step {step_display} failed, but on_error=continue - skipping step")
+                            logging.info(f"Copying input file unchanged: {current_input} -> {current_output}")
+
+                            try:
+                                # Copy input file to output location unchanged
+                                import shutil
+                                shutil.copy2(current_input, current_output)
+
+                                # Get formatted file size for display (from input file since we copied it)
+                                formatted_size = self._format_file_size(current_input)
+
+                                # Show skipped status in console
+                                self.console.print_step_result(step_display, prompt_name, formatted_size, True, step_execution_time, skipped=True)
+
+                                # Track this step's execution result as skipped
+                                file_result['prompts'].append({
+                                    'step': step_display,
+                                    'name': prompt_name,
+                                    'file_size': formatted_size,
+                                    'success': True,  # Consider it successful since we handled it
+                                    'skipped': True
+                                })
+
+                                # Update input for next iteration
+                                current_input = current_output
+                                self.prompts_executed += 1
+                                logging.info(f"File {file_index}, Step {step_display} skipped successfully")
+                                continue  # Continue to next step
+
+                            except Exception as e:
+                                logging.error(f"Failed to copy input file for skipped step: {e}")
+                                # If we can't even copy the file, treat as a regular failure
+                                self.console.print_step_result(step_display, prompt_name, 'failed', False, step_execution_time, f"Copy failed: {e}")
+                                logging.error(f"Chain execution failed at File {file_index}, Step {step_display}")
+                                # Track this failed step
+                                file_result['prompts'].append({
+                                    'step': step_display,
+                                    'name': prompt_name,
+                                    'file_size': 'failed',
+                                    'success': False
+                                })
+                                file_successful = False
+                                all_successful = False
+                                break
+                        else:
+                            # Default behavior: stop on error
+                            # Clean console output with timing and error
+                            self.console.print_step_result(step_display, prompt_name, 'failed', False, step_execution_time, error_message)
+
+                            logging.error(f"Chain execution failed at File {file_index}, Step {step_display}")
+                            # Track this failed step
+                            file_result['prompts'].append({
+                                'step': step_display,
+                                'name': prompt_name,
+                                'file_size': 'failed',
+                                'success': False
+                            })
+                            file_successful = False
+                            all_successful = False
+                            break
                     
-                    # Verify output file
-                    if not self._verify_output_file(current_output, step):
-                        logging.error(f"Output verification failed at File {file_index}, Step {step}")
-                        # Track this failed step
-                        file_result['prompts'].append({
-                            'step': step,
-                            'name': prompt_name,
-                            'file_size': 'failed',
-                            'success': False
-                        })
-                        file_successful = False
-                        all_successful = False
-                        break
+                    # Verify output file (compare against current input for size validation)
+                    if not self._verify_output_file(current_output, step_display, current_input, step_settings):
+                        # Check on_error behavior for this step
+                        on_error_behavior = self._get_on_error_behavior(prompt_config)
+
+                        if on_error_behavior == 'continue':
+                            # Skip this step due to verification failure and pass input file through unchanged
+                            logging.warning(f"Step {step_display} verification failed, but on_error=continue - skipping step")
+                            logging.info(f"Copying input file unchanged due to verification failure: {current_input} -> {current_output}")
+
+                            try:
+                                # Copy input file to output location unchanged (overwrite the failed output)
+                                import shutil
+                                shutil.copy2(current_input, current_output)
+
+                                # Get formatted file size for display (from input file since we copied it)
+                                formatted_size = self._format_file_size(current_input)
+
+                                # Show skipped status in console
+                                self.console.print_step_result(step_display, prompt_name, formatted_size, True, step_execution_time, skipped=True)
+
+                                # Track this step's execution result as skipped
+                                file_result['prompts'].append({
+                                    'step': step_display,
+                                    'name': prompt_name,
+                                    'file_size': formatted_size,
+                                    'success': True,  # Consider it successful since we handled it
+                                    'skipped': True
+                                })
+
+                                # Update input for next iteration
+                                current_input = current_output
+                                self.prompts_executed += 1
+                                logging.info(f"File {file_index}, Step {step_display} skipped due to verification failure")
+                                # Continue with the next step instead of breaking
+
+                            except Exception as e:
+                                logging.error(f"Failed to copy input file for skipped step after verification failure: {e}")
+                                # If we can't even copy the file, treat as a regular failure
+                                self.console.print_step_result(step_display, prompt_name, 'failed', False, step_execution_time, f"Verification and copy failed: {e}")
+                                logging.error(f"Chain execution failed at File {file_index}, Step {step_display}")
+                                # Track this failed step
+                                file_result['prompts'].append({
+                                    'step': step_display,
+                                    'name': prompt_name,
+                                    'file_size': 'failed',
+                                    'success': False
+                                })
+                                file_successful = False
+                                all_successful = False
+                                break
+                        else:
+                            # Default behavior: stop on verification failure
+                            # Clean console output with timing and verification error
+                            self.console.print_step_result(step_display, prompt_name, 'failed', False, step_execution_time, "Output file verification failed")
+
+                            logging.error(f"Output verification failed at File {file_index}, Step {step_display}")
+                            # Track this failed step
+                            file_result['prompts'].append({
+                                'step': step_display,
+                                'name': prompt_name,
+                                'file_size': 'failed',
+                                'success': False
+                            })
+                            file_successful = False
+                            all_successful = False
+                            break
 
                     # Handle output appending if enabled
                     if output_append:
-                        self._append_to_output(current_output, final_output, step, prompt_name)
+                        self._append_to_output(current_output, final_output, step_display, prompt_name)
 
                     # Copy final step output to the actual final output location (non-append mode)
-                    if not output_append and step == self.total_prompts:
+                    is_final_step = (step_display, prompt_config) == sorted_prompts[-1]
+                    if not output_append and is_final_step:
                         try:
                             shutil.copy2(current_output, final_output)
                             logging.info(f"Final step output copied to: {final_output}")
@@ -965,14 +1354,20 @@ class PromptChainRunner:
                             break
 
                     # Log temp file details for tracking
-                    logging.info(f"Step {step} temp file created: {current_output}")
+                    logging.info(f"Step {step_display} temp file created: {current_output}")
                     logging.info(f"Temp file size: {current_output.stat().st_size} bytes")
+
+                    # Get formatted file size for display
+                    formatted_size = self._format_file_size(current_output)
+
+                    # Clean console output with timing
+                    self.console.print_step_result(step_display, prompt_name, formatted_size, True, step_execution_time)
 
                     # Track this step's execution result
                     file_result['prompts'].append({
-                        'step': step,
+                        'step': step_display,
                         'name': prompt_name,
-                        'file_size': self._format_file_size(current_output),
+                        'file_size': formatted_size,
                         'success': True
                     })
 
@@ -980,7 +1375,7 @@ class PromptChainRunner:
                     current_input = current_output
                     self.prompts_executed += 1
 
-                    logging.info(f"File {file_index}, Step {step} completed successfully")
+                    logging.info(f"File {file_index}, Step {step_display} completed successfully")
                 
                 # Add this file's results to the overall execution results
                 self.execution_results.append(file_result)
@@ -993,7 +1388,21 @@ class PromptChainRunner:
                 else:
                     logging.error(f"❌ File {file_index} processing failed")
             
-            # Generate and display detailed final report
+            # Generate and display clean final report on console
+            if self.execution_results:
+                # Use the first file's data for the report (single file or first of multiple)
+                first_file_result = self.execution_results[0]
+                original_file_name = first_file_result['input_file']
+                original_file_size = first_file_result['original_file_size']
+
+                self.console.print_final_report(
+                    self.config_file.stem,
+                    original_file_name,
+                    original_file_size,
+                    all_successful
+                )
+
+            # Generate detailed final report for log file
             final_report = self._generate_final_report()
             logging.info(final_report)
 
@@ -1286,16 +1695,10 @@ File Organization:
         # Cleanup (temp files preserved by default)
         runner.cleanup(keep_temp=not args.clean_temp)
         
-        # Exit with appropriate code
+        # Exit with appropriate code (console already shows final report)
         if success:
-            print(f"\n✅ Prompt chain completed successfully!")
-            print(f"Final output: {runner._get_output_file()}")
-            print(f"Temporary files: {runner.temp_dir}")
-            print(f"Log file: {runner.log_file}")
             return 0
         else:
-            print(f"\n❌ Prompt chain failed!")
-            print(f"Check log file: {runner.log_file}")
             return 1
             
     except FileNotFoundError as e:
