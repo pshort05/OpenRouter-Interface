@@ -5,6 +5,7 @@ input.md
 output.md
 input-ch?.md
 output.txt
+temp/
 cache/
 openrouter-venv/
 APIpayload.json

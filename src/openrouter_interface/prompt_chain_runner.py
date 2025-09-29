@@ -45,6 +45,10 @@ class ConsoleOutputManager:
         print(f"Using Configuration file: {config_name}")
         print("Verifying prompts and input file\n")
 
+    def print_file_start(self, file_name: str, file_size: str):
+        """Print the file processing start message with name and size."""
+        print(f"Working on file {file_name} size: {file_size}\n")
+
     def print_step_start(self, step, prompt_name: str = None, passes: int = 1, append: bool = False):
         """Print step execution start with passes and append information."""
         info_parts = []
@@ -1233,7 +1237,11 @@ class PromptChainRunner:
                 else:
                     logging.info(f"PROCESSING FILE: {input_file.name}")
                 logging.info(f"{'='*60}")
-                
+
+                # Print file start message to console with name and size
+                file_size = self._format_file_size(input_file)
+                self.console.print_file_start(input_file.name, file_size)
+
                 # Copy original input file to temp directory
                 self._copy_input_to_temp(input_file)
 
@@ -1460,7 +1468,6 @@ class PromptChainRunner:
 
                             try:
                                 # Copy input file to output location unchanged
-                                import shutil
                                 if final_output_for_step:
                                     shutil.copy2(current_input, final_output_for_step)
                                     output_to_use = final_output_for_step
