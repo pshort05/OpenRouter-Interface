@@ -1,0 +1,8 @@
+{
+  "chain_config": "test_simple_substep.yaml",
+  "start_time": "2025-09-29T13:53:27.623659",
+  "end_time": null,
+  "status": "running",
+  "temp_directory": "/home/paul/data/Dropbox/Writing/OpenRouter-Interface/tests/temp/test_simple_substep_20250929_135327_622995",
+  "files": {}
+}

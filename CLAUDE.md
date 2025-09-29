@@ -60,6 +60,12 @@ PYTHONPATH=src python3 -m openrouter_interface.chain --help
 PYTHONPATH=src python3 -m openrouter_interface.chain --create-sample
 PYTHONPATH=src python3 -m openrouter_interface.chain -c config.yaml --debug
 
+# Chain restart and recovery
+PYTHONPATH=src python3 -m openrouter_interface.chain --status-only -c config.yaml
+PYTHONPATH=src python3 -m openrouter_interface.chain --restart -c config.yaml
+PYTHONPATH=src python3 -m openrouter_interface.chain --restart-from 4 -c config.yaml
+PYTHONPATH=src python3 -m openrouter_interface.chain --clean-status -c config.yaml
+
 # Global commands (after install-global.sh)
 openrouter-runner --help
 openrouter-web --help
@@ -178,13 +184,68 @@ prompts:
 When referencing code, use the pattern `file_path:line_number` for easy navigation (e.g., `src/openrouter_interface/prompt_chain_runner.py:1825`).
 
 ## Recent Major Features Added
-1. **Per-Phase Pre/Post Processing**: Individual prescript/postscript for each step with variable substitution
-2. **Global Pre/Post Processing**: Chain-level script execution with numbered ordering
-3. **Multi-Pass Execution**: Iterative prompt processing with configurable passes
-4. **Content Append Mode**: Content accumulation across steps
-5. **Enhanced Console Output**: Minimal, clean status reporting
-6. **File Size Validation**: Automatic detection of processing issues
-7. **Web Interface YAML Loading**: Upload YAML configs for both single prompts and prompt chains via web UI
+1. **Chain Restart & Recovery**: Automatic restart from failed steps with persistent status tracking
+2. **Per-Phase Pre/Post Processing**: Individual prescript/postscript for each step with variable substitution
+3. **Global Pre/Post Processing**: Chain-level script execution with numbered ordering
+4. **Multi-Pass Execution**: Iterative prompt processing with configurable passes
+5. **Content Append Mode**: Content accumulation across steps
+6. **Enhanced Console Output**: Minimal, clean status reporting
+7. **File Size Validation**: Automatic detection of processing issues
+8. **Web Interface YAML Loading**: Upload YAML configs for both single prompts and prompt chains via web UI
+
+### Chain Restart & Recovery System
+The chain runner now includes comprehensive restart functionality to recover from failures and optimize expensive LLM processing:
+
+**Key Benefits:**
+- ⏱️ **Time Savings**: Skip completed steps when restarting failed chains
+- 💰 **Cost Efficiency**: Avoid re-running expensive LLM calls
+- 🔍 **Full Transparency**: `.status` files show exactly what completed/failed
+- 🎯 **Flexible Recovery**: Auto-detect restart points or force restart from any step
+- 📁 **Multi-file Support**: Independent restart points per input file
+
+**Status Tracking:**
+- Real-time status updates in `{config_name}.status` JSON files
+- Detailed execution tracking: timing, file sizes, error messages
+- Per-file and per-step progress tracking
+
+**CLI Commands:**
+```bash
+# Check execution status without running
+openrouter-chain -c config.yaml --status-only
+
+# Restart from failed steps automatically
+openrouter-chain -c config.yaml --restart
+
+# Force restart from specific step for all files
+openrouter-chain -c config.yaml --restart-from 4
+
+# Clean status file before starting fresh
+openrouter-chain -c config.yaml --clean-status
+```
+
+**Example Restart Scenario:**
+```
+Working on file chapter_21.md size: 21.6k
+
+Executing Prompt 1: grammar_foundation
+Result: ✅ prompt 1 grammar_foundation output size: 21.6k time: 136.3 seconds
+
+Executing Prompt 2: ai_word_cleaning
+Result: ✅ prompt 2 ai_word_cleaning output size: 21.3k time: 135.7 seconds
+
+Executing Prompt 3: overwritten_language_reduction
+Result: ✅ prompt 3 overwritten_language_reduction output size: 21.1k time: 139.2 seconds
+
+Executing Prompt 4: sensory_enhancement
+Result: ❌ prompt 4 sensory_enhancement FAILED time: 300.1 seconds
+        Error: openrouter-runner timed out after 5 minutes
+```
+
+When restarted with `--restart`, the system will:
+1. Detect previous failure at step 4
+2. Skip steps 1-3 (already completed successfully)
+3. Resume execution from step 4 and continue through remaining steps
+4. Track all new progress in the status file
 
 ## Web Interface Features
 

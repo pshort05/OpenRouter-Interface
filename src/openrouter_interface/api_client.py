@@ -341,7 +341,18 @@ class APIClient:
                     raise Exception("Streaming API returned empty content")
             else:
                 # Process regular JSON response
-                result = response.json()
+                try:
+                    result = response.json()
+                except json.JSONDecodeError as e:
+                    # Log the actual response content for debugging
+                    response_text = response.text
+                    logging.error(f"Failed to parse JSON response. Error: {e}")
+                    logging.error(f"Response status code: {response.status_code}")
+                    logging.error(f"Response headers: {dict(response.headers)}")
+                    logging.error(f"Response content (first 2000 chars): {response_text[:2000]}")
+                    if len(response_text) > 2000:
+                        logging.error(f"Response content (last 500 chars): {response_text[-500:]}")
+                    raise Exception(f"JSON decode error: {e}. Response: {response_text[:500]}")
 
                 if 'error' in result:
                     logging.error("API returned error: " + str(result['error']))
@@ -368,14 +379,29 @@ class APIClient:
             raise
         except requests.exceptions.HTTPError as e:
             logging.error("API HTTP error " + str(response.status_code) + ": " + str(e))
+            # Log response body for HTTP errors
+            try:
+                error_body = response.text[:1000]
+                logging.error(f"Error response body: {error_body}")
+            except:
+                pass
             raise
         except requests.exceptions.RequestException as e:
             logging.error("API request failed: " + str(e))
             raise
         except json.JSONDecodeError as e:
-            logging.error("API request failed: " + str(e))
+            # This catch block is now redundant as we handle it specifically above,
+            # but keeping it for any edge cases
+            logging.error("API request failed (JSON decode): " + str(e))
+            try:
+                logging.error(f"Response text: {response.text[:1000]}")
+            except:
+                pass
             raise
         except (KeyError, IndexError) as e:
             logging.error("Unexpected API response format: " + str(e))
-            logging.debug("Response content: " + str(result))
+            try:
+                logging.error("Response content: " + str(result))
+            except:
+                logging.error("Could not log response content")
             raise

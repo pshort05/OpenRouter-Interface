@@ -11,7 +11,8 @@ A comprehensive Python toolkit for working with AI language models through the O
 ---
 
 - 🚀 **Multiple Interfaces**: CLI, Web UI, and programmatic access
-- 🔗 **Prompt Chaining**: Sequential prompt execution with intermediate file management
+- 🔗 **Prompt Chaining**: Sequential prompt execution with restart/recovery capabilities
+- 🔄 **Smart Recovery**: Automatic restart from failed steps with status tracking
 - 🤖 **100+ AI Models**: Support for all OpenRouter-compatible models
 - 📝 **Script Integration**: Pre/post processing scripts at global and per-step levels
 - ⚙️ **Advanced Configuration**: YAML-based configuration with parameter overrides
@@ -312,6 +313,55 @@ prompts:
     prompt_file: "prompts/style.json"
     temperature: 0.8
 ```
+
+**🔄 Chain Restart & Recovery:**
+
+OpenRouter Interface includes powerful restart functionality to recover from failures and save time/costs by avoiding re-execution of completed steps.
+
+```bash
+# Check execution status
+openrouter-chain -c config.yaml --status-only
+
+# Restart from failed steps automatically
+openrouter-chain -c config.yaml --restart
+
+# Force restart from specific step
+openrouter-chain -c config.yaml --restart-from 4
+
+# Clean status and start fresh
+openrouter-chain -c config.yaml --clean-status
+```
+
+**Key Benefits:**
+- ⏱️ **Time Savings**: Skip expensive LLM calls for completed steps
+- 💰 **Cost Efficiency**: Avoid re-running successful operations
+- 🔍 **Transparency**: `.status` files show exactly what completed/failed
+- 🎯 **Flexible Recovery**: Auto-detect restart points or force restart from any step
+- 📁 **Multi-file Support**: Independent restart points per input file
+
+**Status File Example:**
+```json
+{
+  "chain_config": "my_chain.yaml",
+  "status": "failed",
+  "files": {
+    "chapter_21.md": {
+      "status": "failed",
+      "steps": {
+        "1": {"status": "completed", "name": "grammar_check", "time": 136.3},
+        "2": {"status": "completed", "name": "style_improvement", "time": 135.7},
+        "3": {"status": "failed", "name": "final_polish", "error": "API timeout"}
+      }
+    }
+  }
+}
+```
+
+When restarted, the chain will:
+1. 🔍 **Detect** the previous failure at step 3
+2. ⏭️ **Skip** steps 1-2 (already completed)
+3. 🔄 **Resume** from step 3 and continue to completion
+4. 📊 **Track** all new progress in the status file
 
 ---
 ## ⚙️ Configuration

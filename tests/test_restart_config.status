@@ -1,0 +1,20 @@
+{
+  "chain_config": "test_restart_config.yaml",
+  "start_time": "2025-09-29T13:56:14.712610",
+  "end_time": null,
+  "status": "running",
+  "temp_directory": "/home/paul/data/Dropbox/Writing/OpenRouter-Interface/tests/temp/test_restart_config_20250929_141358_624808",
+  "files": {
+    "test_restart_input.md": {
+      "status": "running",
+      "file_size": "143B",
+      "steps": {
+        "1": {
+          "status": "running",
+          "name": "step1",
+          "start_time": 1759169622.0658524
+        }
+      }
+    }
+  }
+}

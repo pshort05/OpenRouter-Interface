@@ -929,19 +929,20 @@ class PromptChainRunner:
 
         return "\n".join(report_lines)
     
-    def _create_step_config_file(self, step: int, step_settings: Dict[str, Any] = None, prompt_name: str = None) -> Optional[str]:
+    def _create_step_config_file(self, step: int, step_settings: Dict[str, Any] = None) -> Optional[str]:
         """
         Create a temporary config file for this step with the specified settings.
 
         Args:
             step: Step number for filename uniqueness
             step_settings: Dictionary of settings to override for this step
-            prompt_name: Optional prompt name to include in payload filename
 
         Returns:
-            Path to temporary config file
+            Path to temporary config file, or None if no step-specific config needed
         """
-        # Always create a temporary config file to ensure payload gets saved with step-specific name
+        if not step_settings and not self.prompt_runner_config and 'global_config' not in self.config:
+            return None
+
         # Create a temporary config file in the temp directory
         step_formatted = str(step).replace('.', '_')
         step_config_path = self.temp_dir / f"step_{step_formatted}_config.yaml"
@@ -971,13 +972,12 @@ class PromptChainRunner:
                 logging.info(f"Step {step}: Using step-specific settings: {', '.join(override_list)}")
 
         # Ensure payload file is created in temp directory
+        import os
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        process_id = os.getpid()
         step_formatted = str(step).replace('.', '_')
-        if prompt_name:
-            # Clean prompt name for use in filename
-            clean_prompt_name = prompt_name.replace(' ', '_').replace('/', '_')
-            temp_payload_filename = f'step_{step_formatted}_{clean_prompt_name}_payload.json'
-        else:
-            temp_payload_filename = f'step_{step_formatted}_payload.json'
+        temp_payload_filename = f'step_{step_formatted}_payload_{timestamp}_{process_id}.json'
         temp_payload_path = self.temp_dir / temp_payload_filename
         step_config['payload_file'] = str(temp_payload_path)
         logging.debug(f"Step {step}: Using temp payload file: {temp_payload_filename}")
@@ -1173,11 +1173,6 @@ class PromptChainRunner:
     
     def _copy_output_to_temp(self, output_file: Path):
         """Copy the final output file to temp directory for reference."""
-        # Only copy if the file exists (may not exist if all steps were skipped during restart)
-        if not output_file.exists():
-            logging.debug(f"Output file does not exist yet, skipping copy: {output_file}")
-            return
-
         output_copy = self.temp_dir / f"final_output_{output_file.name}"
         try:
             shutil.copy2(output_file, output_copy)
@@ -1277,8 +1272,7 @@ class PromptChainRunner:
         prompt_file = self._get_prompt_file(prompt_config)
         step_config_file = self._get_prompt_config_file(prompt_config)
         step_settings = self._get_prompt_settings(prompt_config)
-        prompt_name = self._get_prompt_name(prompt_config)
-
+        
         # Build command - use openrouter-runner entry point
         cmd = [
             "openrouter-runner",
@@ -1287,7 +1281,7 @@ class PromptChainRunner:
             "-o", str(output_file),
             "-l", str(self.log_file)  # Use same log file
         ]
-
+        
         # Create step-specific config file if needed (handles step-specific settings and global config)
         effective_config_file = None
 
@@ -1295,14 +1289,11 @@ class PromptChainRunner:
             # User specified a step-specific config file, use it
             effective_config_file = step_config_file
             logging.info(f"Step {step}: Using step-specific config file: {step_config_file}")
-        else:
-            # Always create a temporary config file to ensure payload gets saved with step-specific name
-            effective_config_file = self._create_step_config_file(step, step_settings, prompt_name)
+        elif step_settings or self.prompt_runner_config or 'global_config' in self.config:
+            # Create a temporary config file with step-specific settings and/or global config
+            effective_config_file = self._create_step_config_file(step, step_settings)
             if effective_config_file:
-                if step_settings or self.prompt_runner_config or 'global_config' in self.config:
-                    logging.info(f"Step {step}: Created temporary config file with setting overrides")
-                else:
-                    logging.debug(f"Step {step}: Created temporary config file for payload tracking")
+                logging.info(f"Step {step}: Created temporary config file with setting overrides")
         
         # Add config file if we have one
         if effective_config_file:
@@ -1476,6 +1467,447 @@ class PromptChainRunner:
 
         # Use the extracted execution method
         return self._run_main_execution_logic()
+            # Get sorted prompt list (including substeps)
+            prompts = self.config['prompts']
+            logging.info(f"Processing {len(prompts)} prompts from config")
+
+            # Check if we have prompts to execute
+            if self.total_prompts == 0:
+                logging.error("No prompts found to execute!")
+                logging.error(f"Config prompts section: {prompts}")
+                return False
+
+            # Build sorted list that includes both main prompts and substeps
+            sorted_prompts = self._build_sorted_prompt_list(prompts)
+
+            logging.info(f"Sorted prompts list has {len(sorted_prompts)} entries")
+
+            if not sorted_prompts:
+                logging.error("No prompts to execute - this should not happen after validation")
+                return False
+
+            # Execute preprocessing scripts before chain execution
+            if not self._run_preprocessing():
+                logging.error("Preprocessing scripts failed - aborting chain execution")
+                self.status_manager.update_chain_complete(False)
+                return False
+
+            # Process each input file through the entire prompt chain
+            all_successful = True
+            total_files_processed = 0
+            
+            for file_index, input_file in enumerate(input_files, 1):
+                logging.info(f"\n{'='*60}")
+                if multiple_files:
+                    logging.info(f"PROCESSING FILE {file_index}/{len(input_files)}: {input_file.name}")
+                else:
+                    logging.info(f"PROCESSING FILE: {input_file.name}")
+                logging.info(f"{'='*60}")
+
+                # Print file start message to console with name and size
+                file_size = self._format_file_size(input_file)
+                self.console.print_file_start(input_file.name, file_size)
+                self.status_manager.update_file_start(input_file.name, file_size)
+
+                # Copy original input file to temp directory
+                self._copy_input_to_temp(input_file)
+
+                # Save initial file with new naming convention (step 0)
+                initial_file = self._save_initial_file(input_file)
+
+                # Get output file for this input
+                final_output = self._get_output_file(input_file)
+                logging.info(f"Final output for this file: {final_output}")
+
+                # Check if output appending is enabled
+                output_append = self._get_output_append()
+                if output_append:
+                    logging.info("Output appending enabled - will accumulate all step outputs")
+                    # Create header for final output file
+                    self._create_final_output_header(final_output, input_file)
+
+                # Initialize tracking for this file
+                file_result = {
+                    'input_file': input_file.name,
+                    'original_file_size': self._format_file_size(input_file),
+                    'prompts': []
+                }
+
+                # Execute prompts in sequence for this input file
+                current_input = input_file
+                file_successful = True
+                
+                for step_display, prompt_config in sorted_prompts:
+                    prompt_file = self._get_prompt_file(prompt_config)
+                    step_config = self._get_prompt_config_file(prompt_config)
+                    step_settings = self._get_prompt_settings(prompt_config)
+                    prompt_name = self._get_prompt_name(prompt_config)
+
+                    # Get passes count for this step
+                    passes = self._get_passes(prompt_config)
+
+                    # Get append behavior for this step
+                    step_append = self._get_append(prompt_config)
+
+                    # Get prescript and postscript for this step
+                    prescript = self._get_prescript(prompt_config)
+                    postscript = self._get_postscript(prompt_config)
+
+                    # Skip step if passes is 0 or negative
+                    if passes <= 0:
+                        logging.info(f"Step {step_display}: Skipping step (passes={passes})")
+                        # Show skipped status in console
+                        self.console.print_step_result(step_display, prompt_name, "skipped", True, 0.0, skipped=True)
+
+                        # Update status tracking for skipped step
+                        self.status_manager.update_step_skipped(input_file.name, step_display, prompt_name or "", "passes=0")
+                        # Track this step as skipped
+                        file_result['prompts'].append({
+                            'step': step_display,
+                            'name': prompt_name,
+                            'file_size': 'skipped',
+                            'success': True,
+                            'skipped': True
+                        })
+                        continue
+
+                    # Clean console output with passes and append info
+                    if passes > 1 and step_append:
+                        self.console.print_step_start(step_display, prompt_name, passes, append=True)
+                    elif passes > 1:
+                        self.console.print_step_start(step_display, prompt_name, passes)
+                    elif step_append:
+                        self.console.print_step_start(step_display, prompt_name, append=True)
+                    else:
+                        self.console.print_step_start(step_display, prompt_name)
+
+                    # Update status tracking
+                    self.status_manager.update_step_start(input_file.name, step_display, prompt_name or "")
+
+                    # Start timing this step (including all passes)
+                    step_start_time = time.time()
+
+                    # Detailed logging to file
+                    logging.info(f"\n--- File {file_index}, Step {step_display}/{self.total_prompts} ---")
+                    logging.info(f"Executing prompt: {prompt_file}")
+                    if prompt_name:
+                        logging.info(f"Using prompt name: {prompt_name}")
+                    if step_config:
+                        logging.info(f"Using step-specific config: {step_config}")
+                    if step_settings:
+                        settings_list = [f"{k}={v}" for k, v in step_settings.items()]
+                        logging.info(f"Using step-specific settings: {', '.join(settings_list)}")
+                    if passes > 1:
+                        logging.info(f"Step will run {passes} passes")
+
+                    # Execute prescript if configured
+                    if prescript:
+                        # Use current input as both input and output for prescript variable substitution
+                        if not self._execute_single_script(prescript, "prescript", step_display, current_input, current_input):
+                            logging.error(f"Step {step_display}: Prescript failed, aborting step")
+                            step_success = False
+                            step_error_message = "Prescript execution failed"
+                            step_execution_time = time.time() - step_start_time
+
+                            # Show failed result for the prompt step
+                            self.console.print_step_result(step_display, prompt_name, 'failed', False, step_execution_time, step_error_message)
+
+                            # Update status tracking for failed step
+                            self.status_manager.update_step_failed(input_file.name, step_display, step_execution_time, step_error_message)
+
+                            logging.error(f"Chain execution failed at File {file_index}, Step {step_display}")
+
+                            # Track this failed step
+                            file_result['prompts'].append({
+                                'step': step_display,
+                                'name': prompt_name,
+                                'file_size': 'failed',
+                                'success': False,
+                                'error': step_error_message
+                            })
+
+                            file_successful = False
+                            break
+
+                    # Execute multiple passes for this step
+                    step_pass_input = current_input
+                    step_success = True
+                    step_error_message = None
+                    final_output_for_step = None
+
+                    for pass_num in range(1, passes + 1):
+                        # Determine output file for this pass
+                        if passes > 1:
+                            pass_suffix = f"_pass_{pass_num}"
+                        else:
+                            pass_suffix = ""
+
+                        if output_append:
+                            # In append mode, all steps output to intermediate files
+                            intermediate_filename = self._get_intermediate_filename(input_file, step_display, prompt_name, pass_suffix)
+                            current_output = self.temp_dir / intermediate_filename
+                            logging.info(f"Step {step_display} pass {pass_num}/{passes} temp output (append mode): {current_output.name}")
+                        else:
+                            # All steps (including final) create intermediate files in temp directory
+                            intermediate_filename = self._get_intermediate_filename(input_file, step_display, prompt_name, pass_suffix)
+                            current_output = self.temp_dir / intermediate_filename
+                            # Check if this is the final step (last in sorted list)
+                            is_final_step = (step_display, prompt_config) == sorted_prompts[-1]
+                            if is_final_step:
+                                logging.info(f"Final step - pass {pass_num}/{passes} temp output: {current_output.name}")
+                            else:
+                                logging.info(f"Intermediate step - pass {pass_num}/{passes} temp output: {current_output.name}")
+
+                        # Run prompt_runner.py for this pass
+                        if passes > 1:
+                            logging.info(f"Step {step_display}: Executing pass {pass_num}/{passes}")
+
+                        success, error_message = self._run_prompt_runner(prompt_config, step_pass_input, current_output, step_display)
+
+                        if not success:
+                            # Pass failed - handle based on on_error behavior
+                            step_success = False
+                            step_error_message = error_message
+                            logging.error(f"Step {step_display}: Pass {pass_num}/{passes} failed")
+                            break
+                        else:
+                            # Pass succeeded
+                            logging.info(f"Step {step_display}: Pass {pass_num}/{passes} completed successfully")
+
+                            # Verify output file
+                            if not self._verify_output_file(current_output, step_display, step_pass_input, step_settings):
+                                step_success = False
+                                step_error_message = "Output file verification failed"
+                                logging.error(f"Step {step_display}: Pass {pass_num}/{passes} verification failed")
+                                break
+
+                            # Handle append behavior
+                            if step_append:
+                                # Append mode: append output to input
+                                logging.info(f"Step {step_display}: Append mode enabled - appending output to input")
+                                try:
+                                    # Read the current pass output
+                                    with open(current_output, 'r', encoding='utf-8') as f:
+                                        output_content = f.read()
+
+                                    # Read the current input
+                                    with open(step_pass_input, 'r', encoding='utf-8') as f:
+                                        input_content = f.read()
+
+                                    # Create appended content
+                                    appended_content = input_content + "\n\n" + output_content
+
+                                    # Create a new file with appended content for the next pass
+                                    if pass_num < passes:
+                                        # Create intermediate appended file for next pass
+                                        append_suffix = f"_pass_{pass_num}_appended"
+                                        intermediate_filename = self._get_intermediate_filename(input_file, step_display, prompt_name, append_suffix)
+                                        appended_file = self.temp_dir / intermediate_filename
+
+                                        with open(appended_file, 'w', encoding='utf-8') as f:
+                                            f.write(appended_content)
+
+                                        step_pass_input = appended_file
+                                        logging.info(f"Step {step_display}: Pass {pass_num} appended content saved to {appended_file.name}")
+                                    else:
+                                        # Final pass - overwrite the output file with appended content
+                                        with open(current_output, 'w', encoding='utf-8') as f:
+                                            f.write(appended_content)
+                                        logging.info(f"Step {step_display}: Final pass appended content saved to output")
+
+                                except Exception as e:
+                                    logging.error(f"Step {step_display}: Failed to append content: {e}")
+                                    # Continue with normal processing on append failure
+                                    step_append = False
+
+                            # Set final output and prepare input for next pass
+                            final_output_for_step = current_output
+                            if pass_num < passes and not step_append:
+                                # Use this pass's output as input for next pass (normal mode)
+                                step_pass_input = current_output
+                                logging.info(f"Step {step_display}: Pass {pass_num} output will be input for pass {pass_num + 1}")
+                            elif pass_num < passes and step_append:
+                                # step_pass_input already set above in append mode
+                                logging.info(f"Step {step_display}: Pass {pass_num} appended content will be input for pass {pass_num + 1}")
+
+                    # Calculate execution time (for all passes)
+                    step_execution_time = time.time() - step_start_time
+
+                    # Handle step results (after all passes)
+                    if not step_success:
+                        # Check on_error behavior for this step
+                        on_error_behavior = self._get_on_error_behavior(prompt_config)
+
+                        if on_error_behavior == 'continue':
+                            # Skip this step and pass input file through unchanged
+                            logging.warning(f"Step {step_display} failed, but on_error=continue - skipping step")
+                            logging.info(f"Copying input file unchanged: {current_input} -> {final_output_for_step}")
+
+                            try:
+                                # Copy input file to output location unchanged
+                                if final_output_for_step:
+                                    shutil.copy2(current_input, final_output_for_step)
+                                    output_to_use = final_output_for_step
+                                else:
+                                    # If no output was created, create one
+                                    intermediate_filename = self._get_intermediate_filename(input_file, step_display, prompt_name)
+                                    output_to_use = self.temp_dir / intermediate_filename
+                                    shutil.copy2(current_input, output_to_use)
+
+                                # Get formatted file size for display (from input file since we copied it)
+                                formatted_size = self._format_file_size(current_input)
+
+                                # Show skipped status in console
+                                self.console.print_step_result(step_display, prompt_name, formatted_size, True, step_execution_time, skipped=True)
+
+                                # Update status tracking for skipped step (on_error continue)
+                                self.status_manager.update_step_skipped(input_file.name, step_display, prompt_name or "", "on_error_continue")
+
+                                # Track this step's execution result as skipped
+                                file_result['prompts'].append({
+                                    'step': step_display,
+                                    'name': prompt_name,
+                                    'file_size': formatted_size,
+                                    'success': True,  # Consider it successful since we handled it
+                                    'skipped': True
+                                })
+
+                                # Update input for next iteration
+                                current_input = output_to_use
+                                self.prompts_executed += 1
+                                logging.info(f"File {file_index}, Step {step_display} skipped successfully")
+                                continue  # Continue to next step
+
+                            except Exception as e:
+                                logging.error(f"Failed to copy input file for skipped step: {e}")
+                                # If we can't even copy the file, treat as a regular failure
+                                self.console.print_step_result(step_display, prompt_name, 'failed', False, step_execution_time, f"Copy failed: {e}")
+
+                                # Update status tracking for copy failure
+                                self.status_manager.update_step_failed(input_file.name, step_display, step_execution_time, f"Copy failed: {e}")
+
+                                logging.error(f"Chain execution failed at File {file_index}, Step {step_display}")
+                                # Track this failed step
+                                file_result['prompts'].append({
+                                    'step': step_display,
+                                    'name': prompt_name,
+                                    'file_size': 'failed',
+                                    'success': False
+                                })
+                                file_successful = False
+                                all_successful = False
+                                break
+                        else:
+                            # Default behavior: stop on error
+                            # Clean console output with timing and error
+                            self.console.print_step_result(step_display, prompt_name, 'failed', False, step_execution_time, step_error_message)
+
+                            # Update status tracking for failed step
+                            self.status_manager.update_step_failed(input_file.name, step_display, step_execution_time, step_error_message)
+
+                            logging.error(f"Chain execution failed at File {file_index}, Step {step_display}")
+                            # Track this failed step
+                            file_result['prompts'].append({
+                                'step': step_display,
+                                'name': prompt_name,
+                                'file_size': 'failed',
+                                'success': False
+                            })
+                            file_successful = False
+                            all_successful = False
+                            break
+                    else:
+                        # Step succeeded (all passes completed successfully)
+                        # Handle output appending if enabled
+                        if output_append:
+                            self._append_to_output(final_output_for_step, final_output, step_display, prompt_name)
+
+                        # Copy final step output to the actual final output location (non-append mode)
+                        is_final_step = (step_display, prompt_config) == sorted_prompts[-1]
+                        if not output_append and is_final_step:
+                            try:
+                                shutil.copy2(final_output_for_step, final_output)
+                                logging.info(f"Final step output copied to: {final_output}")
+                            except Exception as e:
+                                logging.error(f"Failed to copy final output: {e}")
+
+                        # Execute postscript if configured
+                        if postscript:
+                            # Use the step input and final output for postscript variable substitution
+                            if not self._execute_single_script(postscript, "postscript", step_display, step_pass_input, final_output_for_step):
+                                logging.error(f"Step {step_display}: Postscript failed after successful prompt execution")
+                                # Note: We continue execution even if postscript fails, but log it
+
+                        # Get formatted file size for display
+                        formatted_size = self._format_file_size(final_output_for_step)
+
+                        # Clean console output with timing, passes, and append info
+                        self.console.print_step_result(step_display, prompt_name, formatted_size, True, step_execution_time, passes=passes, append=step_append)
+
+                        # Update status tracking for successful completion
+                        self.status_manager.update_step_complete(input_file.name, step_display, step_execution_time, formatted_size)
+
+                        # Track this step's execution result
+                        file_result['prompts'].append({
+                            'step': step_display,
+                            'name': prompt_name,
+                            'file_size': formatted_size,
+                            'success': True,
+                            'passes': passes,
+                            'append': step_append
+                        })
+
+                        # Update input for next iteration
+                        current_input = final_output_for_step
+                        self.prompts_executed += 1
+                        logging.info(f"File {file_index}, Step {step_display} completed successfully ({passes} passes)")
+
+                    # Continue to next step - this is the end of the main step loop
+
+                # Add this file's results to the overall execution results
+                self.execution_results.append(file_result)
+                if file_successful:
+                    # Copy final output to temp directory for reference
+                    self._copy_output_to_temp(final_output)
+                    total_files_processed += 1
+
+                    # Update status tracking for successful file completion
+                    self.status_manager.update_file_complete(input_file.name)
+
+                    logging.info(f"✓ File {file_index} processing completed successfully")
+                else:
+                    logging.error(f"❌ File {file_index} processing failed")
+
+            # Execute postprocessing scripts after all files are processed
+            if not self._run_postprocessing():
+                logging.error("Postprocessing scripts failed - chain execution completed with errors")
+                self.status_manager.update_chain_complete(False)
+                return False
+
+            # Final summary after processing all files
+            success_rate = (total_files_processed / len(input_files)) * 100 if input_files else 0
+
+            if success_rate == 100:
+                logging.info(f"🎉 All {total_files_processed} files processed successfully!")
+                self.status_manager.update_chain_complete(True)
+                return True
+            elif success_rate > 0:
+                logging.warning(f"⚠️ Partial success: {total_files_processed}/{len(input_files)} files processed ({success_rate:.1f}%)")
+                self.status_manager.update_chain_complete(False)
+                return False
+            else:
+                logging.error(f"❌ No files processed successfully")
+                self.status_manager.update_chain_complete(False)
+                return False
+
+        except KeyboardInterrupt:
+            logging.info("Chain execution interrupted by user")
+            self.status_manager.update_chain_complete(False)
+            return False
+        except Exception as e:
+            logging.error(f"Unexpected error during chain execution: {e}")
+            self.status_manager.update_chain_complete(False)
+            return False
 
     def _get_intermediate_filename(self, input_file: Path, step: str, prompt_name: str = None, pass_suffix: str = "") -> str:
         """
@@ -1883,72 +2315,12 @@ class PromptChainRunner:
                     self.console.print_file_start(input_file.name, file_size)
                     self.status_manager.update_file_start(input_file.name, file_size)
 
-                # Copy original input file to temp directory
-                self._copy_input_to_temp(input_file)
+                # The rest of the execution logic follows the same pattern...
+                # Execute the file processing logic
+                file_successful = self._process_single_file(input_file, file_index, sorted_prompts)
 
-                # Save initial file with new naming convention (step 0)
-                initial_file = self._save_initial_file(input_file)
-
-                # Get output file for this input
-                final_output = self._get_output_file(input_file)
-                logging.info(f"Final output for this file: {final_output}")
-
-                # Check if output appending is enabled
-                output_append = self._get_output_append()
-                if output_append:
-                    logging.info("Output appending enabled - will accumulate all step outputs")
-                    # Create header for final output file
-                    self._create_final_output_header(final_output, input_file)
-
-                # Initialize tracking for this file
-                file_result = {
-                    'input_file': input_file.name,
-                    'original_file_size': self._format_file_size(input_file),
-                    'prompts': []
-                }
-
-                # Execute prompts in sequence for this input file
-                current_input = input_file
-                file_successful = True
-
-                for step_display, prompt_config in sorted_prompts:
-                    # Check if this step should be skipped due to restart logic
-                    if self._should_skip_step_for_restart(input_file.name, step_display):
-                        logging.info(f"Skipping already completed step {step_display} for restart")
-                        self.console.print_step_result(step_display, self._get_prompt_name(prompt_config), "skipped", True, 0.0, skipped=True)
-                        self.status_manager.update_step_skipped(input_file.name, step_display, self._get_prompt_name(prompt_config) or "", "restart")
-
-                        # Get the intermediate output from the previous run for this step
-                        intermediate_filename = self._get_intermediate_filename(input_file, step_display, self._get_prompt_name(prompt_config))
-                        intermediate_file = self.temp_dir / intermediate_filename
-                        if intermediate_file.exists():
-                            current_input = intermediate_file
-                        continue
-
-                    # Process this step normally (using existing step processing logic)
-                    step_successful = self._process_step(input_file, step_display, prompt_config, current_input, file_result, sorted_prompts)
-
-                    if not step_successful:
-                        file_successful = False
-                        break
-
-                    # Update current_input for next step
-                    intermediate_filename = self._get_intermediate_filename(input_file, step_display, self._get_prompt_name(prompt_config))
-                    current_input = self.temp_dir / intermediate_filename
-
-                # Add this file's results to the overall execution results
-                self.execution_results.append(file_result)
                 if file_successful:
-                    # Copy final output to temp directory for reference
-                    self._copy_output_to_temp(final_output)
-
-                    # Update status tracking for successful file completion
-                    self.status_manager.update_file_complete(input_file.name)
-
                     total_files_processed += 1
-                    logging.info(f"✓ File {file_index} processing completed successfully")
-                else:
-                    logging.error(f"❌ File {file_index} processing failed")
 
             # Execute postprocessing scripts after all files are processed
             if not self._run_postprocessing():
@@ -2010,133 +2382,6 @@ class PromptChainRunner:
 
         # Check status manager for completed steps
         return self.status_manager.should_skip_step(filename, step)
-
-    def _process_step(self, input_file: Path, step_display: str, prompt_config: Dict, current_input: Path,
-                      file_result: Dict, sorted_prompts: List) -> bool:
-        """Process a single step with all its passes, handling failures and success."""
-        # This is a simplified version that needs the actual step processing logic
-        # For now, let's use the existing step execution logic from the original chain
-
-        prompt_file = self._get_prompt_file(prompt_config)
-        step_config = self._get_prompt_config_file(prompt_config)
-        step_settings = self._get_prompt_settings(prompt_config)
-        prompt_name = self._get_prompt_name(prompt_config)
-
-        # Get passes count for this step
-        passes = self._get_passes(prompt_config)
-
-        # Get append behavior for this step
-        step_append = self._get_append(prompt_config)
-
-        # Get prescript and postscript for this step
-        prescript = self._get_prescript(prompt_config)
-        postscript = self._get_postscript(prompt_config)
-
-        # Skip step if passes is 0 or negative
-        if passes <= 0:
-            logging.info(f"Step {step_display}: Skipping step (passes={passes})")
-            # Show skipped status in console
-            self.console.print_step_result(step_display, prompt_name, "skipped", True, 0.0, skipped=True)
-
-            # Update status tracking for skipped step
-            self.status_manager.update_step_skipped(input_file.name, step_display, prompt_name or "", "passes=0")
-            # Track this step as skipped
-            file_result['prompts'].append({
-                'step': step_display,
-                'name': prompt_name,
-                'file_size': 'skipped',
-                'success': True,
-                'skipped': True
-            })
-            return True
-
-        # Clean console output with passes and append info
-        if passes > 1 and step_append:
-            self.console.print_step_start(step_display, prompt_name, passes, append=True)
-        elif passes > 1:
-            self.console.print_step_start(step_display, prompt_name, passes)
-        elif step_append:
-            self.console.print_step_start(step_display, prompt_name, append=True)
-        else:
-            self.console.print_step_start(step_display, prompt_name)
-
-        # Update status tracking
-        self.status_manager.update_step_start(input_file.name, step_display, prompt_name or "")
-
-        # Start timing this step (including all passes)
-        step_start_time = time.time()
-
-        # Execute prescript if configured
-        if prescript:
-            # Use current input as both input and output for prescript variable substitution
-            if not self._execute_single_script(prescript, "prescript", step_display, current_input, current_input):
-                logging.error(f"Step {step_display}: Prescript failed, aborting step")
-                step_success = False
-                step_error_message = "Prescript execution failed"
-                step_execution_time = time.time() - step_start_time
-
-                # Show failed result for the prompt step
-                self.console.print_step_result(step_display, prompt_name, 'failed', False, step_execution_time, step_error_message)
-
-                # Update status tracking for failed step
-                self.status_manager.update_step_failed(input_file.name, step_display, step_execution_time, step_error_message)
-
-                logging.error(f"Chain execution failed at Step {step_display}")
-                return False
-
-        # For simplicity, assume single pass execution (this can be expanded later)
-        # Determine output file for this step
-        intermediate_filename = self._get_intermediate_filename(input_file, step_display, prompt_name)
-        current_output = self.temp_dir / intermediate_filename
-
-        # Execute the prompt runner for this step
-        step_success, step_error_message = self._run_prompt_runner(prompt_config, current_input, current_output, step_display)
-
-        step_execution_time = time.time() - step_start_time
-
-        if step_success:
-            # Verify output file was created and has content
-            if not self._verify_output_file(current_output, step_display, current_input, step_settings):
-                step_success = False
-                step_error_message = "Output file verification failed"
-                logging.error(f"Step {step_display}: verification failed")
-
-        if step_success:
-            # Get formatted file size for display
-            formatted_size = self._format_file_size(current_output)
-
-            # Clean console output with timing
-            self.console.print_step_result(step_display, prompt_name, formatted_size, True, step_execution_time)
-
-            # Update status tracking for successful completion
-            self.status_manager.update_step_complete(input_file.name, step_display, step_execution_time, formatted_size)
-
-            # Track this step's execution result
-            file_result['prompts'].append({
-                'step': step_display,
-                'name': prompt_name,
-                'file_size': formatted_size,
-                'success': True
-            })
-
-            return True
-        else:
-            # Handle step failure
-            self.console.print_step_result(step_display, prompt_name, 'failed', False, step_execution_time, step_error_message)
-
-            # Update status tracking for failed step
-            self.status_manager.update_step_failed(input_file.name, step_display, step_execution_time, step_error_message)
-
-            # Track this failed step
-            file_result['prompts'].append({
-                'step': step_display,
-                'name': prompt_name,
-                'file_size': 'failed',
-                'success': False,
-                'error': step_error_message
-            })
-
-            return False
 
     def cleanup(self, keep_temp: bool = True):
         """
@@ -2230,18 +2475,6 @@ Examples:
 
     # Keep temporary files for debugging (default behavior)
     python prompt_chain_runner.py -c my_chain.yaml
-
-    # Restart functionality - Resume from failed steps
-    python prompt_chain_runner.py -c my_chain.yaml --restart
-
-    # Force restart from specific step for all files
-    python prompt_chain_runner.py -c my_chain.yaml --restart-from 4
-
-    # Show execution status without running
-    python prompt_chain_runner.py -c my_chain.yaml --status-only
-
-    # Clean status file before starting fresh
-    python prompt_chain_runner.py -c my_chain.yaml --clean-status
 
     # Clean up temporary files after execution
     python prompt_chain_runner.py -c my_chain.yaml --clean-temp
@@ -2406,32 +2639,7 @@ File Organization:
         action='store_true',
         help='Create a sample configuration file and exit'
     )
-
-    # Restart functionality arguments
-    parser.add_argument(
-        '--restart', '-r',
-        action='store_true',
-        help='Check for previous run and restart from failed steps'
-    )
-
-    parser.add_argument(
-        '--restart-from',
-        help='Force restart from specific step number',
-        metavar='STEP'
-    )
-
-    parser.add_argument(
-        '--status-only',
-        action='store_true',
-        help='Show execution status and exit (no execution)'
-    )
-
-    parser.add_argument(
-        '--clean-status',
-        action='store_true',
-        help='Remove status file before execution'
-    )
-
+    
     args = parser.parse_args()
     
     # Handle special commands
@@ -2444,9 +2652,8 @@ File Organization:
     
     try:
         # Initialize runner
-        runner = PromptChainRunner(args.config, args.input, args.output,
-                                 args.prompt_runner_config, args.debug,
-                                 args.restart, args.restart_from, args.status_only, args.clean_status)
+        runner = PromptChainRunner(args.config, args.input, args.output, 
+                                 args.prompt_runner_config, args.debug)
         
         # Execute chain
         success = runner.run_chain()
