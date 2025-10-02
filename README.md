@@ -1,6 +1,6 @@
 # OpenRouter Interface
 ---
-A comprehensive Python toolkit for working with AI language models through the OpenRouter API. Supports **single prompt processing**, **multi-prompt chaining**, **web interface**, and **advanced automation** with pre/post processing scripts.
+A comprehensive Python toolkit for working with AI language models through the OpenRouter API. Supports **single prompt processing**, **multi-prompt chaining**, **file conversion** (docx/pdf/epub), **web interface**, and **advanced automation** with pre/post processing scripts.
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -15,6 +15,8 @@ A comprehensive Python toolkit for working with AI language models through the O
 - 🔄 **Smart Recovery**: Automatic restart from failed steps with status tracking
 - 🤖 **100+ AI Models**: Support for all OpenRouter-compatible models
 - 📝 **Script Integration**: Pre/post processing scripts at global and per-step levels
+- 🔀 **File Conversion**: Convert between markdown and docx, pdf, epub, and more
+- 📑 **Combine Outputs**: Merge all step outputs into a single file
 - ⚙️ **Advanced Configuration**: YAML-based configuration with parameter overrides
 - 📁 **File Management**: Automatic chunking, validation, and format handling
 - 🌐 **Web Dashboard**: Real-time monitoring and visual chain builder
@@ -84,6 +86,8 @@ openrouter-runner --help
 openrouter-web --help
 openrouter-chain --help
 ```
+
+**Note:** The installer automatically detects and installs `pandoc` for file conversion features. If automatic installation fails, install manually from [pandoc.org](https://pandoc.org/installing.html).
 
 ### Local Development
 
@@ -417,6 +421,80 @@ prompts:
     append: yes  # Accumulate content
 ```
 
+#### File Conversion
+
+Convert between markdown and various document formats:
+
+```yaml
+# Convert input docx to markdown before processing
+input_convert:
+  enabled: true
+  from_format: docx  # Auto-detects if not specified
+
+# Convert final output to multiple formats
+output_convert:
+  enabled: true
+  formats:
+    - docx
+    - pdf
+    - epub
+
+# Per-step conversion for specific outputs
+prompts:
+  prompt 2:
+    convert_output:
+      format: pdf
+      filename: step2_report.pdf
+```
+
+**Supported Formats:**
+- Input: docx, odt, rtf, html, epub, txt, pdf, latex, rst, org, mediawiki
+- Output: docx, odt, rtf, html, epub, pdf, txt, latex, rst, org, mediawiki
+
+**Requirements:**
+- `pypandoc` Python package (auto-installed)
+- `pandoc` system binary (auto-installed by install scripts)
+- LaTeX for PDF generation (optional)
+
+#### Combine Outputs
+
+Merge all step outputs into a single file:
+
+```yaml
+# Enable combine feature
+combine: true
+combined_file_name: all_steps_combined.md
+
+prompts:
+  prompt 1:
+    name: "analysis"
+    prompt_file: "prompts/analyze.json"
+  prompt 2:
+    name: "enhancement"
+    prompt_file: "prompts/enhance.json"
+  prompt 3:
+    name: "finalization"
+    prompt_file: "prompts/finalize.json"
+
+# Result: Creates markdown file with headers for each step
+```
+
+**Output Format:**
+```markdown
+# Combined Output - input_file.md
+Generated: 2025-01-15 14:30:00
+---
+## Step 1: analysis
+[output from step 1]
+---
+## Step 2: enhancement
+[output from step 2]
+---
+## Step 3: finalization
+[output from step 3]
+---
+```
+
 #### File Management
 
 - **Automatic Chunking**: Handle large files automatically
@@ -496,6 +574,61 @@ prompts:
     name: "content_enhancement"
     prompt_file: "prompts/enhance.json"
     postscript: "wc -w {output_file} >> word_counts.log"
+```
+
+### Document Conversion Pipeline
+
+Process Word documents and export to multiple formats:
+
+```yaml
+# document_conversion.yaml
+input_file: manuscript.docx
+output_file: processed_manuscript.md
+
+# Convert input Word doc to markdown
+input_convert:
+  enabled: true
+  from_format: docx
+
+# Convert final output to multiple formats
+output_convert:
+  enabled: true
+  formats:
+    - docx  # Microsoft Word
+    - pdf   # PDF document
+    - epub  # eBook format
+
+# Combine all steps for reference
+combine: true
+combined_file_name: processing_history.md
+
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+
+prompts:
+  prompt 1:
+    name: "grammar_check"
+    prompt_file: "prompts/grammar.json"
+    temperature: 0.3
+
+  prompt 2:
+    name: "style_improvement"
+    prompt_file: "prompts/style.json"
+    temperature: 0.7
+    # Export this step as PDF report
+    convert_output:
+      format: pdf
+      filename: style_report.pdf
+
+  prompt 3:
+    name: "final_polish"
+    prompt_file: "prompts/polish.json"
+    temperature: 0.5
+
+# Result: Creates processed_manuscript.md, .docx, .pdf, .epub
+#         Plus processing_history.md with all steps combined
+#         Plus style_report.pdf from step 2
 ```
 
 ### Web Interface Load Examples

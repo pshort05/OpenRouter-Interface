@@ -1,0 +1,57 @@
+# Example: Combine Outputs Feature
+# This configuration demonstrates the combine feature which merges all step outputs
+# into a single file after the chain completes.
+
+input_file: input_document.md
+output_file: final_processed.md
+
+# Enable combine feature to create a single file containing all step outputs
+combine: true
+combined_file_name: all_steps_combined.md
+
+global_config:
+  model: anthropic/claude-4-sonnet-20250522
+  temperature: 0.7
+  max_tokens: 20000
+
+prompts:
+  prompt 1:
+    name: grammar_check
+    prompt_file: prompts/grammar.json
+    temperature: 0.3
+
+  prompt 2:
+    name: style_improvement
+    prompt_file: prompts/style.json
+    temperature: 0.7
+
+  prompt 3:
+    name: final_polish
+    prompt_file: prompts/polish.json
+    temperature: 0.5
+
+# How this works:
+# 1. Each prompt step processes the input and creates an intermediate output file
+# 2. Step 1 output → input_document_step_1_grammar_check.md
+# 3. Step 2 output → input_document_step_2_style_improvement.md
+# 4. Step 3 output → input_document_step_3_final_polish.md
+# 5. Final output → final_processed.md (from step 3)
+# 6. Combined file → all_steps_combined.md (contains all 3 step outputs with headers)
+#
+# The combined file will have this structure:
+# # Combined Output - input_document.md
+# Generated: 2025-01-15 14:30:00
+# ---
+# ## Step 1: grammar_check
+# [output from step 1]
+# ---
+# ## Step 2: style_improvement
+# [output from step 2]
+# ---
+# ## Step 3: final_polish
+# [output from step 3]
+# ---
+
+# Difference from append mode:
+# - append: true → Creates ONE file by appending each step's output during processing
+# - combine: true → Creates separate outputs for each step, THEN combines them at the end

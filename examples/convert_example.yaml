@@ -1,0 +1,83 @@
+# Example: File Conversion Feature
+# This configuration demonstrates the convert feature which handles document format
+# conversion at various stages of the chain processing.
+
+input_file: input_document.docx
+output_file: final_processed.md
+
+# Pre-processing conversion: Convert input to markdown before chain starts
+# This allows you to process Word documents, PDFs, etc. through the chain
+input_convert:
+  enabled: true
+  from_format: docx  # Optional: auto-detects if not specified
+  # Supported input formats: docx, odt, rtf, html, epub, txt, pdf, latex, rst, org
+
+# Post-processing conversion: Convert final output to other formats
+# This creates additional format versions after chain completes
+output_convert:
+  enabled: true
+  formats:
+    - docx  # Microsoft Word
+    - pdf   # PDF document
+    - epub  # eBook format
+  # Additional supported formats: odt, rtf, html, txt, latex, rst, org
+
+global_config:
+  model: anthropic/claude-4-sonnet-20250522
+  temperature: 0.7
+  max_tokens: 20000
+
+prompts:
+  prompt 1:
+    name: grammar_check
+    prompt_file: prompts/grammar.json
+    temperature: 0.3
+
+  prompt 2:
+    name: style_improvement
+    prompt_file: prompts/style.json
+    temperature: 0.7
+    # Per-step conversion: Convert this specific step's output
+    convert_output:
+      format: pdf
+      filename: step2_style_improved.pdf  # Optional: custom filename
+
+  prompt 3:
+    name: final_polish
+    prompt_file: prompts/polish.json
+    temperature: 0.5
+
+# How conversion works:
+#
+# 1. INPUT CONVERSION (Before chain starts):
+#    - input_document.docx → converted to → input_document.md
+#    - Chain processing uses the markdown version
+#
+# 2. CHAIN PROCESSING (Normal markdown workflow):
+#    - Step 1 (grammar_check) processes markdown
+#    - Step 2 (style_improvement) processes markdown AND converts output to PDF
+#    - Step 3 (final_polish) processes markdown
+#    - Final output: final_processed.md
+#
+# 3. OUTPUT CONVERSION (After chain completes):
+#    - final_processed.md → converted to:
+#      - final_processed.docx
+#      - final_processed.pdf
+#      - final_processed.epub
+#
+# Requirements:
+#   - pypandoc Python package (installed via pip)
+#   - pandoc system binary (https://pandoc.org/installing.html)
+#   - For PDF output: LaTeX installation (e.g., TeX Live, MiKTeX)
+#
+# Installation:
+#   pip install pypandoc
+#   # Then install pandoc from: https://pandoc.org/installing.html
+#
+# Notes:
+#   - All processing happens in markdown format internally
+#   - Conversions are optional - chain works without them
+#   - Input conversion creates a .md file next to original
+#   - Output conversions create files next to final output
+#   - Per-step conversions create files in temp directory
+#   - If conversion fails, processing continues with warning

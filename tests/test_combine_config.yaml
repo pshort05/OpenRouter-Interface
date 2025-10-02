@@ -1,0 +1,24 @@
+input_file: test_restart_input.md
+output_file: test_combine_output.md
+
+# Enable combine feature to merge all step outputs
+combine: true
+combined_file_name: test_combined_output.md
+
+global_config:
+  model: anthropic/claude-4-sonnet-20250522
+  temperature: 0.3
+  max_tokens: 500
+
+prompts:
+  prompt 1:
+    name: step1_analysis
+    prompt_file: ../prompts/test_prompt1.json
+
+  prompt 2:
+    name: step2_refinement
+    prompt_file: ../prompts/test_prompt2.json
+
+  prompt 3:
+    name: step3_final
+    prompt_file: ../prompts/test_prompt1.json

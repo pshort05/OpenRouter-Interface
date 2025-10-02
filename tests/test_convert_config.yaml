@@ -1,0 +1,36 @@
+input_file: test_restart_input.md
+output_file: test_convert_output.md
+
+# Test input conversion (would need a .docx file to test properly)
+input_convert:
+  enabled: false  # Set to true when testing with .docx input
+  from_format: docx
+
+# Test output conversion
+output_convert:
+  enabled: true
+  formats:
+    - html
+    - txt
+
+global_config:
+  model: anthropic/claude-4-sonnet-20250522
+  temperature: 0.3
+  max_tokens: 500
+
+prompts:
+  prompt 1:
+    name: step1_analysis
+    prompt_file: ../prompts/test_prompt1.json
+
+  prompt 2:
+    name: step2_refinement
+    prompt_file: ../prompts/test_prompt2.json
+    # Test per-step conversion
+    convert_output:
+      format: html
+      filename: step2_custom.html
+
+  prompt 3:
+    name: step3_final
+    prompt_file: ../prompts/test_prompt1.json

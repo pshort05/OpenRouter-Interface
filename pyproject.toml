@@ -37,6 +37,7 @@ classifiers = [
 dependencies = [
     "requests>=2.25.0",
     "PyYAML>=5.4.0",
+    "pypandoc>=1.11",
     "pathlib2; python_version<'3.4'",
 ]
 
@@ -56,7 +57,8 @@ dev = [
 all = [
     "flask>=2.0.0",
     "werkzeug>=2.0.0",
-    "pytest>=6.0", 
+    "pypandoc>=1.11",
+    "pytest>=6.0",
     "pytest-cov",
     "black",
     "flake8",

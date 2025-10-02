@@ -35,6 +35,7 @@ from .prompt_scanner import PromptScanner
 from .prompt_handler import PromptLoader, PromptProcessor
 from .prompt_runner_api_client import PromptAPIClient
 from .prompt_chain_runner import PromptChainRunner
+from .flask_helpers import format_file_size, enhance_prompt_with_system_and_format, get_local_ip
 
 
 class FlaskPromptRunner:
@@ -338,7 +339,7 @@ class FlaskPromptRunner:
                             file_size = prompt_path.stat().st_size
                             prompt.update({
                                 'size': file_size,
-                                'size_formatted': self._format_file_size(file_size),
+                                'size_formatted': format_file_size(file_size),
                                 'exists': True
                             })
                         else:
@@ -831,7 +832,7 @@ class FlaskPromptRunner:
                 full_prompt = self.processor.create_full_prompt(prompt_data, input_content)
 
                 # Add system prompt and output format instructions
-                full_prompt = self._enhance_prompt_with_system_and_format(
+                full_prompt = enhance_prompt_with_system_and_format(
                     full_prompt, system_prompt, output_format)
 
                 # Create API client with custom configuration if provided
@@ -952,7 +953,7 @@ class FlaskPromptRunner:
                 full_prompt = self.processor.create_full_prompt(prompt_data, input_content)
 
                 # Add system prompt and output format instructions
-                full_prompt = self._enhance_prompt_with_system_and_format(
+                full_prompt = enhance_prompt_with_system_and_format(
                     full_prompt, system_prompt, output_format)
 
                 # Create API client with custom configuration if provided
@@ -1383,43 +1384,6 @@ class FlaskPromptRunner:
             flash('File too large. Maximum size is 16MB.', 'error')
             return redirect(url_for('index'))
     
-    def _format_file_size(self, size_bytes):
-        """Format file size in human readable format."""
-        if size_bytes == 0:
-            return "0 B"
-        
-        size_names = ["B", "KB", "MB", "GB"]
-        i = 0
-        while size_bytes >= 1024 and i < len(size_names) - 1:
-            size_bytes /= 1024.0
-            i += 1
-        
-        return f"{size_bytes:.1f} {size_names[i]}"
-    
-    def _enhance_prompt_with_system_and_format(self, full_prompt: str, system_prompt: str, output_format: str) -> str:
-        """Enhance the prompt with system prompt and output format instructions."""
-        enhanced_prompt = ""
-        
-        # Add system prompt if provided
-        if system_prompt:
-            enhanced_prompt += f"SYSTEM: {system_prompt}\n\n"
-        
-        # Add output format instructions
-        format_instructions = {
-            'markdown': "Please format your response in clear, well-structured Markdown with appropriate headers, lists, and formatting for readability.",
-            'json': "Please format your response as valid JSON. Use appropriate keys and structure the data logically.",
-            'xml': "Please format your response as well-formed XML with appropriate tags and structure.",
-            'text': "Please format your response as plain text with clear paragraphs and structure."
-        }
-        
-        if output_format in format_instructions:
-            enhanced_prompt += f"OUTPUT FORMAT: {format_instructions[output_format]}\n\n"
-        
-        # Add the original prompt
-        enhanced_prompt += full_prompt
-        
-        return enhanced_prompt
-    
     def _get_cached_models(self) -> Optional[List[Dict[str, Any]]]:
         """Get cached OpenRouter models if cache is valid (less than 7 days old)."""
         try:
@@ -1738,7 +1702,7 @@ class FlaskPromptRunner:
         import sys
         
         # Get local IP address
-        local_ip = self._get_local_ip()
+        local_ip = get_local_ip()
         
         print(f"🚀 Starting OpenRouter Prompt Runner Web Interface...")
         print(f"📊 Mode: {'Development' if debug else 'Production'}")
@@ -1793,18 +1757,6 @@ class FlaskPromptRunner:
         print("Press Ctrl+C to stop the server")
         print("="*50)
         self.app.run(host=host, port=port, debug=debug)
-    
-    def _get_local_ip(self):
-        """Get the local IP address."""
-        try:
-            # Connect to a remote address to determine local IP
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            local_ip = s.getsockname()[0]
-            s.close()
-            return local_ip
-        except Exception:
-            return "127.0.0.1"
 
 
 def main():

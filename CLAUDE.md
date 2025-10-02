@@ -10,7 +10,8 @@ OpenRouter Interface is a Python toolkit for AI language model processing throug
 - **Web Interface**: Flask-based dashboard (`openrouter-web`)
 - **Chain Processing**: Multi-step workflows (`openrouter-chain`)
 - **Script Integration**: Pre/post processing automation
-- **Advanced Features**: Multi-pass, content append, variable substitution
+- **File Conversion**: Convert between markdown and various formats (docx, pdf, epub, etc.)
+- **Advanced Features**: Multi-pass, content append, combine outputs, variable substitution
 
 ## Key Architecture
 
@@ -18,6 +19,11 @@ OpenRouter Interface is a Python toolkit for AI language model processing throug
 - **src/openrouter_interface/**: Main Python package
 - **prompt_runner.py**: Core processing engine for single prompts
 - **prompt_chain_runner.py**: Chain execution with multi-step workflows
+  - **chain_console.py**: Console output management for chains
+  - **chain_status.py**: Status tracking and restart functionality
+  - **file_converter.py**: Document format conversion (docx, pdf, epub, etc.)
+- **prompt_runner_flask.py**: Flask web application
+  - **flask_helpers.py**: Utility functions (file size formatting, IP detection)
 - **config_manager.py**: YAML configuration handling
 - **api_client.py**: OpenRouter API communication
 
@@ -146,6 +152,55 @@ prompts:
 - **Content Accumulation**: Useful for multi-document summarization
 - **Pass Integration**: Works with multi-pass for iterative accumulation
 
+### Combine Outputs Feature
+- **combine: true**: Combine all step output files into a single file after chain completes
+- **combined_file_name**: Name of the combined output file (required when combine=true)
+- **Differs from append**: Append mode creates one output during processing; combine merges all step outputs afterward
+- **Format**: Creates markdown file with headers for each step and separators
+- **Example**:
+  ```yaml
+  combine: true
+  combined_file_name: all_steps_combined.md
+  ```
+
+### File Conversion Feature
+- **Input Conversion**: Convert input files (docx, pdf, epub, etc.) to markdown before chain processing
+- **Output Conversion**: Convert final markdown output to multiple formats (docx, pdf, epub, etc.)
+- **Per-Step Conversion**: Convert individual step outputs to specific formats
+- **Automatic Format Detection**: Auto-detects input format if not specified
+- **Dependencies**: Requires pypandoc Python package and pandoc system binary
+- **Supported Formats**:
+  - **Input**: docx, odt, rtf, html, epub, txt, pdf, latex, rst, org, mediawiki
+  - **Output**: docx, odt, rtf, html, epub, pdf, txt, latex, rst, org, mediawiki
+- **Configuration**:
+  ```yaml
+  # Pre-processing: Convert input to markdown
+  input_convert:
+    enabled: true
+    from_format: docx  # Optional: auto-detects if not specified
+
+  # Post-processing: Convert output to multiple formats
+  output_convert:
+    enabled: true
+    formats:
+      - docx
+      - pdf
+      - epub
+
+  # Per-step: Convert specific step output
+  prompts:
+    prompt 2:
+      convert_output:
+        format: pdf
+        filename: step2_custom.pdf  # Optional custom filename
+  ```
+- **Installation**:
+  ```bash
+  pip install pypandoc
+  # Install pandoc: https://pandoc.org/installing.html
+  # For PDF: Install LaTeX (TeX Live, MiKTeX)
+  ```
+
 ### File Management
 - **Intermediate Files**: All step outputs preserved in temp directory
 - **Naming Convention**: `{input_name}_step_{step_number}_{prompt_name}.{ext}`
@@ -189,9 +244,11 @@ When referencing code, use the pattern `file_path:line_number` for easy navigati
 3. **Global Pre/Post Processing**: Chain-level script execution with numbered ordering
 4. **Multi-Pass Execution**: Iterative prompt processing with configurable passes
 5. **Content Append Mode**: Content accumulation across steps
-6. **Enhanced Console Output**: Minimal, clean status reporting
-7. **File Size Validation**: Automatic detection of processing issues
-8. **Web Interface YAML Loading**: Upload YAML configs for both single prompts and prompt chains via web UI
+6. **Combine Outputs**: Merge all step outputs into single file after chain completion
+7. **File Conversion**: Convert between markdown and various formats (docx, pdf, epub, etc.) at input, output, and per-step levels
+8. **Enhanced Console Output**: Minimal, clean status reporting
+9. **File Size Validation**: Automatic detection of processing issues
+10. **Web Interface YAML Loading**: Upload YAML configs for both single prompts and prompt chains via web UI
 
 ### Chain Restart & Recovery System
 The chain runner now includes comprehensive restart functionality to recover from failures and optimize expensive LLM processing:

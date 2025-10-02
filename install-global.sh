@@ -19,6 +19,54 @@ if [[ -n "$VIRTUAL_ENV" ]]; then
     fi
 fi
 
+echo "📦 Checking pandoc installation..."
+if command -v pandoc >/dev/null 2>&1; then
+    PANDOC_VERSION=$(pandoc --version | head -n 1)
+    echo "✅ Pandoc found: $PANDOC_VERSION"
+else
+    echo "⚠️  Pandoc not found - required for file conversion features"
+    echo "   Installing pandoc..."
+
+    # Detect OS and install pandoc
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if command -v apt-get >/dev/null 2>&1; then
+            echo "   Detected Debian/Ubuntu - installing via apt-get"
+            sudo apt-get update && sudo apt-get install -y pandoc
+        elif command -v yum >/dev/null 2>&1; then
+            echo "   Detected RedHat/CentOS - installing via yum"
+            sudo yum install -y pandoc
+        elif command -v pacman >/dev/null 2>&1; then
+            echo "   Detected Arch Linux - installing via pacman"
+            sudo pacman -S --noconfirm pandoc
+        else
+            echo "   ⚠️  Could not auto-install pandoc on this Linux distribution"
+            echo "      Please install manually: https://pandoc.org/installing.html"
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        if command -v brew >/dev/null 2>&1; then
+            echo "   Detected macOS - installing via Homebrew"
+            brew install pandoc
+        else
+            echo "   ⚠️  Homebrew not found. Please install pandoc manually:"
+            echo "      Visit: https://pandoc.org/installing.html"
+        fi
+    else
+        echo "   ⚠️  Unsupported OS: $OSTYPE"
+        echo "      Please install pandoc manually: https://pandoc.org/installing.html"
+    fi
+
+    # Verify pandoc was installed
+    if command -v pandoc >/dev/null 2>&1; then
+        PANDOC_VERSION=$(pandoc --version | head -n 1)
+        echo "   ✅ Pandoc installed successfully: $PANDOC_VERSION"
+    else
+        echo "   ⚠️  Pandoc installation failed or not in PATH"
+        echo "      File conversion features will not be available"
+        echo "      Install manually from: https://pandoc.org/installing.html"
+    fi
+fi
+
+echo ""
 echo "📦 Installing OpenRouter Interface package globally..."
 
 # First, uninstall any existing installation (both system and user)
@@ -78,7 +126,15 @@ echo "   1. Set your OpenRouter API key:"
 echo "      export OPENROUTER_API_KEY='your-api-key-here'"
 echo "      echo 'export OPENROUTER_API_KEY=\"your-api-key-here\"' >> ~/.bashrc"
 echo ""
-echo "   2. Verify installation:"
+echo "   2. File conversion support (optional):"
+if command -v pandoc >/dev/null 2>&1; then
+    echo "      ✅ Pandoc is installed - file conversion available"
+else
+    echo "      ⚠️  Pandoc not installed - file conversion disabled"
+    echo "      Install: https://pandoc.org/installing.html"
+fi
+echo ""
+echo "   3. Verify installation:"
 echo "      openrouter-runner --help"
 echo ""
 echo "📁 Configuration Files:"

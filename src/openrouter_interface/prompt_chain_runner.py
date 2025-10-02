@@ -24,375 +24,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-
-class ConsoleOutputManager:
-    """Manages clean console output with colored status indicators."""
-
-    # ANSI color codes
-    GREEN = '\033[92m'
-    RED = '\033[91m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    CYAN = '\033[96m'
-    RESET = '\033[0m'
-    BOLD = '\033[1m'
-
-    def __init__(self):
-        self.step_results = []
-
-    def print_header(self, config_name: str, temp_dir: Path):
-        """Print the initial header with basic setup info."""
-        print(f"Prompt Chain Runner initialized - using Temp directory: {temp_dir}")
-        print(f"Using Configuration file: {config_name}")
-        print("Verifying prompts and input file\n")
-
-    def print_file_start(self, file_name: str, file_size: str):
-        """Print the file processing start message with name and size."""
-        print(f"Working on file {file_name} size: {file_size}\n")
-
-    def print_step_start(self, step, prompt_name: str = None, passes: int = 1, append: bool = False):
-        """Print step execution start with passes and append information."""
-        info_parts = []
-        if passes > 1:
-            info_parts.append(f"{passes} passes")
-        if append:
-            info_parts.append("append mode")
-
-        info_str = f" ({', '.join(info_parts)})" if info_parts else ""
-
-        if prompt_name:
-            print(f"Executing Prompt {step}: {prompt_name}{info_str}")
-        else:
-            print(f"Executing Prompt {step}:{info_str}")
-
-    def print_step_result(self, step, prompt_name: str, file_size: str, success: bool, execution_time: float, error_message: str = None, skipped: bool = False, passes: int = 1, append: bool = False):
-        """Print step execution result with colored status indicator, timing, passes/append info, and optional error or skip status."""
-        info_parts = []
-        if passes > 1:
-            info_parts.append(f"{passes} passes")
-        if append:
-            info_parts.append("append")
-
-        info_str = f" ({', '.join(info_parts)})" if info_parts else ""
-
-        if skipped:
-            status = f"{self.YELLOW}⚠️{self.RESET}"
-            if prompt_name:
-                print(f"Result:   {status} prompt {step} {prompt_name}{info_str} {self.YELLOW}SKIPPED{self.RESET} (on_error: continue) time: {execution_time:.1f} seconds")
-            else:
-                print(f"Result:   {status} prompt {step}{info_str} {self.YELLOW}SKIPPED{self.RESET} (on_error: continue) time: {execution_time:.1f} seconds")
-        elif success:
-            status = f"{self.GREEN}✅{self.RESET}"
-            if prompt_name:
-                print(f"Result:   {status} prompt {step} {prompt_name}{info_str} output size: {file_size} time: {execution_time:.1f} seconds")
-            else:
-                print(f"Result:   {status} prompt {step}{info_str} output size: {file_size} time: {execution_time:.1f} seconds")
-        else:
-            status = f"{self.RED}❌{self.RESET}"
-            if prompt_name:
-                print(f"Result:   {status} prompt {step} {prompt_name}{info_str} {self.RED}FAILED{self.RESET} time: {execution_time:.1f} seconds")
-            else:
-                print(f"Result:   {status} prompt {step}{info_str} {self.RED}FAILED{self.RESET} time: {execution_time:.1f} seconds")
-
-            # Show error message on the next line if provided
-            if error_message:
-                print(f"          {self.RED}Error: {error_message}{self.RESET}")
-
-        print()  # Add blank line after each result
-
-        # Store result for final report
-        self.step_results.append({
-            'step': step,
-            'name': prompt_name,
-            'file_size': file_size,
-            'success': success,
-            'execution_time': execution_time,
-            'skipped': skipped,
-            'passes': passes,
-            'append': append
-        })
-
-    def print_final_report(self, config_name: str, original_file_name: str, original_file_size: str, overall_success: bool):
-        """Print the final report with all step results."""
-        print(f"Final Report {config_name}")
-
-        if overall_success:
-            print(f"{self.GREEN}✅ Prompt chain completed successfully!{self.RESET}")
-        else:
-            print(f"{self.RED}❌ Prompt chain Failed!{self.RESET}")
-
-        # Show original input file
-        print(f"       {self.GREEN}✅{self.RESET} original_input_{original_file_name} size: {original_file_size}")
-
-        # Show each step result
-        for result in self.step_results:
-            step = result['step']
-            name = result['name']
-            file_size = result['file_size']
-            success = result['success']
-            execution_time = result.get('execution_time', 0)
-            skipped = result.get('skipped', False)
-            passes = result.get('passes', 1)
-            append = result.get('append', False)
-
-            info_parts = []
-            if passes > 1:
-                info_parts.append(f"{passes} passes")
-            if append:
-                info_parts.append("append")
-
-            info_str = f" ({', '.join(info_parts)})" if info_parts else ""
-
-            if skipped:
-                status_icon = f"{self.YELLOW}⚠️{self.RESET}"
-                display_size = "skipped"
-            elif success:
-                status_icon = f"{self.GREEN}✅{self.RESET}"
-                display_size = f"size: {file_size}"
-            else:
-                status_icon = f"{self.RED}❌{self.RESET}"
-                display_size = "failed"
-
-            if name:
-                print(f"       {status_icon} prompt {step} {name}{info_str} {display_size}")
-            else:
-                print(f"       {status_icon} prompt {step}{info_str} {display_size}")
-
-
-class ChainStatusManager:
-    """Manages persistent status tracking for chain execution."""
-
-    def __init__(self, config_file: Path, temp_dir: Path = None):
-        """
-        Initialize status manager.
-
-        Args:
-            config_file: Path to the chain configuration file
-            temp_dir: Temporary directory for this run
-        """
-        self.config_file = config_file
-        self.status_file = config_file.with_suffix('.status')
-        self.temp_dir = temp_dir
-        self.status_data = self._initialize_status()
-
-    def _initialize_status(self) -> Dict[str, Any]:
-        """Initialize or load existing status data."""
-        if self.status_file.exists():
-            try:
-                with open(self.status_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
-                logging.warning(f"Could not load existing status file {self.status_file}: {e}")
-
-        # Create new status structure
-        return {
-            "chain_config": self.config_file.name,
-            "start_time": datetime.now().isoformat(),
-            "end_time": None,
-            "status": "running",
-            "temp_directory": str(self.temp_dir) if self.temp_dir else None,
-            "files": {}
-        }
-
-    def update_temp_directory(self, temp_dir: Path):
-        """Update temp directory after it's created."""
-        self.temp_dir = temp_dir
-        self.status_data["temp_directory"] = str(temp_dir)
-        self.save_status()
-
-    def update_file_start(self, filename: str, file_size: str):
-        """Mark file processing as started."""
-        if filename not in self.status_data["files"]:
-            self.status_data["files"][filename] = {
-                "status": "running",
-                "file_size": file_size,
-                "steps": {}
-            }
-        else:
-            self.status_data["files"][filename]["status"] = "running"
-            self.status_data["files"][filename]["file_size"] = file_size
-
-        self.save_status()
-
-    def update_step_start(self, filename: str, step: str, step_name: str):
-        """Mark step as started."""
-        if filename not in self.status_data["files"]:
-            self.status_data["files"][filename] = {"status": "running", "steps": {}}
-
-        self.status_data["files"][filename]["steps"][step] = {
-            "status": "running",
-            "name": step_name,
-            "start_time": time.time()
-        }
-        self.save_status()
-
-    def update_step_complete(self, filename: str, step: str, execution_time: float, output_size: str):
-        """Mark step as completed successfully."""
-        if filename in self.status_data["files"] and step in self.status_data["files"][filename]["steps"]:
-            self.status_data["files"][filename]["steps"][step].update({
-                "status": "completed",
-                "time": execution_time,
-                "output_size": output_size
-            })
-            self.save_status()
-
-    def update_step_failed(self, filename: str, step: str, execution_time: float, error: str):
-        """Mark step as failed with error details."""
-        if filename in self.status_data["files"] and step in self.status_data["files"][filename]["steps"]:
-            self.status_data["files"][filename]["steps"][step].update({
-                "status": "failed",
-                "time": execution_time,
-                "error": error
-            })
-
-            # Mark file as failed
-            self.status_data["files"][filename]["status"] = "failed"
-            self.save_status()
-
-    def update_step_skipped(self, filename: str, step: str, step_name: str, reason: str = "restart"):
-        """Mark step as skipped (for restart scenarios)."""
-        if filename not in self.status_data["files"]:
-            self.status_data["files"][filename] = {"status": "running", "steps": {}}
-
-        self.status_data["files"][filename]["steps"][step] = {
-            "status": "skipped",
-            "name": step_name,
-            "reason": reason,
-            "time": 0.0
-        }
-        self.save_status()
-
-    def update_file_complete(self, filename: str):
-        """Mark file processing as completed."""
-        if filename in self.status_data["files"]:
-            self.status_data["files"][filename]["status"] = "completed"
-            self.save_status()
-
-    def update_chain_complete(self, success: bool):
-        """Mark entire chain as completed."""
-        self.status_data["status"] = "completed" if success else "failed"
-        self.status_data["end_time"] = datetime.now().isoformat()
-        self.save_status()
-
-    def save_status(self):
-        """Write status to file (called after each update)."""
-        try:
-            with open(self.status_file, 'w', encoding='utf-8') as f:
-                json.dump(self.status_data, f, indent=2, ensure_ascii=False)
-        except IOError as e:
-            logging.warning(f"Could not save status file {self.status_file}: {e}")
-
-    def get_restart_point(self, filename: str) -> Optional[str]:
-        """Determine first failed or incomplete step for file."""
-        if filename not in self.status_data["files"]:
-            return None
-
-        file_data = self.status_data["files"][filename]
-        if file_data.get("status") == "completed":
-            return None
-
-        steps = file_data.get("steps", {})
-        for step in sorted(steps.keys(), key=lambda x: float(x.replace('_', '.'))):
-            step_data = steps[step]
-            if step_data.get("status") in ["failed", "running"]:
-                return step
-
-        return None
-
-    def analyze_restart_scenario(self) -> Dict[str, Any]:
-        """Analyze current status and determine restart requirements."""
-        restart_info = {
-            "restart_needed": False,
-            "files_to_restart": {},
-            "files_completed": [],
-            "total_files": len(self.status_data["files"])
-        }
-
-        for filename, file_data in self.status_data["files"].items():
-            if file_data.get("status") == "completed":
-                restart_info["files_completed"].append(filename)
-            else:
-                restart_point = self.get_restart_point(filename)
-                if restart_point:
-                    restart_info["restart_needed"] = True
-                    restart_info["files_to_restart"][filename] = {
-                        "restart_step": restart_point,
-                        "completed_steps": [
-                            step for step, data in file_data.get("steps", {}).items()
-                            if data.get("status") == "completed"
-                        ]
-                    }
-
-        return restart_info
-
-    def should_skip_step(self, filename: str, step: str) -> bool:
-        """Determine if step should be skipped based on previous completion."""
-        if filename not in self.status_data["files"]:
-            return False
-
-        steps = self.status_data["files"][filename].get("steps", {})
-        if step in steps:
-            return steps[step].get("status") == "completed"
-
-        return False
-
-    def get_last_successful_output(self, filename: str, before_step: str) -> Optional[str]:
-        """Get the output file from the last successfully completed step before given step."""
-        if filename not in self.status_data["files"]:
-            return None
-
-        steps = self.status_data["files"][filename].get("steps", {})
-        completed_steps = []
-
-        for step, data in steps.items():
-            if data.get("status") == "completed":
-                try:
-                    step_num = float(step.replace('_', '.'))
-                    before_num = float(before_step.replace('_', '.'))
-                    if step_num < before_num:
-                        completed_steps.append((step_num, step))
-                except ValueError:
-                    continue
-
-        if completed_steps:
-            # Return the highest numbered completed step
-            completed_steps.sort()
-            last_step = completed_steps[-1][1]
-            return last_step
-
-        return None
-
-    def print_status_summary(self):
-        """Print a summary of the current chain status."""
-        print(f"\nChain Status: {self.config_file.name}")
-
-        if not self.status_data["files"]:
-            print("No files processed yet.")
-            return
-
-        for filename, file_data in self.status_data["files"].items():
-            status = file_data.get("status", "unknown")
-            steps = file_data.get("steps", {})
-            completed_count = sum(1 for s in steps.values() if s.get("status") == "completed")
-            total_steps = len(steps)
-
-            if status == "completed":
-                print(f"├── {filename}: COMPLETED ({completed_count}/{total_steps} steps)")
-            elif status == "failed":
-                failed_step = None
-                for step, data in steps.items():
-                    if data.get("status") == "failed":
-                        failed_step = step
-                        break
-                print(f"├── {filename}: FAILED at step {failed_step} ({completed_count}/{total_steps} steps completed)")
-            else:
-                print(f"├── {filename}: {status.upper()} ({completed_count}/{total_steps} steps)")
-
-        restart_info = self.analyze_restart_scenario()
-        if restart_info["restart_needed"]:
-            print(f"\nRestart recommendation: Use --restart to resume from failed steps")
-        elif restart_info["files_completed"]:
-            print(f"\nAll files completed successfully.")
+from .chain_console import ConsoleOutputManager
+from .chain_status import ChainStatusManager
+from .file_converter import FileConverter
 
 
 class PromptChainRunner:
@@ -464,6 +98,9 @@ class PromptChainRunner:
 
         # Initialize console output manager
         self.console = ConsoleOutputManager()
+
+        # Initialize file converter
+        self.file_converter = FileConverter()
 
         # Print clean console header
         self.console.print_header(self.config_file.name, self.temp_dir)
@@ -847,6 +484,12 @@ class PromptChainRunner:
                 return postscript.strip()
         return None
 
+    def _get_step_convert_config(self, prompt_config) -> Optional[Dict[str, Any]]:
+        """Extract convert_output configuration from prompt config."""
+        if isinstance(prompt_config, dict):
+            return prompt_config.get('convert_output', None)
+        return None
+
     def _substitute_script_variables(self, script_command: str, input_file: Path, output_file: Path) -> str:
         """
         Substitute {input_file} and {output_file} variables in script commands.
@@ -870,6 +513,22 @@ class PromptChainRunner:
     def _get_output_format(self) -> str:
         """Get output_format setting from config (defaults to 'markdown')."""
         return self.config.get('output_format', 'markdown')
+
+    def _get_combine_outputs(self) -> bool:
+        """Get combine setting from config (defaults to False)."""
+        return self.config.get('combine', False)
+
+    def _get_combined_filename(self) -> Optional[str]:
+        """Get combined_file_name setting from config."""
+        return self.config.get('combined_file_name', None)
+
+    def _get_input_convert_config(self) -> Optional[Dict[str, Any]]:
+        """Get input_convert configuration from config."""
+        return self.config.get('input_convert', None)
+
+    def _get_output_convert_config(self) -> Optional[Dict[str, Any]]:
+        """Get output_convert configuration from config."""
+        return self.config.get('output_convert', None)
 
     def _format_file_size(self, file_path: Path) -> str:
         """Format file size in human-readable format with 1 decimal place (e.g., 13.5k, 1.2M)."""
@@ -1226,6 +885,73 @@ class PromptChainRunner:
 
         except Exception as e:
             logging.error(f"Failed to append step {step} output to final file: {e}")
+            raise
+
+    def _combine_step_outputs(self, input_file: Path, sorted_prompts: List, combined_filename: str):
+        """
+        Combine all step output files into a single file.
+
+        Args:
+            input_file: Original input file
+            sorted_prompts: List of (step_display, prompt_config) tuples
+            combined_filename: Name for the combined output file
+        """
+        try:
+            # Determine combined file path
+            if Path(combined_filename).is_absolute():
+                combined_file = Path(combined_filename)
+            else:
+                # Place in same directory as input file
+                combined_file = input_file.parent / combined_filename
+
+            logging.info(f"Combining step outputs into: {combined_file}")
+            print(f"\nCombining outputs into: {combined_file.name}")
+
+            # Create combined file with header
+            with open(combined_file, 'w', encoding='utf-8') as out_f:
+                # Write header
+                out_f.write(f"# Combined Output - {input_file.name}\n\n")
+                out_f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                out_f.write("---\n\n")
+
+                # Iterate through all steps and append their outputs
+                for step_display, prompt_config in sorted_prompts:
+                    prompt_name = self._get_prompt_name(prompt_config)
+                    intermediate_filename = self._get_intermediate_filename(input_file, step_display, prompt_name)
+                    step_output_file = self.temp_dir / intermediate_filename
+
+                    if not step_output_file.exists():
+                        logging.warning(f"Step {step_display} output file not found: {step_output_file}")
+                        continue
+
+                    # Read step output
+                    with open(step_output_file, 'r', encoding='utf-8') as step_f:
+                        step_content = step_f.read().strip()
+
+                    if not step_content:
+                        logging.warning(f"Step {step_display} output is empty, skipping")
+                        continue
+
+                    # Write section header
+                    if prompt_name:
+                        out_f.write(f"## Step {step_display}: {prompt_name}\n\n")
+                    else:
+                        out_f.write(f"## Step {step_display}\n\n")
+
+                    # Write step content
+                    out_f.write(step_content)
+                    out_f.write("\n\n---\n\n")
+
+                    logging.debug(f"Added step {step_display} output to combined file")
+
+            # Get file size for reporting
+            file_size = self._format_file_size(combined_file)
+            logging.info(f"Combined file created: {combined_file} ({file_size})")
+            print(f"{self.console.GREEN}✓{self.console.RESET} Combined file created: {combined_file.name} ({file_size})\n")
+
+        except Exception as e:
+            logging.error(f"Failed to combine step outputs: {e}")
+            print(f"{self.console.RED}✗{self.console.RESET} Failed to combine outputs: {e}\n")
             raise
 
     def _create_final_output_header(self, final_output_file: Path, input_file: Path):
@@ -1819,6 +1545,182 @@ class PromptChainRunner:
         # This will be called by both normal execution and restart execution
         return self._run_main_execution_logic()
 
+    def _convert_input_to_markdown(self, input_file: Path) -> Path:
+        """
+        Convert input file to markdown if input_convert is enabled.
+
+        Args:
+            input_file: Original input file
+
+        Returns:
+            Path to markdown file (either converted or original if already markdown)
+
+        Raises:
+            Exception: If conversion fails
+        """
+        convert_config = self._get_input_convert_config()
+
+        if not convert_config:
+            # No conversion configured, return original file
+            return input_file
+
+        if not isinstance(convert_config, dict):
+            logging.warning(f"Invalid input_convert configuration: {convert_config}")
+            return input_file
+
+        enabled = convert_config.get('enabled', False)
+        if not enabled:
+            return input_file
+
+        # Check if file is already markdown
+        if input_file.suffix.lower() in ['.md', '.markdown']:
+            logging.info(f"Input file is already markdown: {input_file.name}")
+            return input_file
+
+        # Check if converter is available
+        if not self.file_converter.is_available():
+            logging.warning("File conversion requested but pypandoc/pandoc not available")
+            logging.warning("Proceeding with original file format")
+            return input_file
+
+        # Get source format (auto-detect if not specified)
+        from_format = convert_config.get('from_format', None)
+
+        try:
+            logging.info(f"Converting input file to markdown: {input_file.name}")
+            print(f"Converting {input_file.name} to markdown...")
+
+            # Convert file (will be created in same directory as input)
+            markdown_file = self.file_converter.convert_to_markdown(input_file, from_format)
+
+            file_size = self._format_file_size(markdown_file)
+            logging.info(f"Conversion successful: {markdown_file.name} ({file_size})")
+            print(f"{self.console.GREEN}✓{self.console.RESET} Converted to markdown: {markdown_file.name} ({file_size})\n")
+
+            return markdown_file
+
+        except Exception as e:
+            logging.error(f"Failed to convert input file to markdown: {e}")
+            print(f"{self.console.RED}✗{self.console.RESET} Conversion failed: {e}")
+            print(f"Proceeding with original file format\n")
+            return input_file
+
+    def _convert_output_from_markdown(self, markdown_file: Path):
+        """
+        Convert final markdown output to other formats if output_convert is enabled.
+
+        Args:
+            markdown_file: Path to markdown file to convert
+        """
+        convert_config = self._get_output_convert_config()
+
+        if not convert_config:
+            # No conversion configured
+            return
+
+        if not isinstance(convert_config, dict):
+            logging.warning(f"Invalid output_convert configuration: {convert_config}")
+            return
+
+        enabled = convert_config.get('enabled', False)
+        if not enabled:
+            return
+
+        # Check if converter is available
+        if not self.file_converter.is_available():
+            logging.warning("Output conversion requested but pypandoc/pandoc not available")
+            return
+
+        # Get list of formats to convert to
+        formats = convert_config.get('formats', [])
+        if not formats:
+            logging.warning("output_convert enabled but no formats specified")
+            return
+
+        if not isinstance(formats, list):
+            logging.warning(f"output_convert formats must be a list, got: {type(formats)}")
+            return
+
+        try:
+            logging.info(f"Converting output to {len(formats)} format(s): {', '.join(formats)}")
+            print(f"Converting output to: {', '.join(formats)}...")
+
+            # Convert to all specified formats
+            output_files = self.file_converter.convert_multiple_formats(
+                markdown_file,
+                formats,
+                markdown_file.parent  # Put in same directory as markdown file
+            )
+
+            # Report success
+            for output_file in output_files:
+                file_size = self._format_file_size(output_file)
+                logging.info(f"Converted to {output_file.suffix}: {output_file.name} ({file_size})")
+                print(f"{self.console.GREEN}✓{self.console.RESET} Converted to {output_file.suffix}: {output_file.name} ({file_size})")
+
+            print()  # Blank line after conversion reports
+
+        except Exception as e:
+            logging.error(f"Failed to convert output formats: {e}")
+            print(f"{self.console.RED}✗{self.console.RESET} Output conversion failed: {e}\n")
+
+    def _convert_step_output(self, markdown_file: Path, prompt_config: Dict, step_display: str):
+        """
+        Convert step output to specified format if convert_output is configured.
+
+        Args:
+            markdown_file: Path to step output markdown file
+            prompt_config: Configuration for this prompt step
+            step_display: Step number for display
+        """
+        convert_config = self._get_step_convert_config(prompt_config)
+
+        if not convert_config:
+            # No conversion configured for this step
+            return
+
+        if not isinstance(convert_config, dict):
+            logging.warning(f"Step {step_display}: Invalid convert_output configuration")
+            return
+
+        # Check if converter is available
+        if not self.file_converter.is_available():
+            logging.warning(f"Step {step_display}: Conversion requested but pypandoc/pandoc not available")
+            return
+
+        # Get format and filename
+        to_format = convert_config.get('format', None)
+        custom_filename = convert_config.get('filename', None)
+
+        if not to_format:
+            logging.warning(f"Step {step_display}: convert_output configured but no format specified")
+            return
+
+        try:
+            # Determine output filename
+            if custom_filename:
+                # Use custom filename (can be relative to input or absolute)
+                if Path(custom_filename).is_absolute():
+                    output_file = Path(custom_filename)
+                else:
+                    output_file = markdown_file.parent / custom_filename
+            else:
+                # Auto-generate filename based on step output
+                output_file = markdown_file.with_suffix(f'.{to_format}')
+
+            logging.info(f"Step {step_display}: Converting output to {to_format}")
+
+            # Convert the file
+            converted_file = self.file_converter.convert_from_markdown(markdown_file, to_format, output_file)
+
+            file_size = self._format_file_size(converted_file)
+            logging.info(f"Step {step_display}: Converted to {to_format}: {converted_file.name} ({file_size})")
+            print(f"  {self.console.GREEN}✓{self.console.RESET} Step {step_display} converted to {to_format}: {converted_file.name} ({file_size})")
+
+        except Exception as e:
+            logging.error(f"Step {step_display}: Conversion to {to_format} failed: {e}")
+            print(f"  {self.console.RED}✗{self.console.RESET} Step {step_display} conversion failed: {e}")
+
     def _run_main_execution_logic(self) -> bool:
         """Main execution logic extracted from run_chain for reuse."""
         logging.info("=" * 80)
@@ -1883,7 +1785,10 @@ class PromptChainRunner:
                     self.console.print_file_start(input_file.name, file_size)
                     self.status_manager.update_file_start(input_file.name, file_size)
 
-                # Copy original input file to temp directory
+                # Convert input file to markdown if configured
+                input_file = self._convert_input_to_markdown(input_file)
+
+                # Copy original (or converted) input file to temp directory
                 self._copy_input_to_temp(input_file)
 
                 # Save initial file with new naming convention (step 0)
@@ -1939,14 +1844,43 @@ class PromptChainRunner:
                 # Add this file's results to the overall execution results
                 self.execution_results.append(file_result)
                 if file_successful:
+                    # Copy the last intermediate file to the final output location
+                    if current_input != input_file and current_input.exists():
+                        try:
+                            shutil.copy2(current_input, final_output)
+                            formatted_size = self._format_file_size(final_output)
+                            logging.info(f"Final output saved: {final_output} ({formatted_size})")
+                            print(f"{self.console.GREEN}✓{self.console.RESET} Final output saved: {final_output.name} ({formatted_size})\n")
+                        except Exception as e:
+                            logging.error(f"Failed to save final output to {final_output}: {e}")
+                            print(f"{self.console.RED}✗{self.console.RESET} Failed to save final output: {e}\n")
+                            file_successful = False
+
                     # Copy final output to temp directory for reference
-                    self._copy_output_to_temp(final_output)
+                    if file_successful:
+                        self._copy_output_to_temp(final_output)
 
-                    # Update status tracking for successful file completion
-                    self.status_manager.update_file_complete(input_file.name)
+                        # Create combined file if requested
+                        combine_outputs = self._get_combine_outputs()
+                        if combine_outputs:
+                            combined_filename = self._get_combined_filename()
+                            if combined_filename:
+                                try:
+                                    self._combine_step_outputs(input_file, sorted_prompts, combined_filename)
+                                except Exception as e:
+                                    logging.error(f"Failed to create combined file: {e}")
+                                    # Don't fail the entire chain if combine fails
+                            else:
+                                logging.warning("combine=true but combined_file_name not specified, skipping combine")
 
-                    total_files_processed += 1
-                    logging.info(f"✓ File {file_index} processing completed successfully")
+                        # Convert final output to other formats if requested
+                        self._convert_output_from_markdown(final_output)
+
+                        # Update status tracking for successful file completion
+                        self.status_manager.update_file_complete(input_file.name)
+
+                        total_files_processed += 1
+                        logging.info(f"✓ File {file_index} processing completed successfully")
                 else:
                     logging.error(f"❌ File {file_index} processing failed")
 
@@ -2110,6 +2044,9 @@ class PromptChainRunner:
 
             # Update status tracking for successful completion
             self.status_manager.update_step_complete(input_file.name, step_display, step_execution_time, formatted_size)
+
+            # Convert step output if configured
+            self._convert_step_output(current_output, prompt_config, step_display)
 
             # Track this step's execution result
             file_result['prompts'].append({

@@ -1,6 +1,6 @@
 # OpenRouter Prompt Chain Runner
 
-A powerful automation tool that executes multiple prompts in sequence, creating sophisticated document processing pipelines. Now supports **multi-prompt processing** where each chain step can combine multiple specialized prompts. Available as both **CLI interface** and **Web GUI** with real-time progress tracking. Perfect for complex AI workflows that require multiple processing steps.
+A powerful automation tool that executes multiple prompts in sequence, creating sophisticated document processing pipelines. Now supports **multi-prompt processing**, **file conversion** (docx/pdf/epub), and **output combining**. Available as both **CLI interface** and **Web GUI** with real-time progress tracking. Perfect for complex AI workflows that require multiple processing steps.
 
 ## 🚀 Overview
 
@@ -77,6 +77,21 @@ The Prompt Chain Runner takes a single input document and processes it through 1
 - **Master System Prompts**: Automatically creates structured prompts combining all specified files
 - **Flexible Step Configuration**: Mix single-prompt and multi-prompt steps within the same chain
 - **Enhanced Processing**: Combine quality analysis + grammar checking + style improvement in one step
+
+#### File Conversion (NEW)
+- **Input Conversion**: Convert Word docs, PDFs, and other formats to markdown before processing
+- **Output Conversion**: Export final results to multiple formats (docx, pdf, epub, etc.)
+- **Per-Step Conversion**: Generate format-specific outputs at any step in the chain
+- **Auto-Detection**: Automatically detects input file format if not specified
+- **Supported Formats**: docx, odt, rtf, html, epub, txt, pdf, latex, rst, org, mediawiki
+- **Requirements**: Pandoc (auto-installed by setup scripts)
+
+#### Combine Outputs (NEW)
+- **Merge All Steps**: Combine outputs from all chain steps into a single reference document
+- **Structured Format**: Creates markdown file with headers and separators for each step
+- **Processing History**: Perfect for reviewing all transformation stages
+- **Separate from Final Output**: Combined file is independent of final processed output
+- **Timestamp Tracking**: Includes generation timestamp and step metadata
 
 #### Per-Prompt Configuration
 - **Different LLMs per Step**: Use optimal AI model for each processing step
@@ -587,6 +602,98 @@ max_tokens: 20000
 model: deepseek/deepseek-r1
 temperature: 0.5
 max_tokens: 15000
+```
+
+#### File Conversion Configuration (NEW)
+Process Word documents and export to multiple formats:
+```yaml
+# document_conversion.yaml
+input_file: manuscript.docx
+output_file: processed_manuscript.md
+
+# Convert input Word doc to markdown before processing
+input_convert:
+  enabled: true
+  from_format: docx  # Optional: auto-detects if not specified
+
+# Convert final output to multiple formats
+output_convert:
+  enabled: true
+  formats:
+    - docx  # Microsoft Word
+    - pdf   # PDF document
+    - epub  # eBook format
+
+# Combine all step outputs for reference
+combine: true
+combined_file_name: processing_history.md
+
+prompts:
+  prompt 1:
+    name: "grammar_check"
+    prompt_file: "prompts/grammar.json"
+    temperature: 0.3
+
+  prompt 2:
+    name: "style_improvement"
+    prompt_file: "prompts/style.json"
+    temperature: 0.7
+    # Convert this step's output to PDF
+    convert_output:
+      format: pdf
+      filename: style_report.pdf
+
+  prompt 3:
+    name: "final_polish"
+    prompt_file: "prompts/polish.json"
+    temperature: 0.5
+```
+
+**Result Files:**
+- `processed_manuscript.md` - Final markdown output
+- `processed_manuscript.docx` - Final Word document
+- `processed_manuscript.pdf` - Final PDF document
+- `processed_manuscript.epub` - Final eBook format
+- `processing_history.md` - Combined output from all steps
+- `style_report.pdf` - Step 2 PDF report
+
+#### Combine Outputs Configuration (NEW)
+Merge all step outputs into a single reference file:
+```yaml
+# combine_example.yaml
+input_file: document.md
+output_file: final_output.md
+
+# Enable combine feature
+combine: true
+combined_file_name: all_steps_combined.md
+
+prompts:
+  prompt 1:
+    name: "analysis"
+    prompt_file: "prompts/analyze.json"
+  prompt 2:
+    name: "enhancement"
+    prompt_file: "prompts/enhance.json"
+  prompt 3:
+    name: "finalization"
+    prompt_file: "prompts/finalize.json"
+```
+
+**Combined Output Format:**
+```markdown
+# Combined Output - document.md
+Generated: 2025-01-15 14:30:00
+---
+## Step 1: analysis
+[output from step 1]
+---
+## Step 2: enhancement
+[output from step 2]
+---
+## Step 3: finalization
+[output from step 3]
+---
 ```
 
 #### Usage Examples
