@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block title %}AI Chat - OpenRouter Interface{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="bi bi-chat-dots"></i> AI Chat Interface
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Chat Configuration Sidebar -->
+        <div class="col-md-3">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-gear"></i> Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Model Source Selection -->
+                    <div class="mb-3">
+                        <label class="form-label">Model Source</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="chatModelSource" id="chatSourceOpenRouter" value="openrouter" checked>
+                            <label class="btn btn-outline-primary btn-sm" for="chatSourceOpenRouter">
+                                <i class="bi bi-cloud"></i> OpenRouter
+                            </label>
+                            <input type="radio" class="btn-check" name="chatModelSource" id="chatSourceLocal" value="local">
+                            <label class="btn btn-outline-success btn-sm" for="chatSourceLocal">
+                                <i class="bi bi-pc-display"></i> Local
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- OpenRouter Model Selection -->
+                    <div id="chatOpenRouterSection">
+                        <div class="mb-3">
+                            <label for="chatModelSelect" class="form-label">Model</label>
+                            <select class="form-select form-select-sm" id="chatModelSelect">
+                                {% for model in models %}
+                                <option value="{{ model.id }}"
+                                        {% if model.get('default') or (default_model and model.id == default_model) %}selected{% endif %}>
+                                    {{ model.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Local Endpoint Configuration -->
+                    <div id="chatLocalSection" style="display: none;">
+                        <div class="mb-3">
+                            <label for="chatLocalEndpoint" class="form-label">Endpoint</label>
+                            <input type="text" class="form-control form-control-sm" id="chatLocalEndpoint"
+                                   value="http://localhost:11434">
+                        </div>
+                        <div class="mb-3">
+                            <label for="chatLocalModel" class="form-label">Model</label>
+                            <input type="text" class="form-control form-control-sm" id="chatLocalModel"
+                                   placeholder="dolphin-mistral">
+                            <small class="text-muted">e.g., dolphin-mistral, wizardlm-uncensored</small>
+                        </div>
+                    </div>
+
+                    <!-- Temperature -->
+                    <div class="mb-3">
+                        <label for="chatTemperature" class="form-label">
+                            Temperature: <span id="chatTemperatureValue">0.8</span>
+                        </label>
+                        <input type="range" class="form-range" id="chatTemperature"
+                               min="0" max="2" step="0.1" value="0.8">
+                    </div>
+
+                    <!-- System Prompt -->
+                    <div class="mb-3">
+                        <label for="chatSystemPrompt" class="form-label">System Prompt</label>
+                        <textarea class="form-control form-control-sm" id="chatSystemPrompt" rows="4"
+                                  placeholder="You are a helpful AI assistant..."></textarea>
+                        <small class="text-muted">Optional - defines AI behavior</small>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-danger btn-sm" id="clearChatBtn">
+                            <i class="bi bi-trash"></i> Clear Chat
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="exportChatBtn">
+                            <i class="bi bi-download"></i> Export Chat
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Info -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="bi bi-info-circle"></i> Quick Start</h6>
+                    <p class="small mb-2"><strong>For Local Models:</strong></p>
+                    <ol class="small mb-0">
+                        <li>Install Ollama: <code>curl -fsSL https://ollama.com/install.sh | sh</code></li>
+                        <li>Run model: <code>ollama run dolphin-mistral</code></li>
+                        <li>Select "Local" above</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="col-md-9">
+            <div class="card shadow-sm" style="height: calc(100vh - 180px);">
+                <div class="card-body d-flex flex-column p-0">
+                    <!-- Messages Container -->
+                    <div class="flex-grow-1 overflow-auto p-3" id="chatMessages">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-chat-left-text" style="font-size: 3rem;"></i>
+                            <p class="mt-3">Start a conversation...</p>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="border-top p-3">
+                        <div class="input-group">
+                            <textarea class="form-control" id="chatInput" rows="2"
+                                      placeholder="Type your message... (Shift+Enter for new line, Enter to send)"
+                                      style="resize: none;"></textarea>
+                            <button class="btn btn-primary" type="button" id="sendBtn">
+                                <i class="bi bi-send"></i> Send
+                            </button>
+                        </div>
+                        <div class="mt-2 small text-muted" id="chatStatus">Ready</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.chat-message {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+}
+
+.chat-message.user {
+    flex-direction: row-reverse;
+}
+
+.chat-message .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.chat-message.user .avatar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin-left: 10px;
+}
+
+.chat-message.assistant .avatar {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    margin-right: 10px;
+}
+
+.chat-message .message-content {
+    max-width: 70%;
+    padding: 0.75rem 1rem;
+    border-radius: 1rem;
+    word-wrap: break-word;
+}
+
+.chat-message.user .message-content {
+    background: #007bff;
+    color: white;
+    border-bottom-right-radius: 0.25rem;
+}
+
+.chat-message.assistant .message-content {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-bottom-left-radius: 0.25rem;
+}
+
+.chat-message .message-content p:last-child {
+    margin-bottom: 0;
+}
+
+.chat-message .timestamp {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #6c757d;
+    animation: typing 1.4s infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.7;
+    }
+    30% {
+        transform: translateY(-10px);
+        opacity: 1;
+    }
+}
+
+#chatMessages {
+    scroll-behavior: smooth;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+let conversationHistory = [];
+
+// Toggle between OpenRouter and Local sections
+document.querySelectorAll('input[name="chatModelSource"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const openrouterSection = document.getElementById('chatOpenRouterSection');
+        const localSection = document.getElementById('chatLocalSection');
+
+        if (this.value === 'openrouter') {
+            openrouterSection.style.display = 'block';
+            localSection.style.display = 'none';
+        } else {
+            openrouterSection.style.display = 'none';
+            localSection.style.display = 'block';
+        }
+    });
+});
+
+// Temperature slider
+document.getElementById('chatTemperature').addEventListener('input', function() {
+    document.getElementById('chatTemperatureValue').textContent = this.value;
+});
+
+// Send message on Enter (without Shift)
+document.getElementById('chatInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// Send button click
+document.getElementById('sendBtn').addEventListener('click', sendMessage);
+
+// Clear chat
+document.getElementById('clearChatBtn').addEventListener('click', function() {
+    if (confirm('Clear all messages?')) {
+        conversationHistory = [];
+        document.getElementById('chatMessages').innerHTML = `
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-chat-left-text" style="font-size: 3rem;"></i>
+                <p class="mt-3">Start a conversation...</p>
+            </div>
+        `;
+    }
+});
+
+// Export chat
+document.getElementById('exportChatBtn').addEventListener('click', function() {
+    if (conversationHistory.length === 0) {
+        alert('No messages to export');
+        return;
+    }
+
+    let markdown = '# Chat Export\n\n';
+    markdown += `**Date:** ${new Date().toLocaleString()}\n\n`;
+    markdown += '---\n\n';
+
+    conversationHistory.forEach(msg => {
+        markdown += `**${msg.role === 'user' ? 'You' : 'Assistant'}:**\n\n${msg.content}\n\n---\n\n`;
+    });
+
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat_export_${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
+function addMessage(role, content) {
+    const messagesDiv = document.getElementById('chatMessages');
+
+    // Remove empty state if present
+    const emptyState = messagesDiv.querySelector('.text-center');
+    if (emptyState) {
+        emptyState.remove();
+    }
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${role}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.innerHTML = role === 'user' ? '<i class="bi bi-person-fill"></i>' : '<i class="bi bi-robot"></i>';
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+
+    // Render markdown for assistant messages
+    if (role === 'assistant') {
+        contentDiv.innerHTML = marked.parse(content);
+    } else {
+        contentDiv.textContent = content;
+    }
+
+    const timestamp = document.createElement('div');
+    timestamp.className = 'timestamp';
+    timestamp.textContent = new Date().toLocaleTimeString();
+
+    messageDiv.appendChild(avatar);
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(contentDiv);
+    wrapper.appendChild(timestamp);
+    messageDiv.appendChild(wrapper);
+
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function showTypingIndicator() {
+    const messagesDiv = document.getElementById('chatMessages');
+    const indicator = document.createElement('div');
+    indicator.id = 'typingIndicator';
+    indicator.className = 'chat-message assistant';
+    indicator.innerHTML = `
+        <div class="avatar"><i class="bi bi-robot"></i></div>
+        <div class="typing-indicator">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    `;
+    messagesDiv.appendChild(indicator);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function hideTypingIndicator() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    // Add user message
+    addMessage('user', message);
+    conversationHistory.push({ role: 'user', content: message });
+    input.value = '';
+
+    // Get configuration
+    const modelSource = document.querySelector('input[name="chatModelSource"]:checked').value;
+    const temperature = parseFloat(document.getElementById('chatTemperature').value);
+    const systemPrompt = document.getElementById('chatSystemPrompt').value.trim();
+
+    let requestBody = {
+        messages: conversationHistory,
+        temperature: temperature,
+        modelSource: modelSource
+    };
+
+    if (systemPrompt) {
+        requestBody.systemPrompt = systemPrompt;
+    }
+
+    if (modelSource === 'openrouter') {
+        requestBody.model = document.getElementById('chatModelSelect').value;
+    } else {
+        requestBody.localEndpoint = document.getElementById('chatLocalEndpoint').value;
+        requestBody.localModel = document.getElementById('chatLocalModel').value;
+
+        if (!requestBody.localModel) {
+            alert('Please enter a local model name');
+            return;
+        }
+    }
+
+    // Show typing indicator
+    showTypingIndicator();
+    document.getElementById('chatStatus').textContent = 'Thinking...';
+
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+
+        hideTypingIndicator();
+
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        // Add assistant response
+        addMessage('assistant', data.response);
+        conversationHistory.push({ role: 'assistant', content: data.response });
+
+        document.getElementById('chatStatus').textContent = 'Ready';
+
+    } catch (error) {
+        hideTypingIndicator();
+        alert('Error: ' + error.message);
+        document.getElementById('chatStatus').textContent = 'Error: ' + error.message;
+    }
+}
+</script>
+{% endblock %}

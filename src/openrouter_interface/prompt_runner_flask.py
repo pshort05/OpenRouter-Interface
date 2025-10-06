@@ -44,17 +44,23 @@ class FlaskPromptRunner:
     def __init__(self):
         """Initialize the Flask application."""
         logging.info("INIT DEBUG: Starting Flask initialization")
-        
-        # Set template folder to the project root's templates folder
-        self.project_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
+
+        # Get package directory (where this file is located)
+        self.package_dir = os.path.dirname(os.path.abspath(__file__))
+        logging.info(f"INIT DEBUG: Package directory: {self.package_dir}")
+
+        # Templates are now in the package directory
+        template_folder = os.path.join(self.package_dir, 'templates')
+        template_folder_abs = os.path.abspath(template_folder)
+        logging.info(f"INIT DEBUG: Template folder: {template_folder_abs}")
+        logging.info(f"INIT DEBUG: Template folder exists: {os.path.exists(template_folder_abs)}")
+
+        # Project root is for config files (two levels up from package)
+        self.project_root = os.path.join(self.package_dir, '..', '..')
         self.project_root_abs = os.path.abspath(self.project_root)
         logging.info(f"INIT DEBUG: Project root calculated as: {self.project_root}")
         logging.info(f"INIT DEBUG: Project root absolute: {self.project_root_abs}")
-        
-        template_folder = os.path.join(self.project_root, 'templates')
-        template_folder_abs = os.path.abspath(template_folder)
-        logging.info(f"INIT DEBUG: Template folder: {template_folder_abs}")
-        
+
         self.app = Flask(__name__, template_folder=template_folder)
         self.app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-key-change-in-production')
         
@@ -129,7 +135,55 @@ class FlaskPromptRunner:
         # Chain runner management
         self.active_chains = {}  # Dict[chain_id, chain_info]
         self.chain_lock = threading.Lock()
-    
+
+    def _clean_chapter_output(self, output: str) -> str:
+        """
+        Clean unwanted commentary and formatting from LLM output.
+
+        This is especially needed for Gemini models which often add:
+        - Markdown code blocks (```markdown)
+        - Commentary sections after the chapter
+        - Analysis and checklists
+
+        Args:
+            output: Raw LLM output
+
+        Returns:
+            Cleaned chapter text
+        """
+        import re
+
+        cleaned = output
+
+        # Remove markdown code block wrappers
+        if cleaned.startswith('```markdown'):
+            cleaned = re.sub(r'^```markdown\s*\n', '', cleaned)
+        if cleaned.startswith('```'):
+            cleaned = re.sub(r'^```\s*\n', '', cleaned)
+        if cleaned.endswith('```'):
+            cleaned = re.sub(r'\n```\s*$', '', cleaned)
+
+        # Remove common commentary headers and everything after them
+        commentary_patterns = [
+            r'\n#+\s*Final Output.*$',
+            r'\n#+\s*Analysis.*$',
+            r'\n#+\s*Review.*$',
+            r'\n#+\s*Validation.*$',
+            r'\n#+\s*Success Criteria.*$',
+            r'\n#+\s*Checklist.*$',
+            r'\n#+\s*Notes.*$',
+            r'\n#+\s*Commentary.*$',
+            r'\n#+\s*\d+\.\s*Consistent Details.*$',  # "## 1. Consistent Details"
+        ]
+
+        for pattern in commentary_patterns:
+            cleaned = re.sub(pattern, '', cleaned, flags=re.DOTALL | re.IGNORECASE)
+
+        # Strip extra whitespace
+        cleaned = cleaned.strip()
+
+        return cleaned
+
     def _load_flask_config(self) -> Dict[str, Any]:
         """Load Flask configuration from YAML file."""
         config_path = Path(self.config_file)
@@ -1342,6 +1396,429 @@ class FlaskPromptRunner:
                 flash(f'Error refreshing models: {str(e)}', 'error')
                 return redirect(url_for('show_config'))
 
+        @self.app.route('/scene-generator')
+        def scene_generator():
+            """Render the scene/chapter generator page."""
+            # Load model configuration from YAML file
+            models_config_file = os.path.join(self.package_dir, 'scene_models.yaml')
+            models = []
+            default_model = None
+
+            try:
+                if os.path.exists(models_config_file):
+                    with open(models_config_file, 'r') as f:
+                        config = yaml.safe_load(f)
+                        models = config.get('models', [])
+                        # Find default model
+                        for model in models:
+                            if model.get('default'):
+                                default_model = model.get('id')
+                                break
+                        logging.info(f"Loaded {len(models)} models from scene_models.yaml")
+                else:
+                    logging.warning(f"Scene models config not found at {models_config_file}, using defaults")
+                    # Fallback to hardcoded models
+                    models = [
+                        {'name': 'Claude 4.5 Sonnet', 'id': 'anthropic/claude-4-sonnet-20250522', 'description': 'Latest Claude 4.5'},
+                        {'name': 'Claude 3.7 Sonnet', 'id': 'anthropic/claude-3.7-sonnet', 'description': 'Fast Claude 3.7'},
+                        {'name': 'GPT-4o', 'id': 'openai/gpt-4o', 'description': 'Latest OpenAI model'},
+                    ]
+                    default_model = 'anthropic/claude-4-sonnet-20250522'
+            except Exception as e:
+                logging.error(f"Error loading scene models config: {e}")
+                models = [
+                    {'name': 'Claude 4.5 Sonnet', 'id': 'anthropic/claude-4-sonnet-20250522', 'description': 'Latest Claude 4.5'}
+                ]
+                default_model = 'anthropic/claude-4-sonnet-20250522'
+
+            return render_template('scene_generator.html', models=models, default_model=default_model)
+
+        @self.app.route('/chat')
+        def chat():
+            """Render the chat interface page."""
+            # Load model configuration from YAML file (reuse scene models)
+            models_config_file = os.path.join(self.package_dir, 'scene_models.yaml')
+            models = []
+            default_model = None
+
+            try:
+                if os.path.exists(models_config_file):
+                    with open(models_config_file, 'r') as f:
+                        config = yaml.safe_load(f)
+                        models = config.get('models', [])
+                        # Find default model
+                        for model in models:
+                            if model.get('default'):
+                                default_model = model.get('id')
+                                break
+                        logging.info(f"Loaded {len(models)} models for chat interface")
+                else:
+                    logging.warning(f"Models config not found at {models_config_file}, using defaults")
+                    models = [
+                        {'name': 'Claude 4.5 Sonnet', 'id': 'anthropic/claude-4-sonnet-20250522', 'description': 'Latest Claude 4.5'},
+                        {'name': 'GPT-4o', 'id': 'openai/gpt-4o', 'description': 'Latest OpenAI model'},
+                    ]
+                    default_model = 'anthropic/claude-4-sonnet-20250522'
+            except Exception as e:
+                logging.error(f"Error loading models config for chat: {e}")
+                models = [
+                    {'name': 'Claude 4.5 Sonnet', 'id': 'anthropic/claude-4-sonnet-20250522', 'description': 'Latest Claude 4.5'}
+                ]
+                default_model = 'anthropic/claude-4-sonnet-20250522'
+
+            return render_template('chat.html', models=models, default_model=default_model)
+
+        @self.app.route('/api/chat', methods=['POST'])
+        def api_chat():
+            """API endpoint for chat messages."""
+            try:
+                data = request.get_json()
+
+                messages = data.get('messages', [])
+                model_source = data.get('modelSource', 'openrouter')
+                temperature = data.get('temperature', 0.8)
+                system_prompt = data.get('systemPrompt', '')
+
+                if not messages:
+                    return jsonify({'error': 'No messages provided'}), 400
+
+                # Build prompt from conversation history
+                if system_prompt:
+                    prompt_parts = [f"System: {system_prompt}\n"]
+                else:
+                    prompt_parts = []
+
+                for msg in messages:
+                    role = msg.get('role', 'user')
+                    content = msg.get('content', '')
+                    if role == 'user':
+                        prompt_parts.append(f"User: {content}")
+                    elif role == 'assistant':
+                        prompt_parts.append(f"Assistant: {content}")
+
+                prompt_parts.append("Assistant:")
+                full_prompt = "\n\n".join(prompt_parts)
+
+                logging.info("="*60)
+                logging.info("CHAT REQUEST")
+                logging.info(f"Model Source: {model_source}")
+                logging.info(f"Messages: {len(messages)}")
+                logging.info(f"Temperature: {temperature}")
+                logging.info("="*60)
+
+                # Get model/endpoint info
+                if model_source == 'local':
+                    local_endpoint = data.get('localEndpoint')
+                    local_model = data.get('localModel')
+
+                    if not local_endpoint or not local_model:
+                        return jsonify({'error': 'Local endpoint and model required'}), 400
+
+                    logging.info(f"Local Endpoint: {local_endpoint}")
+                    logging.info(f"Local Model: {local_model}")
+
+                    # Create minimal config for local
+                    from .config_manager import ConfigManager
+                    temp_config = ConfigManager()
+                    temp_config.config = {'temperature': temperature}
+
+                    api_client = PromptAPIClient(temp_config)
+                    response = api_client.call_local_api(full_prompt, local_endpoint, local_model, temperature)
+
+                else:
+                    model = data.get('model')
+                    if not model:
+                        model = self.flask_config.get('model')
+
+                    logging.info(f"OpenRouter Model: {model}")
+
+                    # Create config for OpenRouter
+                    from .config_manager import ConfigManager
+                    temp_config = ConfigManager()
+                    temp_config.config = {
+                        'model': model,
+                        'temperature': temperature,
+                        'max_tokens': self.flask_config.get('max_tokens', 4000),
+                        'api_base_url': self.flask_config.get('api_base_url')
+                    }
+
+                    # Verify API key
+                    api_key = temp_config.get_api_key()
+                    if not api_key:
+                        return jsonify({'error': 'API key not configured'}), 500
+
+                    api_client = PromptAPIClient(temp_config)
+                    response = api_client.call_api(full_prompt)
+
+                logging.info(f"Chat response length: {len(response)} characters")
+
+                return jsonify({
+                    'success': True,
+                    'response': response
+                })
+
+            except Exception as e:
+                logging.error(f"Error in chat: {e}")
+                import traceback
+                logging.error(traceback.format_exc())
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/scene-generate', methods=['POST'])
+        def api_scene_generate():
+            """API endpoint for generating scenes/chapters."""
+            try:
+                data = request.get_json()
+
+                # Log the raw request data for debugging
+                logging.info("="*60)
+                logging.info("SCENE GENERATION REQUEST - RAW DATA")
+                logging.info("="*60)
+
+                prompt = data.get('prompt', '')
+                model_source = data.get('modelSource', 'openrouter')
+                temperature = data.get('temperature')
+
+                # Get model info based on source
+                if model_source == 'local':
+                    local_endpoint = data.get('localEndpoint')
+                    local_model = data.get('localModel')
+
+                    logging.info(f"Model Source: Local Endpoint")
+                    logging.info(f"Local Endpoint: {local_endpoint}")
+                    logging.info(f"Local Model: {local_model}")
+
+                    if not local_endpoint or not local_model:
+                        return jsonify({'error': 'Local endpoint and model name required'}), 400
+                else:
+                    model = data.get('model')
+
+                    # Use default if not provided
+                    if not model:
+                        model = self.flask_config.get('model')
+                        logging.warning(f"Model not provided in request, using default: {model}")
+
+                    logging.info(f"Model Source: OpenRouter")
+                    logging.info(f"Received model in request: {model}")
+
+                if temperature is None:
+                    temperature = self.flask_config.get('temperature', 0.8)
+                    logging.warning(f"Temperature not provided in request, using default: {temperature}")
+                else:
+                    temperature = float(temperature)
+
+                if not prompt:
+                    return jsonify({'error': 'No prompt provided'}), 400
+
+                # Enhanced INFO logging for all parameters
+                logging.info("="*60)
+                logging.info("SCENE GENERATION REQUEST - FINAL PARAMETERS")
+                logging.info("="*60)
+                logging.info(f"Model Source: {model_source}")
+                if model_source == 'local':
+                    logging.info(f"Local Endpoint: {local_endpoint}")
+                    logging.info(f"Local Model: {local_model}")
+                else:
+                    logging.info(f"Model: {model}")
+                logging.info(f"Temperature: {temperature} (type: {type(temperature).__name__})")
+                logging.info(f"Prompt length: {len(prompt)} characters")
+                logging.info(f"Prompt preview (first 200 chars): {prompt[:200]}...")
+                logging.info(f"Max tokens: {self.flask_config.get('max_tokens', 10000)}")
+                logging.info("="*60)
+
+                # Create temporary prompt file
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                    prompt_data = {
+                        'title': 'Scene Generation',
+                        'description': 'Interactive scene/chapter generation',
+                        'instructions': prompt
+                    }
+                    json.dump(prompt_data, f)
+                    prompt_file = f.name
+
+                try:
+                    # Load the prompt data
+                    prompt_loaded = self.prompt_loader.load_prompt(Path(prompt_file))
+
+                    # Create full prompt (with empty input since we're generating from scratch)
+                    full_prompt = self.processor.create_full_prompt(prompt_loaded, '')
+
+                    # Always create API client with exact parameters from request
+                    from .config_manager import ConfigManager
+                    temp_config = ConfigManager()
+
+                    if model_source == 'local':
+                        # For local endpoints, minimal config needed
+                        temp_config.config = {
+                            'temperature': temperature,
+                            'max_tokens': self.flask_config.get('max_tokens', 10000)
+                        }
+
+                        logging.info(f"Using local endpoint: {local_endpoint}")
+                        logging.info(f"Using local model: {local_model}")
+                    else:
+                        # For OpenRouter
+                        temp_config.config = {
+                            'model': model,
+                            'temperature': temperature,
+                            'max_tokens': self.flask_config.get('max_tokens', 10000),
+                            'api_base_url': self.flask_config.get('api_base_url')
+                        }
+
+                        # Verify API key is available for OpenRouter
+                        api_key = temp_config.get_api_key()
+                        if not api_key:
+                            logging.error("API key not found!")
+                            return jsonify({'error': 'API key not configured. Please set OPENROUTER_API_KEY environment variable.'}), 500
+
+                        logging.info(f"API key found: {api_key[:10]}...{api_key[-4:] if len(api_key) > 14 else ''}")
+                        logging.info(f"Using API client with - Model: {model}, Temperature: {temperature}")
+
+                    api_client = PromptAPIClient(temp_config)
+
+                    logging.info(f"Full prompt length: {len(full_prompt)} characters")
+                    logging.info(f"Full prompt preview (first 300 chars): {full_prompt[:300]}...")
+                    logging.info(f"Full prompt preview (last 200 chars): ...{full_prompt[-200:]}")
+
+                    # Call API - returns the content string directly
+                    try:
+                        if model_source == 'local':
+                            output = api_client.call_local_api(full_prompt, local_endpoint, local_model, temperature)
+                        else:
+                            output = api_client.call_api(full_prompt)
+
+                        logging.info(f"Scene generation completed - Raw output length: {len(output)} characters")
+
+                        # Post-process to remove unwanted commentary (especially from Gemini models)
+                        output_cleaned = self._clean_chapter_output(output)
+
+                        if len(output_cleaned) != len(output):
+                            logging.info(f"Cleaned output - Removed {len(output) - len(output_cleaned)} characters of commentary")
+                            logging.info(f"Final output length: {len(output_cleaned)} characters")
+
+                        logging.info("="*60)
+                    except Exception as api_error:
+                        logging.error(f"API call failed: {str(api_error)}")
+                        logging.error(f"Model used: {model}")
+                        logging.error(f"Temperature used: {temperature}")
+                        logging.error(f"Prompt length: {len(full_prompt)}")
+                        raise
+
+                    return jsonify({
+                        'success': True,
+                        'output': output_cleaned
+                    })
+
+                finally:
+                    # Clean up temp files
+                    if os.path.exists(prompt_file):
+                        os.unlink(prompt_file)
+
+            except Exception as e:
+                logging.error(f"Error in scene generation: {e}")
+                import traceback
+                logging.error(traceback.format_exc())
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/scene-settings/save', methods=['POST'])
+        def api_save_scene_settings():
+            """Save scene generator settings to file in working directory."""
+            try:
+                data = request.get_json()
+                name = data.get('name', '').strip()
+                settings = data.get('settings', {})
+
+                if not name:
+                    return jsonify({'error': 'Settings name is required'}), 400
+
+                # Use working directory from settings, or fall back to current directory
+                working_dir = settings.get('workingDirectory', '').strip()
+                if not working_dir or not os.path.isdir(working_dir):
+                    working_dir = os.getcwd()
+                    logging.warning(f"Working directory not set or invalid, using current directory: {working_dir}")
+
+                # Create settings directory in working directory
+                settings_dir = os.path.join(working_dir, '.scene_settings')
+                os.makedirs(settings_dir, exist_ok=True)
+
+                # Sanitize filename
+                safe_name = secure_filename(name)
+                if not safe_name:
+                    safe_name = 'settings'
+
+                settings_file = os.path.join(settings_dir, f"{safe_name}.yaml")
+
+                # Save settings to YAML
+                with open(settings_file, 'w') as f:
+                    yaml.dump(settings, f, default_flow_style=False)
+
+                logging.info(f"Scene settings saved: {settings_file}")
+                logging.info(f"Settings include - Model: {settings.get('model')}, Temperature: {settings.get('temperature')}, Word Count: {settings.get('wordCount')}")
+
+                return jsonify({
+                    'success': True,
+                    'message': f'Settings saved to {settings_file}'
+                })
+
+            except Exception as e:
+                logging.error(f"Error saving scene settings: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/scene-settings/load', methods=['GET'])
+        def api_load_scene_settings():
+            """Load scene generator settings from file in working directory."""
+            try:
+                name = request.args.get('name', '').strip()
+
+                if not name:
+                    return jsonify({'error': 'Settings name is required'}), 400
+
+                # Get working directory from query param or use current directory
+                working_dir = request.args.get('workingDirectory', '').strip()
+                if not working_dir or not os.path.isdir(working_dir):
+                    working_dir = os.getcwd()
+
+                # Load from .scene_settings in working directory
+                settings_dir = os.path.join(working_dir, '.scene_settings')
+                safe_name = secure_filename(name)
+                if not safe_name:
+                    return jsonify({'error': 'Invalid settings name'}), 400
+
+                settings_file = os.path.join(settings_dir, f"{safe_name}.yaml")
+
+                if not os.path.exists(settings_file):
+                    return jsonify({'error': f'Settings file not found: {name}'}), 404
+
+                # Load settings from YAML
+                with open(settings_file, 'r') as f:
+                    settings = yaml.safe_load(f)
+
+                logging.info(f"Scene settings loaded: {settings_file}")
+                logging.info(f"Loaded settings - Model: {settings.get('model')}, Temperature: {settings.get('temperature')}, Word Count: {settings.get('wordCount')}")
+
+                return jsonify({
+                    'success': True,
+                    'settings': settings
+                })
+
+            except Exception as e:
+                logging.error(f"Error loading scene settings: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/browse-directory', methods=['GET'])
+        def api_browse_directory():
+            """Browse for directory - returns current working directory as fallback."""
+            try:
+                # Return the current working directory
+                cwd = os.getcwd()
+                logging.info(f"Directory browse request - returning: {cwd}")
+                return jsonify({
+                    'success': True,
+                    'directory': cwd
+                })
+            except Exception as e:
+                logging.error(f"Error browsing directory: {e}")
+                return jsonify({'error': str(e)}), 500
+
         @self.app.route('/shutdown', methods=['POST'])
         def shutdown_server():
             """Shutdown the Flask development server."""
@@ -1814,17 +2291,10 @@ Note: Ensure the templates/ directory exists with the required HTML template fil
     )
     
     args = parser.parse_args()
-    
+
     try:
-        # Check if templates directory exists
-        templates_dir = Path('templates')
-        if not templates_dir.exists():
-            print("Error: templates/ directory not found.")
-            print("Please create the templates directory with the required HTML files.")
-            print("Run create_templates.py to generate the template files.")
-            return 1
-        
         # Initialize and run the Flask app
+        # Templates are now bundled in the package, no need to check current directory
         flask_runner = FlaskPromptRunner()
         flask_runner.run(host=args.host, port=args.port, debug=args.debug, foreground=args.foreground)
         

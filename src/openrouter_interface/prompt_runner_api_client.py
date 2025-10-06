@@ -172,13 +172,112 @@ class PromptAPIClient:
         param_count = len(data) - 2  # Subtract model and messages
         logging.info(f"Sending {param_count} optional parameters to API")
 
+    def call_local_api(self, prompt: str, endpoint: str, model: str, temperature: float = 0.8) -> str:
+        """
+        Make API call to local LLM endpoint (Ollama, LM Studio, etc.).
+
+        Args:
+            prompt: The prompt to send
+            endpoint: Local endpoint URL (e.g., http://localhost:11434)
+            model: Local model name (e.g., dolphin-mistral)
+            temperature: Temperature setting
+
+        Returns:
+            Raw API response
+        """
+        # Detect endpoint type and construct proper URL
+        if 'ollama' in endpoint or ':11434' in endpoint:
+            # Ollama format
+            url = f"{endpoint}/api/generate" if endpoint.endswith('/') else f"{endpoint}/api/generate"
+            is_ollama = True
+        else:
+            # OpenAI-compatible format (LM Studio, Text Gen WebUI, etc.)
+            url = f"{endpoint}/v1/chat/completions" if endpoint.endswith('/') else f"{endpoint}/v1/chat/completions"
+            is_ollama = False
+
+        logging.info(f"Making API call to local endpoint: {endpoint}")
+        logging.info(f"Local model: {model}")
+        logging.info(f"Temperature: {temperature}")
+        logging.debug(f"Endpoint URL: {url}")
+        logging.debug(f"Endpoint type: {'Ollama' if is_ollama else 'OpenAI-compatible'}")
+
+        start_time = time.time()
+
+        try:
+            if is_ollama:
+                # Ollama API format
+                data = {
+                    'model': model,
+                    'prompt': prompt,
+                    'stream': False,
+                    'options': {
+                        'temperature': temperature
+                    }
+                }
+
+                logging.debug("Sending request to Ollama API...")
+                response = requests.post(url, json=data, timeout=120)
+                response.raise_for_status()
+
+                result = response.json()
+                raw_content = result.get('response', '')
+
+            else:
+                # OpenAI-compatible API format
+                data = {
+                    'model': model,
+                    'messages': [
+                        {
+                            'role': 'user',
+                            'content': prompt
+                        }
+                    ],
+                    'temperature': temperature
+                }
+
+                headers = {'Content-Type': 'application/json'}
+
+                logging.debug("Sending request to OpenAI-compatible local API...")
+                response = requests.post(url, headers=headers, json=data, timeout=120)
+                response.raise_for_status()
+
+                result = response.json()
+                raw_content = result['choices'][0]['message']['content']
+
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+
+            logging.info(f"Local API call completed in {elapsed_time:.2f} seconds")
+            logging.info(f"Response length: {len(raw_content)} characters")
+
+            return raw_content
+
+        except requests.exceptions.Timeout as e:
+            logging.error(f"Local API request timed out: {e}")
+            raise Exception(f"Local endpoint timed out. Make sure {model} is running at {endpoint}")
+        except requests.exceptions.ConnectionError as e:
+            logging.error(f"Local API connection error: {e}")
+            raise Exception(f"Cannot connect to {endpoint}. Make sure the server is running.")
+        except requests.exceptions.HTTPError as e:
+            logging.error(f"Local API HTTP error {response.status_code}: {e}")
+            try:
+                error_detail = response.json()
+                logging.error(f"API error response: {error_detail}")
+            except:
+                logging.error(f"API error response (raw): {response.text[:500]}")
+            raise Exception(f"Local API error: {e}")
+        except (KeyError, IndexError) as e:
+            logging.error(f"Unexpected local API response format: {e}")
+            logging.debug(f"Response content: {result}")
+            raise Exception(f"Invalid response format from local endpoint")
+
     def call_api(self, prompt: str) -> str:
         """
         Make API call to OpenRouter without removing AI commentary.
-        
+
         Args:
             prompt: The prompt to send
-            
+
         Returns:
             Raw API response (preserves all commentary)
         """
@@ -242,6 +341,12 @@ class PromptAPIClient:
             raise
         except requests.exceptions.HTTPError as e:
             logging.error("API HTTP error " + str(response.status_code) + ": " + str(e))
+            try:
+                error_detail = response.json()
+                logging.error("API error response: " + str(error_detail))
+            except:
+                logging.error("API error response (raw): " + response.text[:500])
+            logging.error("Request payload sent to API: " + str(data))
             raise
         except requests.exceptions.RequestException as e:
             logging.error("API request failed: " + str(e))

@@ -1,0 +1,129 @@
+# Scene Generator Model Configuration
+# This file defines the available models for the Scene/Chapter Generator
+# You can customize this list as new models are released
+
+models:
+  # Anthropic Claude Models
+  - name: "Claude Sonnet 4.5"
+    id: "anthropic/claude-sonnet-4.5"
+    description: "Latest Claude 4.5 - Most advanced for creative writing"
+    default: true
+
+  - name: "Claude Sonnet 4"
+    id: "anthropic/claude-sonnet-4"
+    description: "Claude 4 Sonnet - Excellent for creative content"
+
+  - name: "Claude 3.7 Sonnet"
+    id: "anthropic/claude-3.7-sonnet"
+    description: "Claude 3.7 Sonnet - Fast and balanced"
+
+  - name: "Claude Opus 4.1"
+    id: "anthropic/claude-opus-4.1"
+    description: "Most capable Claude - Superior reasoning"
+
+  # OpenAI GPT Models
+  - name: "GPT-5"
+    id: "openai/gpt-5"
+    description: "Latest OpenAI flagship model"
+
+  - name: "GPT-4.1"
+    id: "openai/gpt-4.1"
+    description: "GPT-4.1 - Enhanced capabilities"
+
+  - name: "GPT-4o"
+    id: "openai/gpt-4o"
+    description: "GPT-4o - Multimodal model"
+
+  # Google Gemini Models
+  - name: "Gemini 2.5 Pro"
+    id: "google/gemini-2.5-pro"
+    description: "Google's most capable Gemini model"
+
+  - name: "Gemini 2.5 Flash"
+    id: "google/gemini-2.5-flash"
+    description: "Fast Gemini 2.5 variant"
+
+  - name: "Gemini 2.0 Flash 001"
+    id: "google/gemini-2.0-flash-001"
+    description: "Gemini 2.0 Flash stable release"
+
+  # Meta Llama Models
+  - name: "Llama 4 Maverick"
+    id: "meta-llama/llama-4-maverick"
+    description: "Meta's Llama 4 Maverick - Creative tasks"
+
+  - name: "Llama 4 Scout"
+    id: "meta-llama/llama-4-scout"
+    description: "Meta's Llama 4 Scout - Fast inference"
+
+  # xAI Grok Models
+  - name: "Grok 4"
+    id: "x-ai/grok-4"
+    description: "xAI Grok 4 - Latest version"
+
+  - name: "Grok 3"
+    id: "x-ai/grok-3"
+    description: "xAI Grok 3 - Previous generation"
+
+  # Mistral Models
+  - name: "Mistral Nemo"
+    id: "mistralai/mistral-nemo"
+    description: "Mistral Nemo - Efficient model"
+
+  - name: "Mistral Small 3.2 24B"
+    id: "mistralai/mistral-small-3.2-24b-instruct"
+    description: "Mistral Small 3.2 - Fast and capable"
+
+  # Specialized Models
+  - name: "DeepSeek Chat v3"
+    id: "deepseek/deepseek-chat-v3-0324"
+    description: "DeepSeek Chat v3 - Advanced reasoning"
+
+  - name: "Qwen3 235B"
+    id: "qwen/qwen3-235b-a22b-2507"
+    description: "Qwen3 235B - Large context"
+
+  - name: "Kimi K2"
+    id: "moonshotai/kimi-k2-0905"
+    description: "Moonshot AI Kimi K2"
+
+  - name: "GLM 4.6"
+    id: "z-ai/glm-4.6"
+    description: "Z-AI GLM 4.6"
+
+  - name: "MiniMax-01"
+    id: "minimax/minimax-01"
+    description: "MiniMax-01 model"
+
+  # Free/Community Models
+  - name: "Dolphin Mistral 24B (Free)"
+    id: "cognitivecomputations/dolphin-mistral-24b-venice-edition:free"
+    description: "Dolphin Mistral 24B Venice Edition - Free"
+
+  - name: "Cydonia 24B v4.1"
+    id: "thedrummer/cydonia-24b-v4.1"
+    description: "TheDrummer's Cydonia 24B v4.1"
+
+# Local Model Examples (for reference when using local endpoints)
+# These are NOT available through OpenRouter - use "Local Endpoint" option instead
+local_models:
+  # Uncensored models for local use (Ollama, LM Studio, etc.)
+  - name: "Dolphin Mistral 7B"
+    model_id: "dolphin-mistral"
+    description: "Uncensored Mistral 7B by Eric Hartford - Great for creative writing"
+
+  - name: "WizardLM Uncensored"
+    model_id: "wizardlm-uncensored"
+    description: "Uncensored WizardLM - No content restrictions"
+
+  - name: "Mythomax 13B"
+    model_id: "mythomax"
+    description: "Mythomax 13B - Excellent for fiction and roleplay"
+
+  - name: "Nous Hermes 2"
+    model_id: "nous-hermes2"
+    description: "Nous Hermes 2 - Instruction following, uncensored"
+
+  - name: "Dolphin Mixtral 8x7B"
+    model_id: "dolphin-mixtral"
+    description: "Uncensored Mixtral 8x7B - High quality, no restrictions"

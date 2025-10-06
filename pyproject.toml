@@ -89,6 +89,7 @@ openrouter_interface = [
     "templates/*.html",
     "static/*.css",
     "static/*.js",
+    "scene_models.yaml",
 ]
 
 [tool.black]

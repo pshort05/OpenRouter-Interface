@@ -1,0 +1,1068 @@
+{% extends "base.html" %}
+
+{% block title %}Scene/Chapter Generation - OpenRouter Interface{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="bi bi-book"></i> Scene/Chapter Generation
+            </h1>
+            <p class="lead">Interactive chapter generation for creative writing projects</p>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <!-- Left Panel: Configuration -->
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-gear"></i> Chapter Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form id="sceneGeneratorForm">
+                        <!-- Settings Management -->
+                        <div class="mb-3 border-bottom pb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0"><strong>Settings</strong></label>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-success" id="saveSettingsBtn">
+                                        <i class="bi bi-save"></i> Save Settings
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-info" id="loadSettingsBtn">
+                                        <i class="bi bi-folder-open"></i> Load Settings
+                                    </button>
+                                </div>
+                            </div>
+                            <input type="text" class="form-control form-control-sm" id="settingsName"
+                                   placeholder="Settings name (e.g., 'my_novel_setup')">
+                        </div>
+
+                        <!-- Working Directory -->
+                        <div class="mb-3">
+                            <label for="workingDirectory" class="form-label">
+                                Working Directory <small class="text-muted">(for file uploads/downloads)</small>
+                            </label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="workingDirectory" name="workingDirectory"
+                                       placeholder="/path/to/your/project">
+                                <button type="button" class="btn btn-outline-secondary" id="browseDirectoryBtn">
+                                    <i class="bi bi-folder"></i> Browse
+                                </button>
+                            </div>
+                            <small class="text-muted">Files will be uploaded from and saved to this directory</small>
+                        </div>
+
+                        <!-- Chapter Name -->
+                        <div class="mb-3">
+                            <label for="chapterName" class="form-label">Chapter Name</label>
+                            <input type="text" class="form-control" id="chapterName" name="chapterName"
+                                   placeholder="e.g., CHAPTER 25">
+                        </div>
+
+                        <!-- Model Source Selection -->
+                        <div class="mb-3">
+                            <label class="form-label">Model Source</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="modelSource" id="sourceOpenRouter" value="openrouter" checked>
+                                <label class="btn btn-outline-primary" for="sourceOpenRouter">
+                                    <i class="bi bi-cloud"></i> OpenRouter
+                                </label>
+                                <input type="radio" class="btn-check" name="modelSource" id="sourceLocal" value="local">
+                                <label class="btn btn-outline-success" for="sourceLocal">
+                                    <i class="bi bi-pc-display"></i> Local Endpoint
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- OpenRouter Model Selection -->
+                        <div class="mb-3" id="openrouterModelSection">
+                            <label for="modelSelect" class="form-label">Model</label>
+                            <select class="form-select" id="modelSelect" name="model">
+                                {% for model in models %}
+                                <option value="{{ model.id }}"
+                                        {% if model.get('default') or (default_model and model.id == default_model) %}selected{% endif %}
+                                        title="{{ model.get('description', '') }}">
+                                    {{ model.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted" id="modelDescription"></small>
+                        </div>
+
+                        <!-- Local Endpoint Configuration -->
+                        <div id="localEndpointSection" style="display: none;">
+                            <div class="mb-3">
+                                <label for="localEndpoint" class="form-label">
+                                    Local Endpoint URL
+                                    <i class="bi bi-info-circle" title="e.g., http://localhost:11434 for Ollama"></i>
+                                </label>
+                                <input type="text" class="form-control" id="localEndpoint"
+                                       placeholder="http://localhost:11434"
+                                       value="http://localhost:11434">
+                                <small class="text-muted">
+                                    Compatible with Ollama, LM Studio, Text Generation WebUI, etc.
+                                </small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="localModel" class="form-label">
+                                    Local Model Name
+                                    <i class="bi bi-info-circle" title="e.g., dolphin-mistral, wizardlm-uncensored"></i>
+                                </label>
+                                <input type="text" class="form-control" id="localModel"
+                                       placeholder="dolphin-mistral">
+                                <small class="text-muted">
+                                    Common uncensored: dolphin-mistral, wizardlm-uncensored, mythomax
+                                </small>
+                            </div>
+
+                            <div class="alert alert-info" role="alert">
+                                <strong><i class="bi bi-lightbulb"></i> Quick Setup:</strong>
+                                <br>Install Ollama: <code>curl -fsSL https://ollama.com/install.sh | sh</code>
+                                <br>Run model: <code>ollama run dolphin-mistral</code>
+                                <br>Default endpoint: <code>http://localhost:11434</code>
+                            </div>
+                        </div>
+
+                        <!-- Temperature -->
+                        <div class="mb-3">
+                            <label for="temperature" class="form-label">
+                                Temperature: <span id="temperatureValue">0.8</span>
+                            </label>
+                            <input type="range" class="form-range" id="temperature" name="temperature"
+                                   min="0" max="2" step="0.1" value="0.8">
+                        </div>
+
+                        <!-- Word Count -->
+                        <div class="mb-3">
+                            <label for="wordCount" class="form-label">Target Word Count</label>
+                            <input type="number" class="form-control" id="wordCount" name="wordCount"
+                                   value="2000" min="100" max="20000" step="100">
+                            <small class="text-muted">Default: 2000 words</small>
+                        </div>
+
+                        <!-- System Prompt Toggle -->
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="useSystemPrompt" checked>
+                                <label class="form-check-label" for="useSystemPrompt">
+                                    <strong>Use System Prompt Template</strong>
+                                </label>
+                            </div>
+                            <div id="systemPromptContainer" class="mt-2">
+                                <label for="systemPrompt" class="form-label">System Prompt (editable)</label>
+                                <textarea class="form-control" id="systemPrompt" name="systemPrompt" rows="8"
+                                          style="font-family: monospace; font-size: 0.85em;"></textarea>
+                                <small class="text-muted">Filenames will be replaced with actual content when generating</small>
+                            </div>
+                        </div>
+
+                        <!-- Book Outline -->
+                        <div class="mb-3">
+                            <label for="bookOutline" class="form-label">
+                                Book Outline <small class="text-muted">(optional)</small>
+                            </label>
+                            <textarea class="form-control" id="bookOutline" name="bookOutline" rows="3"
+                                      placeholder="Scene beats, chapter info, POV, location, time..."></textarea>
+                            <small class="text-muted">Or upload file:</small>
+                            <input type="file" class="form-control form-control-sm mt-1" id="bookOutlineFile"
+                                   accept=".txt,.md,.doc,.docx">
+                        </div>
+
+                        <!-- Character Profiles -->
+                        <div class="mb-3">
+                            <label for="characterProfiles" class="form-label">
+                                Character Profiles <small class="text-muted">(optional)</small>
+                            </label>
+                            <textarea class="form-control" id="characterProfiles" name="characterProfiles" rows="3"
+                                      placeholder="Character backgrounds, motivations, arcs..."></textarea>
+                            <small class="text-muted">Or upload file:</small>
+                            <input type="file" class="form-control form-control-sm mt-1" id="characterProfilesFile"
+                                   accept=".txt,.md,.doc,.docx">
+                        </div>
+
+                        <!-- Location Information -->
+                        <div class="mb-3">
+                            <label for="locationInfo" class="form-label">
+                                Location Information <small class="text-muted">(optional)</small>
+                            </label>
+                            <textarea class="form-control" id="locationInfo" name="locationInfo" rows="3"
+                                      placeholder="Setting descriptions, maps, atmosphere..."></textarea>
+                            <small class="text-muted">Or upload file:</small>
+                            <input type="file" class="form-control form-control-sm mt-1" id="locationInfoFile"
+                                   accept=".txt,.md,.doc,.docx">
+                        </div>
+
+                        <!-- World Guide -->
+                        <div class="mb-3">
+                            <label for="worldGuide" class="form-label">
+                                World Guide <small class="text-muted">(optional)</small>
+                            </label>
+                            <textarea class="form-control" id="worldGuide" name="worldGuide" rows="3"
+                                      placeholder="Magic systems, technology, culture, history..."></textarea>
+                            <small class="text-muted">Or upload file:</small>
+                            <input type="file" class="form-control form-control-sm mt-1" id="worldGuideFile"
+                                   accept=".txt,.md,.doc,.docx">
+                        </div>
+
+                        <!-- Writing Guidelines -->
+                        <div class="mb-3">
+                            <label for="writingGuidelines" class="form-label">
+                                Writing Guidelines <small class="text-muted">(optional)</small>
+                            </label>
+                            <textarea class="form-control" id="writingGuidelines" name="writingGuidelines" rows="3"
+                                      placeholder="Style preferences, tone, voice, formatting..."></textarea>
+                            <small class="text-muted">Or upload file:</small>
+                            <input type="file" class="form-control form-control-sm mt-1" id="writingGuidelinesFile"
+                                   accept=".txt,.md,.doc,.docx">
+                        </div>
+
+                        <!-- Optional Fields -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Additional Context <small class="text-muted">(3 optional fields)</small>
+                            </label>
+
+                            <div class="mb-2">
+                                <input type="text" class="form-control form-control-sm mb-1" id="optional1Label"
+                                       placeholder="Label (e.g., 'Previous Chapters')">
+                                <textarea class="form-control" id="optional1" name="optional1" rows="2"></textarea>
+                                <input type="file" class="form-control form-control-sm mt-1" id="optional1File"
+                                       accept=".txt,.md,.doc,.docx">
+                            </div>
+
+                            <div class="mb-2">
+                                <input type="text" class="form-control form-control-sm mb-1" id="optional2Label"
+                                       placeholder="Label (e.g., 'Research Notes')">
+                                <textarea class="form-control" id="optional2" name="optional2" rows="2"></textarea>
+                                <input type="file" class="form-control form-control-sm mt-1" id="optional2File"
+                                       accept=".txt,.md,.doc,.docx">
+                            </div>
+
+                            <div class="mb-2">
+                                <input type="text" class="form-control form-control-sm mb-1" id="optional3Label"
+                                       placeholder="Label (e.g., 'Scene Beats')">
+                                <textarea class="form-control" id="optional3" name="optional3" rows="2"></textarea>
+                                <input type="file" class="form-control form-control-sm mt-1" id="optional3File"
+                                       accept=".txt,.md,.doc,.docx">
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary btn-lg" id="generateBtn">
+                                <i class="bi bi-stars"></i> Generate Chapter
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="regenerateBtn" disabled>
+                                <i class="bi bi-arrow-clockwise"></i> Regenerate with Changes
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="clearBtn">
+                                <i class="bi bi-x-circle"></i> Clear All
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Output -->
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-file-text"></i> Generated Chapter</h5>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-light" id="copyBtn" disabled>
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light" id="downloadBtn" disabled>
+                            <i class="bi bi-download"></i> Download
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body" style="height: 800px; overflow-y: auto;">
+                    <!-- Status/Loading -->
+                    <div id="statusArea">
+                        <div class="alert alert-info" id="initialMessage">
+                            <i class="bi bi-info-circle"></i>
+                            Configure your chapter settings and click "Generate Chapter" to begin.
+                        </div>
+                        <div class="d-none" id="loadingMessage">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Generating...</span>
+                                </div>
+                                <p class="mt-3">Generating your chapter... This may take a minute.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generated Output (Markdown Preview) -->
+                    <div id="outputPreview" class="d-none" style="border: 1px solid #ddd; padding: 15px; background: #fff; border-radius: 5px;">
+                    </div>
+
+                    <!-- Editable Text Area -->
+                    <div id="editableArea" class="d-none">
+                        <textarea class="form-control" id="chapterText" rows="30" style="font-family: monospace;"></textarea>
+                        <div class="mt-3">
+                            <label for="editInstructions" class="form-label">
+                                <i class="bi bi-chat-dots"></i> Request Changes
+                            </label>
+                            <textarea class="form-control" id="editInstructions" rows="3"
+                                      placeholder="Ask the LLM to make specific changes... (e.g., 'Make the dialogue more tense' or 'Add more sensory details')"></textarea>
+                            <button type="button" class="btn btn-primary mt-2" id="applyChangesBtn">
+                                <i class="bi bi-send"></i> Apply Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat History -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-clock-history"></i> Generation History</h6>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <div id="chatHistory" class="small">
+                        <p class="text-muted">No generation history yet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Markdown-it library for rendering -->
+<script src="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js"></script>
+
+<script>
+// Initialize markdown renderer
+const md = window.markdownit({
+    html: true,
+    linkify: true,
+    typographer: true
+});
+
+// Default System Prompt Template
+const DEFAULT_SYSTEM_PROMPT = `Generate {chapter_name} of the Novel: Adopt the PERSONA listed below and execute the listed TASK below, meeting the SUCCESS_CRITERIA listed:
+
+<PERSONA>
+You are an expert contemporary romance writer specializing in Emily Henry-style romantic comedy with authentic emotional depth. You are an expert in Dual POV narrative, authentic dialogue, romantic tension, cultural integration, workplace romance dynamics. You are known for creating chapters with perfect balance of humor, heart, and authentic relationship development
+</PERSONA>
+
+<TASK>
+1. You MUST plan extensively before writing each chapter. Consider: POV character's emotional state, relationship progression stage, conflict escalation, world building opportunities, foreshadowing, heat level requirements, and how this chapter advances the overall romance arc through the story structure.
+
+2. Before starting any writing read all of these documents with an emphasis on the details about the current chapter. These documents must be read:
+{book_outline_file}
+{location_info_file}
+{character_profiles_file}
+{world_guide_file}
+
+3. Add in any ADDITIONAL_SCENE_BEATS listed below. If there is a conflict between the scene beats, the ones listed below take priority
+
+4. When describing locations, follow the location guide.
+
+5. Start with an opening hook that ensures readers want to complete the chapter
+• Write in first-person POV using the POV listed in the outline
+
+6. There is a sample cliff-hanger paragraph to end the chapter - use this as a guide to write the last chapter and ensure that it's in first person POV
+
+7. Output to markdown format - do not include any commentary outside the chapter content. Name the output chapter_{x}.md
+
+8. Execute the prompt from {writing_guidelines_file} and write the chapter following the outline in {book_outline_file} and incorporating the human writing techniques specified in the writing guidelines
+
+9. Formatting guidelines: Character thoughts are in italics, document text is in fixed font or courier font
+
+10. Dialogue should better reveal tension or subtext. Let scenes "breathe" more—use interruptions, misfires, or awkward overlaps to heighten realism.
+
+11. Add the title to each chapter with the current POV as the subtitle (Just the name without POV), followed on the next line by the date/time in bold. Under the subtitle is a quote that will also be in italic. After the quote it will state the field guide the quote is from. This will also be used to specify the POV for each chapter. Finally, a horizontal line should be added prior to the chapter text.
+
+12. Include the world building elements listed for this chapter in the {world_guide_file} document. If additional information is necessary, use context from the world guide entries.
+
+13. Read ahead to understand story progression and ensure you do not cover any future material. Stop when appropriate for this chapter.
+
+14. Do not use em dashes or en dashes
+
+15. TARGET WORD COUNT: {word_count} words - This is a HARD REQUIREMENT.
+   • MINIMUM acceptable: 90% of {word_count} = {word_count * 0.9} words
+   • TARGET: {word_count} words
+   • MAXIMUM acceptable: 110% of {word_count} = {word_count * 1.1} words
+   • If your chapter is shorter than the minimum, you MUST expand it with additional action, dialogue, sensory details, or character interactions
+   • DO NOT just add descriptions - add meaningful story content
+   • DO NOT stop writing until you reach at least 90% of the target word count
+   • Count your words as you write and continue until you meet the requirement
+
+16. When selecting names, select names outside the top 100 names in the US, Do not use Chen, Sarah, Maya
+
+17. Do not include any commentary or analysis.  Only generate chapter {chapter_name} in Markdown format.
+
+18. CRITICAL: Output ONLY the chapter prose. NO introductions, NO conclusions, NO analysis, NO commentary, NO summaries, NO checklists, NO notes. The output must BEGIN with the chapter title and END with the last paragraph of the chapter. Nothing else.
+
+</TASK>
+
+<SUCCESS_CRITERIA>
+1. WORD COUNT: The chapter is between {word_count * 0.9} and {word_count * 1.1} words (MANDATORY - do not submit until verified)
+2. There is no deviation from the project instructions
+3. The chapter generated follows the outline found in the book outline
+4. All prose follows the human_writing_guidelines found in the writing guidelines
+5. All prose follows the "writing_quality_standards" found in the project instructions
+6. There are no en or em dashes in the prose
+7. The Chapter is in Markdown format with no commentary or analysis
+8. CRITICAL: Zero commentary, zero analysis, zero summaries - ONLY the chapter prose from title to last paragraph
+
+BEFORE YOU FINISH: Count the words in your output. If it's less than {word_count * 0.9} words, you MUST add more content. If it's more than {word_count * 1.1} words, you MUST trim it. The word count requirement is NOT negotiable.
+</SUCCESS_CRITERIA>
+
+<IMPORTANT_FORMATTING_REMINDER>
+Your ENTIRE response must be ONLY the chapter prose. Do NOT include:
+- Any text before the chapter title
+- Any text after the final paragraph of the chapter
+- Any markdown code blocks (no \`\`\`markdown)
+- Any analysis sections
+- Any checklists or validation notes
+- Any meta-commentary
+
+Start immediately with the chapter title. End immediately after the chapter's final paragraph.
+</IMPORTANT_FORMATTING_REMINDER>
+
+<FINAL_CHECKLIST_BEFORE_OUTPUT>
+Before you output your chapter, verify:
+✓ Word count is between {word_count * 0.9} and {word_count * 1.1} words
+✓ Chapter starts with the title
+✓ Chapter ends with the final paragraph of prose
+✓ NO commentary, analysis, or meta-text included
+✓ NO markdown code block wrappers
+
+If your chapter is too short (less than {word_count * 0.9} words), ADD MORE CONTENT NOW before submitting.
+If it's too long (more than {word_count * 1.1} words), TRIM IT NOW before submitting.
+</FINAL_CHECKLIST_BEFORE_OUTPUT>`;
+
+// Model data from server
+const modelData = {{ models | tojson }};
+
+// Initialize system prompt with default template
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('systemPrompt').value = DEFAULT_SYSTEM_PROMPT;
+    updateModelDescription();
+});
+
+// Toggle between OpenRouter and Local endpoint sections
+document.querySelectorAll('input[name="modelSource"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const openrouterSection = document.getElementById('openrouterModelSection');
+        const localSection = document.getElementById('localEndpointSection');
+
+        if (this.value === 'openrouter') {
+            openrouterSection.style.display = 'block';
+            localSection.style.display = 'none';
+        } else {
+            openrouterSection.style.display = 'none';
+            localSection.style.display = 'block';
+        }
+    });
+});
+
+// Update model description when selection changes
+document.getElementById('modelSelect').addEventListener('change', updateModelDescription);
+
+function updateModelDescription() {
+    const selectedModelId = document.getElementById('modelSelect').value;
+    const model = modelData.find(m => m.id === selectedModelId);
+    const descriptionElement = document.getElementById('modelDescription');
+
+    if (model && model.description) {
+        descriptionElement.textContent = model.description;
+        descriptionElement.style.display = 'block';
+    } else {
+        descriptionElement.style.display = 'none';
+    }
+}
+
+// System prompt toggle
+document.getElementById('useSystemPrompt').addEventListener('change', function() {
+    const container = document.getElementById('systemPromptContainer');
+    if (this.checked) {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
+});
+
+// Temperature slider update
+document.getElementById('temperature').addEventListener('input', function() {
+    document.getElementById('temperatureValue').textContent = this.value;
+});
+
+// File upload handlers
+const fileInputs = {
+    'bookOutlineFile': 'bookOutline',
+    'characterProfilesFile': 'characterProfiles',
+    'locationInfoFile': 'locationInfo',
+    'worldGuideFile': 'worldGuide',
+    'writingGuidelinesFile': 'writingGuidelines',
+    'optional1File': 'optional1',
+    'optional2File': 'optional2',
+    'optional3File': 'optional3'
+};
+
+Object.keys(fileInputs).forEach(fileId => {
+    document.getElementById(fileId).addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const text = await file.text();
+            document.getElementById(fileInputs[fileId]).value = text;
+        }
+    });
+});
+
+// Build the prompt from all inputs
+function buildPrompt() {
+    const useSystemPrompt = document.getElementById('useSystemPrompt').checked;
+    const chapterName = document.getElementById('chapterName').value || 'Chapter';
+    const wordCount = document.getElementById('wordCount').value || '2000';
+    const bookOutline = document.getElementById('bookOutline').value;
+    const characterProfiles = document.getElementById('characterProfiles').value;
+    const locationInfo = document.getElementById('locationInfo').value;
+    const worldGuide = document.getElementById('worldGuide').value;
+    const writingGuidelines = document.getElementById('writingGuidelines').value;
+    const optional1Label = document.getElementById('optional1Label').value;
+    const optional1 = document.getElementById('optional1').value;
+    const optional2Label = document.getElementById('optional2Label').value;
+    const optional2 = document.getElementById('optional2').value;
+    const optional3Label = document.getElementById('optional3Label').value;
+    const optional3 = document.getElementById('optional3').value;
+
+    let prompt = '';
+
+    if (useSystemPrompt) {
+        // Use system prompt template with replacements
+        prompt = document.getElementById('systemPrompt').value;
+
+        // Replace placeholders with actual content
+        prompt = prompt.replace(/{chapter_name}/g, chapterName);
+        prompt = prompt.replace(/{word_count}/g, wordCount);
+
+        // Replace file references with actual content
+        if (bookOutline) {
+            prompt = prompt.replace(/{book_outline_file}/g, `\n<BOOK_OUTLINE>\n${bookOutline}\n</BOOK_OUTLINE>\n`);
+        } else {
+            prompt = prompt.replace(/{book_outline_file}/g, '[Not provided]');
+        }
+
+        if (characterProfiles) {
+            prompt = prompt.replace(/{character_profiles_file}/g, `\n<CHARACTER_PROFILES>\n${characterProfiles}\n</CHARACTER_PROFILES>\n`);
+        } else {
+            prompt = prompt.replace(/{character_profiles_file}/g, '[Not provided]');
+        }
+
+        if (locationInfo) {
+            prompt = prompt.replace(/{location_info_file}/g, `\n<LOCATION_INFORMATION>\n${locationInfo}\n</LOCATION_INFORMATION>\n`);
+        } else {
+            prompt = prompt.replace(/{location_info_file}/g, '[Not provided]');
+        }
+
+        if (worldGuide) {
+            prompt = prompt.replace(/{world_guide_file}/g, `\n<WORLD_GUIDE>\n${worldGuide}\n</WORLD_GUIDE>\n`);
+        } else {
+            prompt = prompt.replace(/{world_guide_file}/g, '[Not provided]');
+        }
+
+        if (writingGuidelines) {
+            prompt = prompt.replace(/{writing_guidelines_file}/g, `\n<WRITING_GUIDELINES>\n${writingGuidelines}\n</WRITING_GUIDELINES>\n`);
+        } else {
+            prompt = prompt.replace(/{writing_guidelines_file}/g, '[Not provided]');
+        }
+
+        // Add optional fields at the end if provided
+        if (optional1 && optional1Label) {
+            prompt += `\n\n<${optional1Label.toUpperCase().replace(/\s+/g, '_')}>\n${optional1}\n</${optional1Label.toUpperCase().replace(/\s+/g, '_')}>\n`;
+        }
+
+        if (optional2 && optional2Label) {
+            prompt += `\n\n<${optional2Label.toUpperCase().replace(/\s+/g, '_')}>\n${optional2}\n</${optional2Label.toUpperCase().replace(/\s+/g, '_')}>\n`;
+        }
+
+        if (optional3 && optional3Label) {
+            prompt += `\n\n<${optional3Label.toUpperCase().replace(/\s+/g, '_')}>\n${optional3}\n</${optional3Label.toUpperCase().replace(/\s+/g, '_')}>\n`;
+        }
+
+    } else {
+        // Simple prompt without system template
+        prompt = `${chapterName}: Write a chapter with approximately ${wordCount} words.\n\n`;
+
+        if (bookOutline) {
+            prompt += `<BOOK_OUTLINE>\n${bookOutline}\n</BOOK_OUTLINE>\n\n`;
+        }
+
+        if (characterProfiles) {
+            prompt += `<CHARACTER_PROFILES>\n${characterProfiles}\n</CHARACTER_PROFILES>\n\n`;
+        }
+
+        if (locationInfo) {
+            prompt += `<LOCATION_INFORMATION>\n${locationInfo}\n</LOCATION_INFORMATION>\n\n`;
+        }
+
+        if (worldGuide) {
+            prompt += `<WORLD_GUIDE>\n${worldGuide}\n</WORLD_GUIDE>\n\n`;
+        }
+
+        if (writingGuidelines) {
+            prompt += `<WRITING_GUIDELINES>\n${writingGuidelines}\n</WRITING_GUIDELINES>\n\n`;
+        }
+
+        if (optional1 && optional1Label) {
+            prompt += `<${optional1Label.toUpperCase().replace(/\s+/g, '_')}>\n${optional1}\n</${optional1Label.toUpperCase().replace(/\s+/g, '_')}>\n\n`;
+        }
+
+        if (optional2 && optional2Label) {
+            prompt += `<${optional2Label.toUpperCase().replace(/\s+/g, '_')}>\n${optional2}\n</${optional2Label.toUpperCase().replace(/\s+/g, '_')}>\n\n`;
+        }
+
+        if (optional3 && optional3Label) {
+            prompt += `<${optional3Label.toUpperCase().replace(/\s+/g, '_')}>\n${optional3}\n</${optional3Label.toUpperCase().replace(/\s+/g, '_')}>\n\n`;
+        }
+
+        prompt += `Output in markdown format.`;
+    }
+
+    return prompt;
+}
+
+// Generate chapter
+let currentChapterText = '';
+let generationCount = 0;
+
+document.getElementById('generateBtn').addEventListener('click', async function() {
+    const prompt = buildPrompt();
+    const modelSource = document.querySelector('input[name="modelSource"]:checked').value;
+    const temperature = parseFloat(document.getElementById('temperature').value);
+
+    // Get model info based on source
+    let model, localEndpoint, localModel;
+    if (modelSource === 'openrouter') {
+        model = document.getElementById('modelSelect').value;
+    } else {
+        localEndpoint = document.getElementById('localEndpoint').value;
+        localModel = document.getElementById('localModel').value;
+    }
+
+    // Debug logging
+    console.log('=== Scene Generation Debug ===');
+    console.log('Model Source:', modelSource);
+    console.log('Chapter Name:', document.getElementById('chapterName').value);
+    console.log('Word Count:', document.getElementById('wordCount').value);
+    console.log('Temperature:', temperature, '(type:', typeof temperature, ')');
+    if (modelSource === 'openrouter') {
+        console.log('Model:', model);
+    } else {
+        console.log('Local Endpoint:', localEndpoint);
+        console.log('Local Model:', localModel);
+    }
+    console.log('==============================');
+
+    // Show loading
+    document.getElementById('initialMessage').classList.add('d-none');
+    document.getElementById('loadingMessage').classList.remove('d-none');
+    document.getElementById('outputPreview').classList.add('d-none');
+    document.getElementById('editableArea').classList.add('d-none');
+
+    try {
+        const requestBody = {
+            prompt: prompt,
+            temperature: temperature,
+            modelSource: modelSource
+        };
+
+        if (modelSource === 'openrouter') {
+            requestBody.model = model;
+        } else {
+            requestBody.localEndpoint = localEndpoint;
+            requestBody.localModel = localModel;
+        }
+
+        const response = await fetch('/api/scene-generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        currentChapterText = data.output;
+        generationCount++;
+        displayOutput(currentChapterText);
+        addToHistory('Generated', prompt.substring(0, 100) + '...');
+
+    } catch (error) {
+        alert('Error generating chapter: ' + error.message);
+        document.getElementById('loadingMessage').classList.add('d-none');
+        document.getElementById('initialMessage').classList.remove('d-none');
+    }
+});
+
+// Regenerate with changes
+document.getElementById('regenerateBtn').addEventListener('click', async function() {
+    applyChanges();
+});
+
+document.getElementById('applyChangesBtn').addEventListener('click', async function() {
+    applyChanges();
+});
+
+async function applyChanges() {
+    const currentText = document.getElementById('chapterText').value;
+    const instructions = document.getElementById('editInstructions').value;
+
+    if (!instructions.trim()) {
+        alert('Please provide change instructions');
+        return;
+    }
+
+    const modelSource = document.querySelector('input[name="modelSource"]:checked').value;
+    const temperature = parseFloat(document.getElementById('temperature').value);
+
+    // Get model info based on source
+    let model, localEndpoint, localModel;
+    if (modelSource === 'openrouter') {
+        model = document.getElementById('modelSelect').value;
+    } else {
+        localEndpoint = document.getElementById('localEndpoint').value;
+        localModel = document.getElementById('localModel').value;
+    }
+
+    const prompt = `You are editing a chapter. Here is the current text:\n\n${currentText}\n\nPlease make the following changes:\n${instructions}\n\nOutput the revised chapter in markdown format.`;
+
+    // Show loading
+    document.getElementById('loadingMessage').classList.remove('d-none');
+    document.getElementById('outputPreview').classList.add('d-none');
+    document.getElementById('editableArea').classList.add('d-none');
+
+    try {
+        const requestBody = {
+            prompt: prompt,
+            temperature: temperature,
+            modelSource: modelSource
+        };
+
+        if (modelSource === 'openrouter') {
+            requestBody.model = model;
+        } else {
+            requestBody.localEndpoint = localEndpoint;
+            requestBody.localModel = localModel;
+        }
+
+        const response = await fetch('/api/scene-generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        currentChapterText = data.output;
+        generationCount++;
+        displayOutput(currentChapterText);
+        addToHistory('Revision', instructions);
+        document.getElementById('editInstructions').value = '';
+
+    } catch (error) {
+        alert('Error applying changes: ' + error.message);
+        document.getElementById('loadingMessage').classList.add('d-none');
+        document.getElementById('outputPreview').classList.remove('d-none');
+        document.getElementById('editableArea').classList.remove('d-none');
+    }
+}
+
+function displayOutput(text) {
+    // Hide loading
+    document.getElementById('loadingMessage').classList.add('d-none');
+
+    // Calculate word count
+    const wordCount = text.trim().split(/\s+/).length;
+    const targetWordCount = parseInt(document.getElementById('wordCount').value) || 2000;
+    const minWords = Math.floor(targetWordCount * 0.9);
+    const maxWords = Math.ceil(targetWordCount * 1.1);
+
+    console.log(`Word count: ${wordCount} (target: ${targetWordCount}, range: ${minWords}-${maxWords})`);
+
+    // Show preview
+    document.getElementById('outputPreview').classList.remove('d-none');
+
+    // Add word count info at the top of the preview
+    let wordCountHtml = `<div style="background: #f0f0f0; padding: 10px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid `;
+
+    if (wordCount < minWords) {
+        wordCountHtml += `#dc3545; color: #721c24;">⚠️ <strong>Word Count: ${wordCount}</strong> (${Math.round((wordCount/targetWordCount)*100)}% of target) - TOO SHORT! Target: ${targetWordCount} words (min: ${minWords})`;
+    } else if (wordCount > maxWords) {
+        wordCountHtml += `#ffc107; color: #856404;">⚠️ <strong>Word Count: ${wordCount}</strong> (${Math.round((wordCount/targetWordCount)*100)}% of target) - TOO LONG! Target: ${targetWordCount} words (max: ${maxWords})`;
+    } else {
+        wordCountHtml += `#28a745; color: #155724;">✅ <strong>Word Count: ${wordCount}</strong> (${Math.round((wordCount/targetWordCount)*100)}% of target) - Perfect! Within range: ${minWords}-${maxWords}`;
+    }
+
+    wordCountHtml += `</div>`;
+
+    document.getElementById('outputPreview').innerHTML = wordCountHtml + md.render(text);
+
+    // Show editable area
+    document.getElementById('editableArea').classList.remove('d-none');
+    document.getElementById('chapterText').value = text;
+
+    // Enable buttons
+    document.getElementById('copyBtn').disabled = false;
+    document.getElementById('downloadBtn').disabled = false;
+    document.getElementById('regenerateBtn').disabled = false;
+
+    // Show alert if word count is off
+    if (wordCount < minWords) {
+        setTimeout(() => {
+            alert(`⚠️ Chapter is too short!\n\nCurrent: ${wordCount} words\nTarget: ${targetWordCount} words\nMinimum: ${minWords} words\n\nConsider using "Request Changes" to ask the LLM to expand the chapter.`);
+        }, 500);
+    }
+}
+
+function addToHistory(type, description) {
+    const historyDiv = document.getElementById('chatHistory');
+    if (generationCount === 1) {
+        historyDiv.innerHTML = '';
+    }
+
+    const timestamp = new Date().toLocaleTimeString();
+    const entry = document.createElement('div');
+    entry.className = 'mb-2 pb-2 border-bottom';
+    entry.innerHTML = `
+        <strong>${type} #${generationCount}</strong> - ${timestamp}<br>
+        <small class="text-muted">${description}</small>
+    `;
+    historyDiv.insertBefore(entry, historyDiv.firstChild);
+}
+
+// Copy button
+document.getElementById('copyBtn').addEventListener('click', function() {
+    const text = document.getElementById('chapterText').value;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+        }, 2000);
+    });
+});
+
+// Download button
+document.getElementById('downloadBtn').addEventListener('click', function() {
+    const text = document.getElementById('chapterText').value;
+    const chapterName = document.getElementById('chapterName').value || 'chapter';
+    const filename = chapterName.toLowerCase().replace(/\s+/g, '_') + '.md';
+
+    const blob = new Blob([text], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
+// Clear button
+document.getElementById('clearBtn').addEventListener('click', function() {
+    if (confirm('Clear all fields and reset the form?')) {
+        document.getElementById('sceneGeneratorForm').reset();
+        document.getElementById('temperatureValue').textContent = '0.8';
+        document.getElementById('outputPreview').classList.add('d-none');
+        document.getElementById('editableArea').classList.add('d-none');
+        document.getElementById('initialMessage').classList.remove('d-none');
+        document.getElementById('chatHistory').innerHTML = '<p class="text-muted">No generation history yet.</p>';
+        currentChapterText = '';
+        generationCount = 0;
+        document.getElementById('copyBtn').disabled = true;
+        document.getElementById('downloadBtn').disabled = true;
+        document.getElementById('regenerateBtn').disabled = true;
+        document.getElementById('systemPrompt').value = DEFAULT_SYSTEM_PROMPT;
+    }
+});
+
+// Save Settings
+document.getElementById('saveSettingsBtn').addEventListener('click', async function() {
+    const settingsName = document.getElementById('settingsName').value.trim();
+
+    if (!settingsName) {
+        alert('Please enter a name for your settings');
+        return;
+    }
+
+    const settings = {
+        workingDirectory: document.getElementById('workingDirectory').value,
+        modelSource: document.querySelector('input[name="modelSource"]:checked').value,
+        chapterName: document.getElementById('chapterName').value,
+        model: document.getElementById('modelSelect').value,
+        localEndpoint: document.getElementById('localEndpoint').value,
+        localModel: document.getElementById('localModel').value,
+        temperature: parseFloat(document.getElementById('temperature').value),
+        wordCount: document.getElementById('wordCount').value,
+        useSystemPrompt: document.getElementById('useSystemPrompt').checked,
+        systemPrompt: document.getElementById('systemPrompt').value,
+        bookOutline: document.getElementById('bookOutline').value,
+        characterProfiles: document.getElementById('characterProfiles').value,
+        locationInfo: document.getElementById('locationInfo').value,
+        worldGuide: document.getElementById('worldGuide').value,
+        writingGuidelines: document.getElementById('writingGuidelines').value,
+        optional1Label: document.getElementById('optional1Label').value,
+        optional1: document.getElementById('optional1').value,
+        optional2Label: document.getElementById('optional2Label').value,
+        optional2: document.getElementById('optional2').value,
+        optional3Label: document.getElementById('optional3Label').value,
+        optional3: document.getElementById('optional3').value
+    };
+
+    try {
+        const response = await fetch('/api/scene-settings/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: settingsName,
+                settings: settings
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert(`Settings "${settingsName}" saved successfully!`);
+        } else {
+            alert('Error saving settings: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error saving settings: ' + error.message);
+    }
+});
+
+// Load Settings
+document.getElementById('loadSettingsBtn').addEventListener('click', async function() {
+    const settingsName = document.getElementById('settingsName').value.trim();
+
+    if (!settingsName) {
+        alert('Please enter the name of the settings to load');
+        return;
+    }
+
+    // Get working directory for loading settings
+    const workingDirectory = document.getElementById('workingDirectory').value.trim();
+
+    try {
+        const response = await fetch(`/api/scene-settings/load?name=${encodeURIComponent(settingsName)}&workingDirectory=${encodeURIComponent(workingDirectory)}`);
+        const data = await response.json();
+
+        if (data.success && data.settings) {
+            const settings = data.settings;
+
+            // Load all settings
+            document.getElementById('workingDirectory').value = settings.workingDirectory || '';
+
+            // Load model source
+            const modelSource = settings.modelSource || 'openrouter';
+            if (modelSource === 'local') {
+                document.getElementById('sourceLocal').checked = true;
+                document.getElementById('openrouterModelSection').style.display = 'none';
+                document.getElementById('localEndpointSection').style.display = 'block';
+            } else {
+                document.getElementById('sourceOpenRouter').checked = true;
+                document.getElementById('openrouterModelSection').style.display = 'block';
+                document.getElementById('localEndpointSection').style.display = 'none';
+            }
+
+            document.getElementById('chapterName').value = settings.chapterName || '';
+            document.getElementById('modelSelect').value = settings.model || '';
+            document.getElementById('localEndpoint').value = settings.localEndpoint || 'http://localhost:11434';
+            document.getElementById('localModel').value = settings.localModel || '';
+            document.getElementById('temperature').value = settings.temperature || 0.8;
+            document.getElementById('temperatureValue').textContent = settings.temperature || 0.8;
+            document.getElementById('wordCount').value = settings.wordCount || 2000;
+            document.getElementById('useSystemPrompt').checked = settings.useSystemPrompt !== false;
+            document.getElementById('systemPrompt').value = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT;
+            document.getElementById('bookOutline').value = settings.bookOutline || '';
+            document.getElementById('characterProfiles').value = settings.characterProfiles || '';
+            document.getElementById('locationInfo').value = settings.locationInfo || '';
+            document.getElementById('worldGuide').value = settings.worldGuide || '';
+            document.getElementById('writingGuidelines').value = settings.writingGuidelines || '';
+            document.getElementById('optional1Label').value = settings.optional1Label || '';
+            document.getElementById('optional1').value = settings.optional1 || '';
+            document.getElementById('optional2Label').value = settings.optional2Label || '';
+            document.getElementById('optional2').value = settings.optional2 || '';
+            document.getElementById('optional3Label').value = settings.optional3Label || '';
+            document.getElementById('optional3').value = settings.optional3 || '';
+
+            // Update model description
+            updateModelDescription();
+
+            // Toggle system prompt visibility
+            const container = document.getElementById('systemPromptContainer');
+            container.style.display = settings.useSystemPrompt !== false ? 'block' : 'none';
+
+            alert(`Settings "${settingsName}" loaded successfully!`);
+        } else {
+            alert('Error loading settings: ' + (data.error || 'Settings not found'));
+        }
+    } catch (error) {
+        alert('Error loading settings: ' + error.message);
+    }
+});
+
+// Browse Directory - prompt user for directory path
+document.getElementById('browseDirectoryBtn').addEventListener('click', function() {
+    const currentDir = document.getElementById('workingDirectory').value || '';
+    const dir = prompt('Enter the full path to your working directory:', currentDir);
+    if (dir !== null && dir.trim() !== '') {
+        document.getElementById('workingDirectory').value = dir.trim();
+        console.log('Working directory set to:', dir.trim());
+    }
+});
+</script>
+
+<style>
+#outputPreview h1, #outputPreview h2, #outputPreview h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+#outputPreview p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+}
+
+#outputPreview em {
+    font-style: italic;
+    color: #555;
+}
+
+#outputPreview code, #outputPreview pre {
+    font-family: 'Courier New', monospace;
+    background-color: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+#outputPreview hr {
+    margin: 2rem 0;
+    border: 0;
+    border-top: 2px solid #333;
+}
+</style>
+{% endblock %}
