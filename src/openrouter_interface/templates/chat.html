@@ -76,10 +76,14 @@
 
                     <!-- System Prompt -->
                     <div class="mb-3">
-                        <label for="chatSystemPrompt" class="form-label">System Prompt</label>
-                        <textarea class="form-control form-control-sm" id="chatSystemPrompt" rows="4"
-                                  placeholder="You are a helpful AI assistant..."></textarea>
-                        <small class="text-muted">Optional - defines AI behavior</small>
+                        <label for="chatSystemPrompt" class="form-label">
+                            System Prompt
+                            <button type="button" class="btn btn-sm btn-link p-0 ms-1" id="toggleSystemPrompt" title="Toggle expand/collapse">
+                                <i class="bi bi-arrows-angle-expand" id="toggleIcon"></i>
+                            </button>
+                        </label>
+                        <textarea class="form-control form-control-sm" id="chatSystemPrompt" rows="4"></textarea>
+                        <small class="text-muted">Editable - defines AI behavior</small>
                     </div>
 
                     <!-- Actions -->
@@ -244,6 +248,28 @@
 
 <script>
 let conversationHistory = [];
+
+// Default system prompt loaded from uncensored_assistant_compact.json
+const DEFAULT_SYSTEM_PROMPT = {{ default_system_prompt|tojson|safe }};
+
+// Initialize system prompt on page load
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('chatSystemPrompt').value = DEFAULT_SYSTEM_PROMPT;
+});
+
+// Toggle system prompt expand/collapse
+document.getElementById('toggleSystemPrompt').addEventListener('click', function() {
+    const textarea = document.getElementById('chatSystemPrompt');
+    const icon = document.getElementById('toggleIcon');
+
+    if (textarea.rows === 4) {
+        textarea.rows = 20;
+        icon.className = 'bi bi-arrows-angle-contract';
+    } else {
+        textarea.rows = 4;
+        icon.className = 'bi bi-arrows-angle-expand';
+    }
+});
 
 // Toggle between OpenRouter and Local sections
 document.querySelectorAll('input[name="chatModelSource"]').forEach(radio => {

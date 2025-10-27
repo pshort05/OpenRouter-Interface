@@ -32,6 +32,7 @@ OpenRouter Interface is a Python toolkit for AI language model processing throug
 - `openrouter-web` = Web interface launcher
 - `openrouter-chain` = Chain execution engine
 - `bookgen` = Specialized book generation workflows
+- `split-chapters` = Utility to split markdown documents by chapter headings
 
 ## Development Commands
 
@@ -76,6 +77,12 @@ PYTHONPATH=src python3 -m openrouter_interface.chain --clean-status -c config.ya
 openrouter-runner --help
 openrouter-web --help
 openrouter-chain --help
+split-chapters --help
+
+# Chapter splitter - Split documents by chapters
+split-chapters book.md
+split-chapters book.md -o chapters/
+split-chapters book.md --dry-run
 ```
 
 ### Testing
@@ -200,6 +207,39 @@ prompts:
   # Install pandoc: https://pandoc.org/installing.html
   # For PDF: Install LaTeX (TeX Live, MiKTeX)
   ```
+
+### Chapter Splitter Utility
+- **Standalone Tool**: Split markdown documents into separate files by chapter headings
+- **Automatic Detection**: Identifies chapter headings at any level (e.g., `# Chapter 1`, `## Chapter 2`)
+- **Smart Naming**: Creates files as `chapter_1.md`, `chapter_2.md`, etc.
+- **Title Stripping**: Drops text after chapter number (e.g., "Chapter 1: The Beginning" → `chapter_1.md`)
+- **Duplicate Handling**: Adds A, B, C suffixes for duplicate chapter numbers
+- **Preamble Support**: Saves content before first chapter to `preamble.md`
+- **Case Insensitive**: Detects "chapter", "Chapter", "CHAPTER", etc.
+- **Configuration**:
+  ```bash
+  # Basic usage (output in same directory as input)
+  split-chapters book.md
+
+  # Specify output directory
+  split-chapters book.md -o chapters/
+
+  # Dry run (preview without creating files)
+  split-chapters book.md --dry-run
+
+  # From Python module (development)
+  PYTHONPATH=src python3 -m openrouter_interface.split_chapters book.md
+  ```
+- **Output Format**:
+  - Creates individual chapter files with original heading preserved
+  - Comprehensive summary showing all chapters found
+  - Warnings for duplicate chapter numbers
+  - Line counts and file statistics
+- **Use Cases**:
+  - Prepare book chapters for individual processing in chains
+  - Split large documents for parallel processing
+  - Organize content by chapter for version control
+  - Extract specific chapters from compiled manuscripts
 
 ### File Management
 - **Intermediate Files**: All step outputs preserved in temp directory

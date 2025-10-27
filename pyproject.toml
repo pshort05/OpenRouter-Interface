@@ -77,6 +77,7 @@ openrouter-runner = "openrouter_interface.cli:main"
 openrouter-web = "openrouter_interface.web:main"
 openrouter-chain = "openrouter_interface.chain:main"
 bookgen = "openrouter_interface.bookGen:main"
+split-chapters = "openrouter_interface.split_chapters:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

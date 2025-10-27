@@ -1466,7 +1466,40 @@ class FlaskPromptRunner:
                 ]
                 default_model = 'anthropic/claude-4-sonnet-20250522'
 
-            return render_template('chat.html', models=models, default_model=default_model)
+            # Load default system prompt from uncensored_assistant_compact.json
+            default_system_prompt = ""
+            prompt_file = os.path.join(self.project_root, 'prompts', 'uncensored_assistant_compact.json')
+
+            try:
+                if os.path.exists(prompt_file):
+                    with open(prompt_file, 'r') as f:
+                        prompt_data = json.load(f)
+                        instructions = prompt_data.get('instructions', {})
+
+                        # Build the system prompt from the structured JSON
+                        prompt_parts = []
+
+                        # Add introduction if present
+                        if 'introduction' in instructions:
+                            prompt_parts.extend(instructions['introduction'])
+                            prompt_parts.append('')
+
+                        # Add all other sections
+                        for key, value in instructions.items():
+                            if key != 'introduction' and isinstance(value, list):
+                                prompt_parts.append(f"{key}:")
+                                for item in value:
+                                    prompt_parts.append(f"- {item}" if not item.startswith('-') else item)
+                                prompt_parts.append('')
+
+                        default_system_prompt = '\n'.join(prompt_parts).strip()
+                        logging.info(f"Loaded default system prompt from {prompt_file}")
+                else:
+                    logging.warning(f"System prompt file not found at {prompt_file}")
+            except Exception as e:
+                logging.error(f"Error loading system prompt: {e}")
+
+            return render_template('chat.html', models=models, default_model=default_model, default_system_prompt=default_system_prompt)
 
         @self.app.route('/api/chat', methods=['POST'])
         def api_chat():
