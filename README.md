@@ -17,6 +17,7 @@ A comprehensive Python toolkit for working with AI language models through the O
 - 📝 **Script Integration**: Pre/post processing scripts at global and per-step levels
 - 🔀 **File Conversion**: Convert between markdown and docx, pdf, epub, and more
 - 📑 **Combine Outputs**: Merge all step outputs into a single file
+- ✂️ **Chapter Splitter**: Split markdown documents by chapter headings
 - ⚙️ **Advanced Configuration**: YAML-based configuration with parameter overrides
 - 📁 **File Management**: Automatic chunking, validation, and format handling
 - 🌐 **Web Dashboard**: Real-time monitoring and visual chain builder
@@ -36,6 +37,7 @@ A comprehensive Python toolkit for working with AI language models through the O
   - [Single Prompts](#single-prompts)
   - [Web Interface](#web-interface)
   - [Prompt Chaining](#prompt-chaining)
+  - [Chapter Splitter](#chapter-splitter)
 - [Configuration](#-configuration)
 - [Examples](#-examples)
 - [Documentation](#-documentation)
@@ -64,7 +66,10 @@ openrouter-runner -p prompts/example.json -i input.md -o output.md
 openrouter-chain --create-sample
 openrouter-chain -c sample_chain.yaml
 
-# 5. Start web interface
+# 5. Split a document by chapters
+split-chapters book.md -o chapters/
+
+# 6. Start web interface
 openrouter-web
 ```
 
@@ -85,6 +90,7 @@ cd openrouter-interface
 openrouter-runner --help
 openrouter-web --help
 openrouter-chain --help
+split-chapters --help
 ```
 
 **Note:** The installer automatically detects and installs `pandoc` for file conversion features. If automatic installation fails, install manually from [pandoc.org](https://pandoc.org/installing.html).
@@ -367,6 +373,68 @@ When restarted, the chain will:
 3. 🔄 **Resume** from step 3 and continue to completion
 4. 📊 **Track** all new progress in the status file
 
+### Chapter Splitter
+
+Split large markdown documents into separate files by chapter headings:
+
+```bash
+# Basic usage - splits in same directory as input
+split-chapters book.md
+
+# Specify output directory
+split-chapters book.md -o chapters/
+
+# Dry run (preview without creating files)
+split-chapters book.md --dry-run
+
+# Global command usage (after install-global.sh)
+split-chapters --help
+```
+
+**Features:**
+- ✂️ **Automatic Detection**: Identifies chapter headings at any level (# Chapter 1, ## Chapter 2, etc.)
+- 📝 **Smart Naming**: Creates files as `chapter_1.md`, `chapter_2.md`, etc.
+- 🎯 **Title Stripping**: Removes text after chapter number (e.g., "Chapter 1: The Beginning" → `chapter_1.md`)
+- 🔄 **Duplicate Handling**: Adds A, B, C suffixes for duplicate chapter numbers
+- 📄 **Preamble Support**: Saves content before first chapter to `preamble.md`
+- 🔠 **Case Insensitive**: Detects "chapter", "Chapter", "CHAPTER", etc.
+
+**Example Output:**
+```
+Processing: book.md
+Found 15 chapters
+
+Created files:
+  preamble.md (342 lines)
+  chapter_1.md (1,245 lines)
+  chapter_2.md (1,089 lines)
+  chapter_3.md (1,367 lines)
+  ...
+  chapter_15.md (1,156 lines)
+
+Total: 16 files created in /path/to/chapters/
+```
+
+**Use Cases:**
+- 📚 **Book Processing**: Split manuscripts for chapter-by-chapter editing
+- 🔗 **Chain Preparation**: Prepare individual chapters for prompt chain processing
+- 🔀 **Parallel Processing**: Enable concurrent processing of multiple chapters
+- 📦 **Organization**: Structure large documents for better version control
+
+**Integration with Chains:**
+```bash
+# 1. Split book into chapters
+split-chapters manuscript.md -o chapters/
+
+# 2. Process each chapter with a chain
+for chapter in chapters/chapter_*.md; do
+  openrouter-chain -c editing_chain.yaml --input "$chapter"
+done
+
+# 3. Combine results if needed
+cat chapters/processed_*.md > final_manuscript.md
+```
+
 ---
 ## ⚙️ Configuration
 ---
@@ -631,6 +699,68 @@ prompts:
 #         Plus style_report.pdf from step 2
 ```
 
+### Chapter-Based Book Processing
+
+Process a book manuscript chapter by chapter:
+
+```bash
+# Step 1: Split manuscript into chapters
+split-chapters manuscript.md -o manuscript_chapters/
+
+# Step 2: Create a chapter processing chain
+cat > chapter_editing.yaml << 'EOF'
+global_config:
+  model: "anthropic/claude-4-sonnet-20250522"
+  temperature: 0.7
+
+input_files:
+  - manuscript_chapters/chapter_1.md
+  - manuscript_chapters/chapter_2.md
+  - manuscript_chapters/chapter_3.md
+  # Add all chapters...
+
+output_pattern: "edited_{input_name}.md"
+
+prompts:
+  prompt 1:
+    name: "grammar_and_clarity"
+    prompt_file: "prompts/grammar.json"
+    temperature: 0.3
+
+  prompt 2:
+    name: "dialogue_enhancement"
+    prompt_file: "prompts/dialogue.json"
+    temperature: 0.7
+
+  prompt 3:
+    name: "pacing_review"
+    prompt_file: "prompts/pacing.json"
+    temperature: 0.6
+    passes: 2
+EOF
+
+# Step 3: Process all chapters
+openrouter-chain -c chapter_editing.yaml
+
+# Step 4: Combine edited chapters
+cat manuscript_chapters/edited_chapter_*.md > final_manuscript.md
+
+# Optional: Convert to multiple formats
+openrouter-chain -c convert_final.yaml
+```
+
+**With restart functionality:**
+```bash
+# If processing fails on chapter 5
+openrouter-chain -c chapter_editing.yaml --restart
+
+# Check status of all chapters
+openrouter-chain -c chapter_editing.yaml --status-only
+
+# Restart specific chapter from step 2
+openrouter-chain -c chapter_editing.yaml --restart-from 2
+```
+
 ### Web Interface Load Examples
 
 #### Load Prompt Example
@@ -713,6 +843,12 @@ postprocessing:
 openrouter-runner --help
 openrouter-chain --help
 openrouter-web --help
+split-chapters --help
+
+# Chapter splitting
+split-chapters book.md
+split-chapters book.md -o chapters/
+split-chapters book.md --dry-run
 
 # Debug and validation
 openrouter-chain -c config.yaml --debug
@@ -735,7 +871,8 @@ openrouter-interface/
 │   ├── web.py                    # Web interface
 │   ├── chain.py                  # Chain runner
 │   ├── prompt_runner.py          # Core processing engine
-│   └── prompt_chain_runner.py    # Chain execution logic
+│   ├── prompt_chain_runner.py    # Chain execution logic
+│   └── split_chapters.py         # Chapter splitter utility
 ├── config/                       # Configuration files
 ├── prompts/                      # Prompt templates
 ├── scripts/                      # Utility scripts
@@ -886,6 +1023,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🎨 **Expanded Load Chain**: Full-page configuration interface with rich preview and validation
 - ⚙️ **YAML Editor**: Professional code editor with templates, syntax highlighting, and real-time validation
 - 🔧 **Enhanced Error Handling**: Comprehensive YAML parsing error detection and reporting
+- ✂️ **Chapter Splitter**: Standalone utility to split markdown documents by chapter headings
 
 ---
 
