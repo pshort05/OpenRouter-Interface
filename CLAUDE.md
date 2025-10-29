@@ -32,7 +32,7 @@ OpenRouter Interface is a Python toolkit for AI language model processing throug
 - `openrouter-web` = Web interface launcher
 - `openrouter-chain` = Chain execution engine
 - `bookgen` = Specialized book generation workflows
-- `split-chapters` = Utility to split markdown documents by chapter headings
+- `split-chapters` = Utility to split documents by chapters, prologues, and epilogues (supports markdown, plain text, Roman numerals)
 
 ## Development Commands
 
@@ -79,10 +79,12 @@ openrouter-web --help
 openrouter-chain --help
 split-chapters --help
 
-# Chapter splitter - Split documents by chapters
+# Chapter splitter - Split documents by chapters, prologues, and epilogues
 split-chapters book.md
 split-chapters book.md -o chapters/
 split-chapters book.md --dry-run
+split-chapters plaintext_book.txt -o output/  # Works with plain text too
+split-chapters roman_numeral_book.md --overwrite-existing
 ```
 
 ### Testing
@@ -209,17 +211,27 @@ prompts:
   ```
 
 ### Chapter Splitter Utility
-- **Standalone Tool**: Split markdown documents into separate files by chapter headings
-- **Automatic Detection**: Identifies chapter headings at any level (e.g., `# Chapter 1`, `## Chapter 2`)
-- **Smart Naming**: Creates files as `chapter_1.md`, `chapter_2.md`, etc.
+- **Standalone Tool**: Split markdown and plain text documents into separate files by chapter headings
+- **Automatic Detection**: Identifies chapters, prologues, and epilogues in multiple formats
+- **Multiple Format Support**:
+  - **Markdown Headers**: `# Chapter 1`, `## Prologue`, `# Epilogue`
+  - **Plain Text**: `Chapter 1`, `Prologue`, `Epilogue` (no markdown headers required)
+  - **Decimal Numbers**: `Chapter 1`, `Chapter 2`, `Chapter 3`
+  - **Roman Numerals**: `Chapter I`, `Chapter IV`, `Chapter IX`, `Chapter XLII`
+  - **Prologue Variations**: `Prologue`, `Prolog` (case-insensitive)
+  - **Epilogue Variations**: `Epilogue`, `Epilog` (case-insensitive)
+- **Smart Naming**: Creates files as `chapter_1.md`, `prologue.md`, `epilogue.md`, etc.
 - **Title Stripping**: Drops text after chapter number (e.g., "Chapter 1: The Beginning" → `chapter_1.md`)
-- **Duplicate Handling**: Adds A, B, C suffixes for duplicate chapter numbers
-- **Preamble Support**: Saves content before first chapter to `preamble.md`
+- **Duplicate Handling**: Adds A, B, C suffixes for duplicate chapter numbers (`chapter_1_A.md`, `prologue_A.md`)
+- **Preamble Support**: Saves content before first section to `preamble.md`
 - **Case Insensitive**: Detects "chapter", "Chapter", "CHAPTER", etc.
 - **Configuration**:
   ```bash
   # Basic usage (output in same directory as input)
   split-chapters book.md
+
+  # Works with plain text files too
+  split-chapters book.txt -o chapters/
 
   # Specify output directory
   split-chapters book.md -o chapters/
@@ -227,19 +239,41 @@ prompts:
   # Dry run (preview without creating files)
   split-chapters book.md --dry-run
 
+  # Overwrite existing files (default: skip existing)
+  split-chapters book.md --overwrite-existing
+
   # From Python module (development)
   PYTHONPATH=src python3 -m openrouter_interface.split_chapters book.md
   ```
+- **Supported Chapter Formats**:
+  ```
+  # Markdown header formats
+  # Prologue
+  # Chapter 1
+  # Chapter I: The Beginning
+  ## Chapter 2 - Middle
+  # Epilogue
+
+  # Plain text formats (no # prefix)
+  Prologue
+  Chapter 1
+  Chapter I: The Beginning
+  Chapter 2 - Middle
+  Epilogue
+  ```
 - **Output Format**:
-  - Creates individual chapter files with original heading preserved
-  - Comprehensive summary showing all chapters found
+  - Creates individual chapter/section files with original heading preserved
+  - Comprehensive summary showing all chapters, prologues, and epilogues found
   - Warnings for duplicate chapter numbers
   - Line counts and file statistics
+  - Output files: `prologue.md`, `chapter_1.md`, `chapter_2.md`, `epilogue.md`, etc.
 - **Use Cases**:
   - Prepare book chapters for individual processing in chains
   - Split large documents for parallel processing
+  - Process plain text manuscripts without markdown formatting
+  - Handle books with Roman numeral chapter numbering
   - Organize content by chapter for version control
-  - Extract specific chapters from compiled manuscripts
+  - Extract prologues, chapters, and epilogues from compiled manuscripts
 
 ### File Management
 - **Intermediate Files**: All step outputs preserved in temp directory

@@ -17,7 +17,7 @@ A comprehensive Python toolkit for working with AI language models through the O
 - 📝 **Script Integration**: Pre/post processing scripts at global and per-step levels
 - 🔀 **File Conversion**: Convert between markdown and docx, pdf, epub, and more
 - 📑 **Combine Outputs**: Merge all step outputs into a single file
-- ✂️ **Chapter Splitter**: Split markdown documents by chapter headings
+- ✂️ **Chapter Splitter**: Split documents by chapters, prologues, and epilogues (supports markdown, plain text, Roman numerals)
 - ⚙️ **Advanced Configuration**: YAML-based configuration with parameter overrides
 - 📁 **File Management**: Automatic chunking, validation, and format handling
 - 🌐 **Web Dashboard**: Real-time monitoring and visual chain builder
@@ -375,11 +375,14 @@ When restarted, the chain will:
 
 ### Chapter Splitter
 
-Split large markdown documents into separate files by chapter headings:
+Split documents into separate files by chapters, prologues, and epilogues:
 
 ```bash
 # Basic usage - splits in same directory as input
 split-chapters book.md
+
+# Works with plain text files too
+split-chapters book.txt -o chapters/
 
 # Specify output directory
 split-chapters book.md -o chapters/
@@ -387,38 +390,81 @@ split-chapters book.md -o chapters/
 # Dry run (preview without creating files)
 split-chapters book.md --dry-run
 
+# Overwrite existing files (default: skip existing)
+split-chapters book.md --overwrite-existing
+
 # Global command usage (after install-global.sh)
 split-chapters --help
 ```
 
 **Features:**
-- ✂️ **Automatic Detection**: Identifies chapter headings at any level (# Chapter 1, ## Chapter 2, etc.)
-- 📝 **Smart Naming**: Creates files as `chapter_1.md`, `chapter_2.md`, etc.
+- ✂️ **Multiple Formats**: Supports both markdown headers and plain text chapter markers
+- 📖 **Prologue & Epilogue**: Detects and extracts Prologue/Prolog and Epilogue/Epilog sections
+- 🔢 **Roman Numerals**: Handles Roman numeral chapter numbers (I, II, III, IV, etc.)
+- 📝 **Smart Naming**: Creates files as `prologue.md`, `chapter_1.md`, `epilogue.md`, etc.
 - 🎯 **Title Stripping**: Removes text after chapter number (e.g., "Chapter 1: The Beginning" → `chapter_1.md`)
-- 🔄 **Duplicate Handling**: Adds A, B, C suffixes for duplicate chapter numbers
-- 📄 **Preamble Support**: Saves content before first chapter to `preamble.md`
+- 🔄 **Duplicate Handling**: Adds A, B, C suffixes for duplicate sections (`chapter_1_A.md`, `prologue_A.md`)
+- 📄 **Preamble Support**: Saves content before first section to `preamble.md`
 - 🔠 **Case Insensitive**: Detects "chapter", "Chapter", "CHAPTER", etc.
+
+**Supported Chapter Formats:**
+```
+# Markdown header formats:
+# Prologue
+# Chapter 1
+# Chapter I: The Beginning
+## Chapter 2 - The Middle
+# Epilogue
+
+# Plain text formats (no # prefix):
+Prologue
+Chapter 1
+Chapter I: The Beginning
+Chapter 2 - The Middle
+Epilogue
+```
 
 **Example Output:**
 ```
-Processing: book.md
-Found 15 chapters
+Found Prologue at line 5 → prologue.md
+  → Wrote 42 lines to prologue.md
+Found Chapter 1 at line 50 → chapter_1.md
+  → Wrote 1,245 lines to chapter_1.md
+Found Chapter 2 at line 1,300 → chapter_2.md
+  → Wrote 1,089 lines to chapter_2.md
+Found Chapter 3 at line 2,400 → chapter_3.md
+  → Wrote 1,367 lines to chapter_3.md
+...
+Found Chapter 15 at line 15,800 → chapter_15.md
+  → Wrote 1,156 lines to chapter_15.md
+Found Epilogue at line 17,000 → epilogue.md
+  → Wrote 85 lines to epilogue.md
 
-Created files:
-  preamble.md (342 lines)
-  chapter_1.md (1,245 lines)
-  chapter_2.md (1,089 lines)
-  chapter_3.md (1,367 lines)
+Writing preamble (342 lines) → preamble.md
+
+============================================================
+SUMMARY
+============================================================
+Input file: book.md
+Output directory: /path/to/chapters/
+Chapters written: 17
+
+Chapter files written:
+  Prologue  → prologue.md          (  42 lines)
+  Chapter 1 → chapter_1.md         (1,245 lines)
+  Chapter 2 → chapter_2.md         (1,089 lines)
   ...
-  chapter_15.md (1,156 lines)
-
-Total: 16 files created in /path/to/chapters/
+  Chapter 15 → chapter_15.md       (1,156 lines)
+  Epilogue  → epilogue.md          (  85 lines)
 ```
 
 **Use Cases:**
-- 📚 **Book Processing**: Split manuscripts for chapter-by-chapter editing
+- 📚 **Book Processing**: Split manuscripts for chapter-by-chapter editing (markdown or plain text)
 - 🔗 **Chain Preparation**: Prepare individual chapters for prompt chain processing
 - 🔀 **Parallel Processing**: Enable concurrent processing of multiple chapters
+- 📖 **Classic Literature**: Process books with Roman numeral chapter numbering
+- 📄 **Plain Text Manuscripts**: Work with unformatted text files without markdown
+- 🎭 **Story Structure**: Extract prologues, chapters, and epilogues separately
 - 📦 **Organization**: Structure large documents for better version control
 
 **Integration with Chains:**
@@ -845,10 +891,11 @@ openrouter-chain --help
 openrouter-web --help
 split-chapters --help
 
-# Chapter splitting
+# Chapter splitting (supports markdown, plain text, Roman numerals)
 split-chapters book.md
-split-chapters book.md -o chapters/
+split-chapters book.txt -o chapters/
 split-chapters book.md --dry-run
+split-chapters book.md --overwrite-existing
 
 # Debug and validation
 openrouter-chain -c config.yaml --debug
@@ -1023,7 +1070,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🎨 **Expanded Load Chain**: Full-page configuration interface with rich preview and validation
 - ⚙️ **YAML Editor**: Professional code editor with templates, syntax highlighting, and real-time validation
 - 🔧 **Enhanced Error Handling**: Comprehensive YAML parsing error detection and reporting
-- ✂️ **Chapter Splitter**: Standalone utility to split markdown documents by chapter headings
+- ✂️ **Chapter Splitter**: Standalone utility to split documents by chapters, prologues, and epilogues (supports markdown, plain text, Roman numerals)
 
 ---
 
