@@ -1,52 +1,48 @@
 # OpenRouter Interface
----
+
 A comprehensive Python toolkit for working with AI language models through the OpenRouter API. Supports **single prompt processing**, **multi-prompt chaining**, **file conversion** (docx/pdf/epub), **web interface**, and **advanced automation** with pre/post processing scripts.
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![OpenRouter API](https://img.shields.io/badge/API-OpenRouter-green.svg)](https://openrouter.ai/)
-
----
-## ✨ Key Features
 ---
 
-- 🚀 **Multiple Interfaces**: CLI, Web UI, and programmatic access
-- 🔗 **Prompt Chaining**: Sequential prompt execution with restart/recovery capabilities
-- 🔄 **Smart Recovery**: Automatic restart from failed steps with status tracking
-- 🤖 **100+ AI Models**: Support for all OpenRouter-compatible models
-- 📝 **Script Integration**: Pre/post processing scripts at global and per-step levels
-- 🔀 **File Conversion**: Convert between markdown and docx, pdf, epub, and more
-- 📑 **Combine Outputs**: Merge all step outputs into a single file
-- ✂️ **Chapter Splitter**: Split documents by chapters, prologues, and epilogues (supports markdown, plain text, Roman numerals)
-- ⚙️ **Advanced Configuration**: YAML-based configuration with parameter overrides
-- 📁 **File Management**: Automatic chunking, validation, and format handling
-- 🌐 **Web Dashboard**: Real-time monitoring and visual chain builder
-- 📤 **Direct File Loading**: Upload and execute JSON prompts and YAML chains instantly
-- 🎯 **No-Registry Execution**: Run prompts and chains without permanent storage
+## Key Features
+
+- **Multiple Interfaces**: CLI, Web UI, and programmatic access
+- **Prompt Chaining**: Sequential prompt execution with restart/recovery capabilities
+- **Smart Recovery**: Automatic restart from failed steps with status tracking
+- **100+ AI Models**: Support for all OpenRouter-compatible models
+- **Script Integration**: Pre/post processing scripts at global and per-step levels
+- **File Conversion**: Convert between markdown and docx, pdf, epub, and more
+- **Combine Outputs**: Merge all step outputs into a single file
+- **Chapter Splitter**: Split documents by chapters, prologues, and epilogues (supports markdown, plain text, Roman numerals)
+- **Advanced Configuration**: YAML-based configuration with parameter overrides
+- **File Management**: Automatic chunking, validation, and format handling
+- **Web Dashboard**: Real-time monitoring and visual chain builder
+- **Direct File Loading**: Upload and execute JSON prompts and YAML chains instantly
+- **No-Registry Execution**: Run prompts and chains without permanent storage
 
 ---
-## 📖 Table of Contents
----
 
-- [Quick Start](#-quick-start)
-- [Installation](#-installation)
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Installation](#installation)
   - [Global Installation](#global-installation-recommended)
   - [Local Development](#local-development)
   - [Platform-Specific Setup](#platform-specific-setup)
-- [Usage](#-usage)
+- [Usage](#usage)
   - [Single Prompts](#single-prompts)
   - [Web Interface](#web-interface)
   - [Prompt Chaining](#prompt-chaining)
   - [Chapter Splitter](#chapter-splitter)
-- [Configuration](#-configuration)
-- [Examples](#-examples)
-- [Documentation](#-documentation)
-- [Contributing](#-contributing)
-- [Support](#-support)
+- [Configuration](#configuration)
+- [Examples](#examples)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Support](#support)
 
 ---
-## 🚀 Quick Start
----
+
+## Quick Start
 
 ### 5-Minute Setup
 
@@ -74,8 +70,8 @@ openrouter-web
 ```
 
 ---
-## 📦 Installation
----
+
+## Installation
 
 ### Global Installation (Recommended)
 
@@ -108,7 +104,7 @@ PYTHONPATH=src python3 -m openrouter_interface.cli --help
 ### Platform-Specific Setup
 
 <details>
-<summary><strong>🐧 Linux</strong></summary>
+<summary><strong>Linux</strong></summary>
 
 ```bash
 # Ubuntu/Debian
@@ -127,7 +123,7 @@ source ~/.bashrc
 </details>
 
 <details>
-<summary><strong>🍎 macOS</strong></summary>
+<summary><strong>macOS</strong></summary>
 
 ```bash
 # Using Homebrew
@@ -145,7 +141,7 @@ source ~/.zshrc
 </details>
 
 <details>
-<summary><strong>🪟 Windows</strong></summary>
+<summary><strong>Windows</strong></summary>
 
 ```cmd
 # Install Python 3.8+ and Git
@@ -177,8 +173,8 @@ echo 'export OPENROUTER_API_KEY="your-api-key-here"' >> ~/.bashrc
 ```
 
 ---
-## 🎯 Usage
----
+
+## Usage
 
 ### Single Prompts
 
@@ -215,13 +211,13 @@ openrouter-web --config config/web_config.yaml
 ```
 
 **Web Features:**
-- 📤 **File Upload**: Drag-and-drop interface
-- ⚙️ **Model Selection**: Choose from 100+ models
-- 🔗 **Chain Builder**: Visual chain creation
-- 📊 **Real-time Monitoring**: Live progress tracking
-- 📁 **File Management**: Browse intermediate results
-- 🎯 **Load Prompt**: Upload and execute JSON prompts instantly
-- 🔗 **Load Chain**: Upload and execute YAML chains directly
+- **File Upload**: Drag-and-drop interface
+- **Model Selection**: Choose from 100+ models
+- **Chain Builder**: Visual chain creation
+- **Real-time Monitoring**: Live progress tracking
+- **File Management**: Browse intermediate results
+- **Load Prompt**: Upload and execute JSON prompts instantly
+- **Load Chain**: Upload and execute YAML chains directly
 
 #### Load Prompt Button
 Access from the main page with the green "Load Prompt" button:
@@ -244,7 +240,7 @@ Access from the main page with the green "Load Prompt" button:
 #### Load Chain Configuration (Expanded)
 Access from the Chain Runner page - navigates to dedicated full-page interface:
 
-**🎯 Dedicated Load Page (`/chains/load`)**
+**Dedicated Load Page (`/chains/load`)**
 1. **Navigate**: Click "Load Chain" to go to comprehensive load interface
 2. **Upload Options**:
    - File upload with drag-and-drop support
@@ -262,7 +258,7 @@ Access from the Chain Runner page - navigates to dedicated full-page interface:
 5. **Template Management**: Access to pre-built configuration templates
 6. **Direct Execution**: Start chains immediately from the load interface
 
-**🎨 YAML Editor Integration (`/chains/yaml-editor`)**
+**YAML Editor Integration (`/chains/yaml-editor`)**
 - Professional code editor with full YAML syntax highlighting
 - Five built-in templates: Basic, Advanced, Scripts, Multi-pass, Append
 - Real-time validation with error detection and reporting
@@ -270,7 +266,7 @@ Access from the Chain Runner page - navigates to dedicated full-page interface:
 - Light and dark themes for comfortable editing
 - Direct execution: Save & Execute for immediate chain deployment
 
-**🔧 Enhanced Features**:
+**Enhanced Features**:
 - **Configuration Validation**: Pre-execution YAML and config validation
 - **Error Handling**: Comprehensive error reporting with specific line numbers
 - **Template System**: Quick-start templates for common workflow patterns
@@ -324,7 +320,7 @@ prompts:
     temperature: 0.8
 ```
 
-**🔄 Chain Restart & Recovery:**
+**Chain Restart and Recovery:**
 
 OpenRouter Interface includes powerful restart functionality to recover from failures and save time/costs by avoiding re-execution of completed steps.
 
@@ -343,11 +339,11 @@ openrouter-chain -c config.yaml --clean-status
 ```
 
 **Key Benefits:**
-- ⏱️ **Time Savings**: Skip expensive LLM calls for completed steps
-- 💰 **Cost Efficiency**: Avoid re-running successful operations
-- 🔍 **Transparency**: `.status` files show exactly what completed/failed
-- 🎯 **Flexible Recovery**: Auto-detect restart points or force restart from any step
-- 📁 **Multi-file Support**: Independent restart points per input file
+- **Time Savings**: Skip expensive LLM calls for completed steps
+- **Cost Efficiency**: Avoid re-running successful operations
+- **Transparency**: `.status` files show exactly what completed/failed
+- **Flexible Recovery**: Auto-detect restart points or force restart from any step
+- **Multi-file Support**: Independent restart points per input file
 
 **Status File Example:**
 ```json
@@ -368,10 +364,10 @@ openrouter-chain -c config.yaml --clean-status
 ```
 
 When restarted, the chain will:
-1. 🔍 **Detect** the previous failure at step 3
-2. ⏭️ **Skip** steps 1-2 (already completed)
-3. 🔄 **Resume** from step 3 and continue to completion
-4. 📊 **Track** all new progress in the status file
+1. **Detect** the previous failure at step 3
+2. **Skip** steps 1-2 (already completed)
+3. **Resume** from step 3 and continue to completion
+4. **Track** all new progress in the status file
 
 ### Chapter Splitter
 
@@ -398,14 +394,14 @@ split-chapters --help
 ```
 
 **Features:**
-- ✂️ **Multiple Formats**: Supports both markdown headers and plain text chapter markers
-- 📖 **Prologue & Epilogue**: Detects and extracts Prologue/Prolog and Epilogue/Epilog sections
-- 🔢 **Roman Numerals**: Handles Roman numeral chapter numbers (I, II, III, IV, etc.)
-- 📝 **Smart Naming**: Creates files as `prologue.md`, `chapter_1.md`, `epilogue.md`, etc.
-- 🎯 **Title Stripping**: Removes text after chapter number (e.g., "Chapter 1: The Beginning" → `chapter_1.md`)
-- 🔄 **Duplicate Handling**: Adds A, B, C suffixes for duplicate sections (`chapter_1_A.md`, `prologue_A.md`)
-- 📄 **Preamble Support**: Saves content before first section to `preamble.md`
-- 🔠 **Case Insensitive**: Detects "chapter", "Chapter", "CHAPTER", etc.
+- **Multiple Formats**: Supports both markdown headers and plain text chapter markers
+- **Prologue and Epilogue**: Detects and extracts Prologue/Prolog and Epilogue/Epilog sections
+- **Roman Numerals**: Handles Roman numeral chapter numbers (I, II, III, IV, etc.)
+- **Smart Naming**: Creates files as `prologue.md`, `chapter_1.md`, `epilogue.md`, etc.
+- **Title Stripping**: Removes text after chapter number (e.g., "Chapter 1: The Beginning" becomes `chapter_1.md`)
+- **Duplicate Handling**: Adds A, B, C suffixes for duplicate sections (`chapter_1_A.md`, `prologue_A.md`)
+- **Preamble Support**: Saves content before first section to `preamble.md`
+- **Case Insensitive**: Detects "chapter", "Chapter", "CHAPTER", etc.
 
 **Supported Chapter Formats:**
 ```
@@ -459,13 +455,13 @@ Chapter files written:
 ```
 
 **Use Cases:**
-- 📚 **Book Processing**: Split manuscripts for chapter-by-chapter editing (markdown or plain text)
-- 🔗 **Chain Preparation**: Prepare individual chapters for prompt chain processing
-- 🔀 **Parallel Processing**: Enable concurrent processing of multiple chapters
-- 📖 **Classic Literature**: Process books with Roman numeral chapter numbering
-- 📄 **Plain Text Manuscripts**: Work with unformatted text files without markdown
-- 🎭 **Story Structure**: Extract prologues, chapters, and epilogues separately
-- 📦 **Organization**: Structure large documents for better version control
+- **Book Processing**: Split manuscripts for chapter-by-chapter editing (markdown or plain text)
+- **Chain Preparation**: Prepare individual chapters for prompt chain processing
+- **Parallel Processing**: Enable concurrent processing of multiple chapters
+- **Classic Literature**: Process books with Roman numeral chapter numbering
+- **Plain Text Manuscripts**: Work with unformatted text files without markdown
+- **Story Structure**: Extract prologues, chapters, and epilogues separately
+- **Organization**: Structure large documents for better version control
 
 **Integration with Chains:**
 ```bash
@@ -482,8 +478,8 @@ cat chapters/processed_*.md > final_manuscript.md
 ```
 
 ---
-## ⚙️ Configuration
----
+
+## Configuration
 
 ### Model Support
 
@@ -617,8 +613,8 @@ Generated: 2025-01-15 14:30:00
 - **Format Support**: Markdown, text, JSON, YAML
 
 ---
-## 📚 Examples
----
+
+## Examples
 
 ### Content Enhancement Pipeline
 
@@ -872,8 +868,8 @@ postprocessing:
 6. Monitor real-time progress in active chains section
 
 ---
-## 📖 Documentation
----
+
+## Documentation
 
 ### Quick References
 
@@ -906,8 +902,8 @@ openrouter-runner -p prompts/test.json -i test.md -o test_output.md
 ```
 
 ---
-## 🛠️ Development
----
+
+## Development
 
 ### Project Structure
 
@@ -955,8 +951,8 @@ flake8 src
 ```
 
 ---
-## 🤝 Contributing
----
+
+## Contributing
 
 We welcome contributions! Here's how to get started:
 
@@ -970,12 +966,12 @@ We welcome contributions! Here's how to get started:
 
 ### Areas for Contribution
 
-- 🎯 **New Features**: Prompt templates, chain configurations
-- 🤖 **Model Support**: Additional model integrations
-- 📚 **Documentation**: Tutorials, examples, guides
-- 🧪 **Testing**: Test coverage improvements
-- ⚡ **Performance**: Optimization and profiling
-- 🎨 **UI/UX**: Web interface improvements
+- **New Features**: Prompt templates, chain configurations
+- **Model Support**: Additional model integrations
+- **Documentation**: Tutorials, examples, guides
+- **Testing**: Test coverage improvements
+- **Performance**: Optimization and profiling
+- **UI/UX**: Web interface improvements
 
 ### Development Setup
 
@@ -994,21 +990,15 @@ PYTHONPATH=src python3 -m openrouter_interface.web --debug
 ```
 
 ---
-## 🆘 Support
----
+
+## Support
 
 ### Getting Help
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/your-org/openrouter-interface/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/your-org/openrouter-interface/discussions)
-- 📖 **Documentation**: [Complete Docs](docs/)
-- 💡 **Feature Requests**: [GitHub Issues](https://github.com/your-org/openrouter-interface/issues)
-
-### Community
-
-- 💬 **Discord**: Join our community chat
-- 🐦 **Twitter**: Follow for updates and tips
-- 📝 **Blog**: Technical articles and tutorials
+- **Bug Reports**: [GitHub Issues](https://github.com/your-org/openrouter-interface/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-org/openrouter-interface/discussions)
+- **Documentation**: [Complete Docs](docs/)
+- **Feature Requests**: [GitHub Issues](https://github.com/your-org/openrouter-interface/issues)
 
 ### Troubleshooting
 
@@ -1036,42 +1026,42 @@ python3 -c "import yaml; yaml.safe_load(open('config.yaml'))"
 ```
 
 ---
-## 📄 License
----
+
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-## 🙏 Acknowledgments
----
+
+## Acknowledgments
 
 - [OpenRouter](https://openrouter.ai/) for providing access to multiple AI models
 - The Python community for excellent tools and libraries
 - Contributors who help improve this project
 
 ---
-## 📊 Project Status
----
 
-- ✅ **Stable**: Core functionality tested and reliable
-- 🚀 **Active Development**: Regular updates and new features
-- 🧪 **Well Tested**: Comprehensive test suite
-- 📚 **Documented**: Complete documentation and examples
+## Project Status
+
+- **Stable**: Core functionality tested and reliable
+- **Active Development**: Regular updates and new features
+- **Well Tested**: Comprehensive test suite
+- **Documented**: Complete documentation and examples
 
 ### Recent Updates
 
-- ✨ **Per-Phase Scripts**: Individual prescript/postscript for each step
-- 🔗 **Variable Substitution**: Dynamic {input_file}/{output_file} replacement
-- 📊 **Enhanced Monitoring**: Improved web interface with real-time progress
-- 🎯 **Model Compatibility**: Automatic parameter filtering per model
-- 📁 **File Management**: Advanced validation and size checking
-- 📤 **Load Buttons**: Direct upload and execution of JSON prompts and YAML chains
-- 🚀 **No-Registry Execution**: Run files instantly without permanent storage
-- 🎨 **Expanded Load Chain**: Full-page configuration interface with rich preview and validation
-- ⚙️ **YAML Editor**: Professional code editor with templates, syntax highlighting, and real-time validation
-- 🔧 **Enhanced Error Handling**: Comprehensive YAML parsing error detection and reporting
-- ✂️ **Chapter Splitter**: Standalone utility to split documents by chapters, prologues, and epilogues (supports markdown, plain text, Roman numerals)
+- **Per-Phase Scripts**: Individual prescript/postscript for each step
+- **Variable Substitution**: Dynamic {input_file}/{output_file} replacement
+- **Enhanced Monitoring**: Improved web interface with real-time progress
+- **Model Compatibility**: Automatic parameter filtering per model
+- **File Management**: Advanced validation and size checking
+- **Load Buttons**: Direct upload and execution of JSON prompts and YAML chains
+- **No-Registry Execution**: Run files instantly without permanent storage
+- **Expanded Load Chain**: Full-page configuration interface with rich preview and validation
+- **YAML Editor**: Professional code editor with templates, syntax highlighting, and real-time validation
+- **Enhanced Error Handling**: Comprehensive YAML parsing error detection and reporting
+- **Chapter Splitter**: Standalone utility to split documents by chapters, prologues, and epilogues (supports markdown, plain text, Roman numerals)
 
 ---
 
-**Ready to get started?** Follow the [Quick Start](#-quick-start) guide above! 🚀
+**Ready to get started?** Follow the [Quick Start](#quick-start) guide above!
