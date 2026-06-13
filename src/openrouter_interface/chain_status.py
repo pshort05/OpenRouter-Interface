@@ -80,28 +80,45 @@ class ChainStatusManager:
         }
         self.save_status()
 
-    def update_step_complete(self, filename: str, step: str, execution_time: float, output_size: str):
-        """Mark step as completed successfully."""
-        if filename in self.status_data["files"] and step in self.status_data["files"][filename]["steps"]:
-            self.status_data["files"][filename]["steps"][step].update({
-                "status": "completed",
-                "time": execution_time,
-                "output_size": output_size
-            })
-            self.save_status()
+    def _ensure_step_entry(self, filename: str, step: str) -> dict:
+        """Return the step record for (filename, step), creating it if missing.
+
+        Guards against silently dropping a completion/failure when the matching
+        update_step_start was never recorded (e.g. a key-format mismatch).
+        """
+        file_entry = self.status_data["files"].setdefault(filename, {"status": "running", "steps": {}})
+        return file_entry.setdefault("steps", {}).setdefault(step, {})
+
+    def update_step_complete(self, filename: str, step: str, execution_time: float, output_size: str,
+                             output_path: str = None):
+        """Mark step as completed successfully and record its output file path."""
+        step_entry = self._ensure_step_entry(filename, step)
+        step_entry.update({
+            "status": "completed",
+            "time": execution_time,
+            "output_size": output_size
+        })
+        if output_path is not None:
+            step_entry["output_path"] = str(output_path)
+        self.save_status()
+
+    def get_step_output_path(self, filename: str, step: str):
+        """Return the recorded output file path for a completed step, or None."""
+        return (self.status_data["files"].get(filename, {})
+                .get("steps", {}).get(step, {}).get("output_path"))
 
     def update_step_failed(self, filename: str, step: str, execution_time: float, error: str):
         """Mark step as failed with error details."""
-        if filename in self.status_data["files"] and step in self.status_data["files"][filename]["steps"]:
-            self.status_data["files"][filename]["steps"][step].update({
-                "status": "failed",
-                "time": execution_time,
-                "error": error
-            })
+        step_entry = self._ensure_step_entry(filename, step)
+        step_entry.update({
+            "status": "failed",
+            "time": execution_time,
+            "error": error
+        })
 
-            # Mark file as failed
-            self.status_data["files"][filename]["status"] = "failed"
-            self.save_status()
+        # Mark file as failed
+        self.status_data["files"][filename]["status"] = "failed"
+        self.save_status()
 
     def update_step_skipped(self, filename: str, step: str, step_name: str, reason: str = "restart"):
         """Mark step as skipped (for restart scenarios)."""
@@ -146,12 +163,20 @@ class ChainStatusManager:
             return None
 
         steps = file_data.get("steps", {})
-        for step in sorted(steps.keys(), key=lambda x: float(x.replace('_', '.'))):
+        for step in sorted(steps.keys(), key=self._step_sort_key):
             step_data = steps[step]
             if step_data.get("status") in ["failed", "running"]:
                 return step
 
         return None
+
+    @staticmethod
+    def _step_sort_key(step: str) -> float:
+        """Numeric sort key for a step id ("1", "6.1"); non-numeric ids sort last."""
+        try:
+            return float(str(step).replace('_', '.'))
+        except (ValueError, TypeError):
+            return float('inf')
 
     def analyze_restart_scenario(self) -> Dict[str, Any]:
         """Analyze current status and determine restart requirements."""

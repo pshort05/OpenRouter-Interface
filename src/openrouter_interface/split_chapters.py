@@ -36,6 +36,15 @@ def roman_to_int(roman: str) -> Optional[int]:
         Integer value or None if invalid
     """
     roman = roman.upper()
+
+    # Reject empty or non-canonical numerals before summation, so that
+    # invalid forms (e.g. "IIII", "VV") do not convert silently.
+    if not roman or not re.match(
+        r'^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$',
+        roman
+    ):
+        return None
+
     roman_values = {
         'I': 1, 'V': 5, 'X': 10, 'L': 50,
         'C': 100, 'D': 500, 'M': 1000
@@ -79,14 +88,14 @@ class ChapterSplitter:
     # Pattern 3: Plain text decimal chapter (no markdown header)
     # Matches: "Chapter 1", "Chapter 2: Title", "CHAPTER 1", etc.
     CHAPTER_DECIMAL_PLAIN = re.compile(
-        r'^Chapter\s+(\d+)(?:[:\s\-].*)?$',
+        r'^Chapter\s+(\d+)(?:\s*[:\-].*)?$',
         re.IGNORECASE
     )
 
     # Pattern 4: Plain text Roman numeral chapter
     # Matches: "Chapter I", "Chapter IV: Title", etc.
     CHAPTER_ROMAN_PLAIN = re.compile(
-        r'^Chapter\s+([IVXLCDM]+)(?:[:\s\-].*)?$',
+        r'^Chapter\s+([IVXLCDM]+)(?:\s*[:\-].*)?$',
         re.IGNORECASE
     )
 
@@ -100,7 +109,7 @@ class ChapterSplitter:
     # Pattern 6: Prologue (plain text)
     # Matches: "Prologue", "PROLOGUE", "Prolog", etc.
     PROLOGUE_PLAIN = re.compile(
-        r'^(Prologue|Prolog)(?:[:\s\-].*)?$',
+        r'^(Prologue|Prolog)(?:\s*[:\-].*)?$',
         re.IGNORECASE
     )
 
@@ -114,7 +123,7 @@ class ChapterSplitter:
     # Pattern 8: Epilogue (plain text)
     # Matches: "Epilogue", "EPILOGUE", "Epilog", etc.
     EPILOGUE_PLAIN = re.compile(
-        r'^(Epilogue|Epilog)(?:[:\s\-].*)?$',
+        r'^(Epilogue|Epilog)(?:\s*[:\-].*)?$',
         re.IGNORECASE
     )
 

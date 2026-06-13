@@ -1,0 +1,91 @@
+# OpenRouter Chain Configuration - Gemini Humanizer Multi-file Processing
+# Processes 30 chapters through 4-stage humanization pipeline
+# Run with: openrouter-chain -c gemini_humanizer_multi_file.yaml
+
+# Input files: chapter_1.md through chapter_30.md
+input_files:
+  - ../soft_edge_of_wild/chapter_1.md
+  - ../soft_edge_of_wild/chapter_2.md
+  - ../soft_edge_of_wild/chapter_3.md
+  - ../soft_edge_of_wild/chapter_4.md
+  - ../soft_edge_of_wild/chapter_5.md
+  - ../soft_edge_of_wild/chapter_6.md
+  - ../soft_edge_of_wild/chapter_7.md
+  - ../soft_edge_of_wild/chapter_8.md
+  - ../soft_edge_of_wild/chapter_9.md
+  - ../soft_edge_of_wild/chapter_10.md
+  - ../soft_edge_of_wild/chapter_11.md
+  - ../soft_edge_of_wild/chapter_12.md
+  - ../soft_edge_of_wild/chapter_13.md
+  - ../soft_edge_of_wild/chapter_14.md
+  - ../soft_edge_of_wild/chapter_15.md
+  - ../soft_edge_of_wild/chapter_16.md
+  - ../soft_edge_of_wild/chapter_17.md
+  - ../soft_edge_of_wild/chapter_18.md
+  - ../soft_edge_of_wild/chapter_19.md
+  - ../soft_edge_of_wild/chapter_20.md
+  - ../soft_edge_of_wild/chapter_21.md
+  - ../soft_edge_of_wild/chapter_22.md
+  - ../soft_edge_of_wild/chapter_23.md
+  - ../soft_edge_of_wild/chapter_24.md
+  - ../soft_edge_of_wild/chapter_25.md
+  - ../soft_edge_of_wild/chapter_26.md
+  - ../soft_edge_of_wild/chapter_27.md
+  - ../soft_edge_of_wild/chapter_28.md
+  - ../soft_edge_of_wild/chapter_29.md
+  - ../soft_edge_of_wild/chapter_30.md
+
+# Output file naming pattern
+# Creates: humanized_chapters/chapter_1_humanized.md, etc.
+output_pattern: "humanized_chapters/{input_name}_humanized{input_ext}"
+
+# 4-stage humanization pipeline
+# Each file goes through all 4 prompts sequentially
+prompts:
+  # Phase 1: Foundational Cleanup
+  prompt 1:
+    prompt_file: GeminiHumanizer/1_foundational_cleanup.json
+    temperature: 0.6
+    max_tokens: 30000
+
+  # Phase 2: Stylistic & Narrative Enhancement
+  prompt 2:
+    prompt_file: GeminiHumanizer/2_stylistic_narrative_enhancement.json
+    temperature: 0.7
+    max_tokens: 30000
+
+  # Phase 3: Advanced Structural & Statistical Humanization
+  prompt 3:
+    prompt_file: GeminiHumanizer/3_advanced_structural_statistical_humanization.json
+    temperature: 0.75
+    max_tokens: 30000
+
+  # Phase 4: Dialogue Refinement
+  prompt 4:
+    prompt_file: GeminiHumanizer/4_dialogue_refinement.json
+    temperature: 0.8
+    max_tokens: 30000
+
+# Global configuration
+global_config:
+  model: google/gemini-3-pro-preview
+  api_base_url: https://openrouter.ai/api/v1
+  temperature: 0.7
+  max_tokens: 30000
+  log_level: INFO
+
+# Execution Process:
+# - Each file processes through all 4 phases before moving to next file
+# - Total: 120 prompt executions (30 files × 4 phases)
+# - Output directory 'humanized_chapters/' will be created automatically
+# - Supports restart with: openrouter-chain -c gemini_humanizer_multi_file.yaml --restart
+#
+# Expected outputs:
+# - humanized_chapters/chapter_1_humanized.md
+# - humanized_chapters/chapter_2_humanized.md
+# - ... (through chapter_30_humanized.md)
+#
+# Usage:
+# openrouter-chain -c gemini_humanizer_multi_file.yaml
+# openrouter-chain -c gemini_humanizer_multi_file.yaml --status-only
+# openrouter-chain -c gemini_humanizer_multi_file.yaml --restart

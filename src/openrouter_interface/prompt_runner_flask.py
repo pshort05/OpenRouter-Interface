@@ -37,6 +37,54 @@ from .prompt_runner_api_client import PromptAPIClient
 from .prompt_chain_runner import PromptChainRunner
 from .flask_helpers import format_file_size, enhance_prompt_with_system_and_format, get_local_ip
 
+from urllib.parse import urlparse
+
+
+def safe_resolve(base, user_path) -> Optional[Path]:
+    """Safely resolve a user-supplied relative path against a base directory.
+
+    Returns the resolved Path only if it is strictly contained within base
+    (i.e. a file/dir under base, not base itself). Returns None for absolute
+    inputs, empty inputs, or anything that escapes base via traversal.
+    """
+    if user_path is None:
+        return None
+
+    user_path = str(user_path).strip()
+    if not user_path or os.path.isabs(user_path):
+        return None
+
+    base_resolved = Path(base).resolve()
+    candidate = (base_resolved / user_path).resolve()
+
+    if candidate == base_resolved:
+        return None
+    if base_resolved not in candidate.parents:
+        return None
+
+    return candidate
+
+
+def _is_local_endpoint(url) -> bool:
+    """Return True only if url targets a loopback host (SSRF containment)."""
+    if not url or not isinstance(url, str):
+        return False
+
+    try:
+        parsed = urlparse(url)
+    except (ValueError, TypeError):
+        return False
+
+    if parsed.scheme not in ('http', 'https'):
+        return False
+
+    host = parsed.hostname
+    if host is None:
+        return False
+
+    host = host.lower()
+    return host in ('127.0.0.1', 'localhost', '::1')
+
 
 class FlaskPromptRunner:
     """Flask web application for OpenRouter Prompt Runner."""
@@ -753,15 +801,16 @@ class FlaskPromptRunner:
             """Show prompt details and input form."""
             try:
                 logging.info(f"Loading prompt form for: {prompt_file}")
-                
-                # If prompt_file is relative (e.g., "prompts/file.json"), resolve it to project root
-                if not os.path.isabs(prompt_file):
-                    prompt_path = Path(os.path.join(self.project_root, prompt_file))
-                else:
-                    prompt_path = Path(prompt_file)
-                
+
+                # Safely resolve the user-supplied prompt path inside prompts/
+                prompt_path = self._resolve_prompt_path(prompt_file)
+                if prompt_path is None:
+                    logging.warning(f"Rejected unsafe prompt path: {prompt_file}")
+                    flash(f"Invalid prompt file: {prompt_file}", 'error')
+                    return redirect(url_for('index'))
+
                 logging.debug(f"Resolved prompt path: {prompt_path}")
-                
+
                 if not prompt_path.exists():
                     logging.error(f"Prompt file not found: {prompt_path}")
                     flash(f"Prompt file not found: {prompt_file}", 'error')
@@ -825,13 +874,13 @@ class FlaskPromptRunner:
                 if not prompt_file:
                     logging.error("No prompt file specified in form submission")
                     return jsonify({'error': 'No prompt file specified'}), 400
-                
-                # If prompt_file is relative, resolve it to project root
-                if not os.path.isabs(prompt_file):
-                    prompt_path = Path(os.path.join(self.project_root, prompt_file))
-                else:
-                    prompt_path = Path(prompt_file)
-                    
+
+                # Safely resolve the user-supplied prompt path inside prompts/
+                prompt_path = self._resolve_prompt_path(prompt_file)
+                if prompt_path is None:
+                    logging.warning(f"Rejected unsafe prompt path: {prompt_file}")
+                    return jsonify({'error': f'Invalid prompt file: {prompt_file}'}), 400
+
                 if not prompt_path.exists():
                     return jsonify({'error': f'Prompt file not found: {prompt_file}'}), 404
 
@@ -1120,12 +1169,12 @@ class FlaskPromptRunner:
         def api_get_prompt(prompt_file):
             """API endpoint to get prompt details."""
             try:
-                # If prompt_file is relative, resolve it to project root
-                if not os.path.isabs(prompt_file):
-                    prompt_path = Path(os.path.join(self.project_root, prompt_file))
-                else:
-                    prompt_path = Path(prompt_file)
-                    
+                # Safely resolve the user-supplied prompt path inside prompts/
+                prompt_path = self._resolve_prompt_path(prompt_file)
+                if prompt_path is None:
+                    logging.warning(f"Rejected unsafe prompt path: {prompt_file}")
+                    return jsonify({'error': 'Invalid prompt file'}), 403
+
                 if not prompt_path.exists():
                     return jsonify({'error': 'Prompt file not found'}), 404
                 
@@ -1211,19 +1260,45 @@ class FlaskPromptRunner:
         def chains_start():
             """Start a new chain execution."""
             try:
-                data = request.get_json()
-                
+                data = request.get_json(silent=True) or {}
+
                 # Generate unique chain ID
                 chain_id = str(uuid.uuid4())
-                
+
                 # Get required parameters
                 config_path = data.get('config_path')
                 input_file = data.get('input_file')
                 output_file = data.get('output_file')
-                
+
                 if not all([config_path, input_file]):
                     return jsonify({'error': 'Missing required parameters'}), 400
-                
+
+                # Confine config_path to uploaded configs in the temp dir
+                # (the directory used by /chains/upload_config).
+                temp_base = Path(tempfile.gettempdir()).resolve()
+                try:
+                    config_resolved = Path(config_path).resolve()
+                except (ValueError, OSError):
+                    config_resolved = None
+                if (config_resolved is None
+                        or temp_base not in config_resolved.parents
+                        or not config_resolved.name.startswith('chain_config_')):
+                    logging.warning(f"Rejected unsafe chain config_path: {config_path}")
+                    return jsonify({'error': 'Invalid config_path'}), 400
+                config_path = str(config_resolved)
+
+                # If an output file is supplied, confine it to the temp dir so
+                # it can later be served safely by /chains/download.
+                if output_file:
+                    try:
+                        output_resolved = Path(output_file).resolve()
+                    except (ValueError, OSError):
+                        output_resolved = None
+                    if output_resolved is None or temp_base not in output_resolved.parents:
+                        logging.warning(f"Rejected unsafe chain output_file: {output_file}")
+                        return jsonify({'error': 'Invalid output_file'}), 400
+                    output_file = str(output_resolved)
+
                 # Create chain info
                 chain_info = {
                     'id': chain_id,
@@ -1364,7 +1439,17 @@ class FlaskPromptRunner:
                 output_file = chain_info.get('output_file')
                 if not output_file or not Path(output_file).exists():
                     return jsonify({'error': 'Output file not found'}), 404
-                
+
+                # Only serve files within the allowed temp directory.
+                temp_base = Path(tempfile.gettempdir()).resolve()
+                try:
+                    output_resolved = Path(output_file).resolve()
+                except (ValueError, OSError):
+                    output_resolved = None
+                if output_resolved is None or temp_base not in output_resolved.parents:
+                    logging.warning(f"Rejected unsafe download path: {output_file}")
+                    return jsonify({'error': 'Invalid output file'}), 403
+
                 return send_file(
                     output_file,
                     as_attachment=True,
@@ -1505,7 +1590,7 @@ class FlaskPromptRunner:
         def api_chat():
             """API endpoint for chat messages."""
             try:
-                data = request.get_json()
+                data = request.get_json(silent=True) or {}
 
                 messages = data.get('messages', [])
                 model_source = data.get('modelSource', 'openrouter')
@@ -1546,6 +1631,10 @@ class FlaskPromptRunner:
 
                     if not local_endpoint or not local_model:
                         return jsonify({'error': 'Local endpoint and model required'}), 400
+
+                    if not _is_local_endpoint(local_endpoint):
+                        logging.warning(f"Rejected non-loopback local endpoint: {local_endpoint}")
+                        return jsonify({'error': 'Local endpoint must be a loopback address (localhost / 127.0.0.1 / ::1)'}), 400
 
                     logging.info(f"Local Endpoint: {local_endpoint}")
                     logging.info(f"Local Model: {local_model}")
@@ -1600,7 +1689,7 @@ class FlaskPromptRunner:
         def api_scene_generate():
             """API endpoint for generating scenes/chapters."""
             try:
-                data = request.get_json()
+                data = request.get_json(silent=True) or {}
 
                 # Log the raw request data for debugging
                 logging.info("="*60)
@@ -1622,6 +1711,10 @@ class FlaskPromptRunner:
 
                     if not local_endpoint or not local_model:
                         return jsonify({'error': 'Local endpoint and model name required'}), 400
+
+                    if not _is_local_endpoint(local_endpoint):
+                        logging.warning(f"Rejected non-loopback local endpoint: {local_endpoint}")
+                        return jsonify({'error': 'Local endpoint must be a loopback address (localhost / 127.0.0.1 / ::1)'}), 400
                 else:
                     model = data.get('model')
 
@@ -1756,21 +1849,17 @@ class FlaskPromptRunner:
         def api_save_scene_settings():
             """Save scene generator settings to file in working directory."""
             try:
-                data = request.get_json()
+                data = request.get_json(silent=True) or {}
                 name = data.get('name', '').strip()
                 settings = data.get('settings', {})
 
                 if not name:
                     return jsonify({'error': 'Settings name is required'}), 400
 
-                # Use working directory from settings, or fall back to current directory
-                working_dir = settings.get('workingDirectory', '').strip()
-                if not working_dir or not os.path.isdir(working_dir):
-                    working_dir = os.getcwd()
-                    logging.warning(f"Working directory not set or invalid, using current directory: {working_dir}")
-
-                # Create settings directory in working directory
-                settings_dir = os.path.join(working_dir, '.scene_settings')
+                # Confine settings writes to a fixed server-controlled base
+                # directory. A client-supplied working directory is never used
+                # as a write target (arbitrary-write defense).
+                settings_dir = os.path.join(self.project_root, '.scene_settings')
                 os.makedirs(settings_dir, exist_ok=True)
 
                 # Sanitize filename
@@ -1805,13 +1894,9 @@ class FlaskPromptRunner:
                 if not name:
                     return jsonify({'error': 'Settings name is required'}), 400
 
-                # Get working directory from query param or use current directory
-                working_dir = request.args.get('workingDirectory', '').strip()
-                if not working_dir or not os.path.isdir(working_dir):
-                    working_dir = os.getcwd()
-
-                # Load from .scene_settings in working directory
-                settings_dir = os.path.join(working_dir, '.scene_settings')
+                # Load from the fixed server-controlled settings directory
+                # (matches the save route).
+                settings_dir = os.path.join(self.project_root, '.scene_settings')
                 safe_name = secure_filename(name)
                 if not safe_name:
                     return jsonify({'error': 'Invalid settings name'}), 400
@@ -2091,6 +2176,27 @@ class FlaskPromptRunner:
                 chain_info['error'] = str(e)
                 chain_info['failed_at'] = datetime.now().isoformat()
     
+    def _resolve_prompt_path(self, prompt_file) -> Optional[Path]:
+        """Resolve a user-supplied prompt reference inside the prompts/ dir.
+
+        Accepts both "prompts/foo.json" and "foo.json" forms. Returns None for
+        absolute paths or anything that escapes the prompts directory.
+        """
+        if prompt_file is None:
+            return None
+
+        prompt_file = str(prompt_file).strip()
+        if not prompt_file or os.path.isabs(prompt_file):
+            return None
+
+        # Allow the conventional "prompts/" prefix used in registry entries.
+        relative = prompt_file
+        if relative.startswith('prompts/'):
+            relative = relative[len('prompts/'):]
+
+        base = Path(self.project_root) / 'prompts'
+        return safe_resolve(base, relative)
+
     def _run_chain_subprocess(self, chain_info: Dict[str, Any], input_file: str) -> bool:
         """Run chain using subprocess for better control and monitoring."""
         try:
@@ -2103,38 +2209,48 @@ class FlaskPromptRunner:
             
             if chain_info.get('output_file'):
                 cmd.extend(['-o', chain_info['output_file']])
-            
-            # Start process
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                universal_newlines=True
-            )
-            
-            # Monitor process and track progress
+
+            # Capture subprocess output to a log file in the temp dir so that
+            # /chains/logs and progress parsing can read it.
             chain_id = chain_info['id']
-            while process.poll() is None:
-                # Check for stop request
-                with self.chain_lock:
-                    if chain_info.get('stop_requested'):
-                        process.terminate()
-                        time.sleep(1)
-                        if process.poll() is None:
-                            process.kill()
-                        return False
-                
-                # Update progress by reading log file if available
+            log_path = Path(tempfile.gettempdir()) / f"chain_log_{chain_id}.log"
+            with self.chain_lock:
+                chain_info['log_file'] = str(log_path)
+
+            # Start process, redirecting stdout/stderr to the log file
+            log_handle = open(log_path, 'w', encoding='utf-8')
+            try:
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=log_handle,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    universal_newlines=True
+                )
+
+                # Monitor process and track progress
+                while process.poll() is None:
+                    # Check for stop request
+                    with self.chain_lock:
+                        if chain_info.get('stop_requested'):
+                            process.terminate()
+                            time.sleep(1)
+                            if process.poll() is None:
+                                process.kill()
+                            return False
+
+                    # Update progress by reading log file if available
+                    self._update_chain_progress_from_logs(chain_info)
+                    time.sleep(2)  # Check every 2 seconds
+
+                # Final progress update
                 self._update_chain_progress_from_logs(chain_info)
-                time.sleep(2)  # Check every 2 seconds
-            
-            # Final progress update
-            self._update_chain_progress_from_logs(chain_info)
-            
-            return process.returncode == 0
-            
+
+                return process.returncode == 0
+            finally:
+                log_handle.close()
+
         except Exception as e:
             logging.error(f"Chain subprocess failed: {e}")
             return False

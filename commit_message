@@ -1,0 +1,43 @@
+Redesign web dashboard, fix launcher, and fix confirmed code bugs
+
+Web dashboard redesign ("Compositor" editorial aesthetic)
+- Rewrite base.html design system: warm paper palette, vermilion accent,
+  Fraunces/Hanken Grotesk/JetBrains Mono type system, paper grain overlay
+- Replace dark Bootstrap navbar with a broadsheet masthead and add
+  path-based active-link highlighting; add {% block head_extra %}
+- Restyle shared classes + Bootstrap components so the look cascades to
+  every page; staggered page-load reveal (respects reduced-motion)
+- Give index.html an editorial masthead hero and section rules
+
+start-web.sh launcher
+- Call openrouter-venv/bin/python by path instead of sourcing activate
+  (the activate script hardcoded a stale Dropbox VIRTUAL_ENV)
+- Export PYTHONPATH=src early so the local source is imported
+- Remove the legacy create_templates step (wrote to an unused ./templates/)
+- Serve on port 3849 via a single PORT variable
+
+Bug fixes (each added a focused regression test; full suite green, no regressions)
+- chain runner: implement multi-pass execution (passes:N now runs N times
+  with content chaining), execute postscript after a successful step
+  (failure logged, not fatal), and wire output_append / per-step append
+  accumulation (skip the final overwrite when accumulating)
+- chain runner: copy file_size_validation config before applying step-level
+  overrides so they no longer leak into shared config; sanitize prompt names
+  in intermediate filenames; remove dead duplicate _get_intermediate_filename
+- chain restart: persist each completed step's output path in the .status
+  file and resume from it (the per-run temp dir made the old lookup fail);
+  guard get_restart_point against non-numeric step keys; make
+  update_step_complete/failed create the entry if missing
+- api_client: configurable request timeout defaulting to 300s (was 30s, which
+  aborted long generations); validate choices/message before indexing
+- file_converter: refuse to overwrite the source file, reject zero-byte
+  pandoc output as failure, normalize tex -> latex
+- split_chapters: plain-text heading patterns no longer match prose lines;
+  roman_to_int rejects non-canonical numerals
+- config_manager: deep-merge nested config dicts so partial overrides keep
+  sibling defaults
+- web: add path-traversal containment to prompt file routes, confine
+  scene-settings writes to project_root/.scene_settings, restrict chat/scene
+  local endpoints to loopback (SSRF), confine chain config_path/output_file
+  to the temp dir, and capture chain subprocess output to a log file
+- remove dead, unreferenced prompt_runner_cli.py

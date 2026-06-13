@@ -1,0 +1,87 @@
+# Gemini Humanizer Chain Configuration
+# 4-stage humanization workflow for processing novel chapters
+# This config processes a single chapter through all 4 Gemini humanization phases
+
+global_config:
+  # Using latest Gemini model for best results
+  model: "google/gemini-3-pro-preview"
+  temperature: 0.7
+  max_tokens: 30000
+
+# Input/Output Configuration
+# NOTE: For processing multiple chapters (chapter_1.md through chapter_30.md),
+# use the provided batch processing script or modify input_file/output_file for each run
+
+input_file: "chapter_1.md"
+output_file: "chapter_1_humanized.md"
+
+# Global preprocessing (runs once before all prompts)
+preprocessing:
+  script01: echo "Starting Gemini Humanizer Chain for $(basename {input_file})"
+  name01: "Initialize Processing"
+  script02: "test -f {input_file} && echo 'Input file found: {input_file}' || (echo 'ERROR: Input file not found' && exit 1)"
+  name02: "Validate Input"
+
+# Global postprocessing (runs once after all prompts complete)
+postprocessing:
+  script01: "wc -w {output_file} | awk '{print \"Final word count:\", $1}'"
+  name01: "Report Statistics"
+  script02: echo "Gemini Humanizer Chain complete for $(basename {output_file})"
+  name02: "Finalize Processing"
+
+# 4-Stage Humanization Pipeline
+prompts:
+
+  # PHASE 1: Foundational Cleanup
+  # Grammar fixes, AI word removal, weak language elimination, formal-to-casual connectors
+  phase_1_foundational:
+    name: "phase_1_foundational_cleanup"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6  # Lower temperature for more consistent grammar fixes
+    max_tokens: 30000
+    passes: 1
+    prescript: echo "Phase 1: Foundational Cleanup - Grammar, AI Words, Weak Language"
+    postscript: "wc -w {output_file} | awk '{print \"Phase 1 complete. Words:\", $1}'"
+
+  # PHASE 2: Stylistic & Narrative Enhancement
+  # Overwritten language reduction, sensory enhancement, subtlety creation
+  phase_2_stylistic:
+    name: "phase_2_stylistic_narrative"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7  # Moderate temperature for creative enhancements
+    max_tokens: 30000
+    passes: 1
+    prescript: echo "Phase 2: Stylistic Enhancement - Overwritten Language, Sensory Details, Subtlety"
+    postscript: "wc -w {output_file} | awk '{print \"Phase 2 complete. Words:\", $1}'"
+
+  # PHASE 3: Advanced Structural & Statistical Humanization
+  # Pattern elimination, strategic imperfections, AI detection optimization
+  phase_3_structural:
+    name: "phase_3_structural_statistical"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75  # Higher temperature for introducing variation
+    max_tokens: 30000
+    passes: 1
+    prescript: echo "Phase 3: Structural Humanization - Patterns, Imperfections, Statistical Optimization"
+    postscript: "wc -w {output_file} | awk '{print \"Phase 3 complete. Words:\", $1}'"
+
+  # PHASE 4: Dialogue Refinement
+  # Character voice, subtext, pacing, modern language integration
+  phase_4_dialogue:
+    name: "phase_4_dialogue_refinement"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8  # Higher temperature for natural dialogue variation
+    max_tokens: 30000
+    passes: 1
+    prescript: echo "Phase 4: Dialogue Refinement - Voice, Subtext, Character Development"
+    postscript: "wc -w {output_file} | awk '{print \"Phase 4 complete. Words:\", $1}'"
+
+# Optional: Combine all intermediate outputs into one file
+# This creates a file with all 4 phases' outputs for comparison
+# combine: false
+# combined_file_name: "chapter_1_all_phases.md"
+
+# File size validation
+# Helps detect if processing dramatically changed file size (potential issue)
+min_file_size: 1000  # Minimum 1KB
+max_file_size: 1000000  # Maximum 1MB per chapter

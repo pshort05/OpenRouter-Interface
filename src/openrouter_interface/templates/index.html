@@ -2,23 +2,101 @@
 
 {% block title %}Prompt Runner - Available Prompts{% endblock %}
 
+{% block head_extra %}
+<style>
+    .masthead-hero {
+        margin-bottom: 30px;
+    }
+    .masthead-hero .dateline {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+        font-family: var(--mono);
+        text-transform: uppercase;
+        letter-spacing: .18em;
+        font-size: .64rem;
+        color: var(--ink-faint);
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--rule);
+        margin-bottom: 20px;
+    }
+    .masthead-hero .hero-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 22px;
+    }
+    .masthead-hero h1 {
+        margin: 0;
+        max-width: 16ch;
+    }
+    .masthead-hero h1 .drop {
+        color: var(--vermilion);
+        font-style: italic;
+    }
+    .masthead-hero .lede {
+        font-family: var(--serif);
+        font-size: 1.12rem;
+        font-style: italic;
+        color: var(--ink-soft);
+        max-width: 46ch;
+        margin: 14px 0 0;
+        line-height: 1.5;
+    }
+    .masthead-hero .hero-actions { flex-shrink: 0; padding-bottom: 4px; }
+    .section-rule {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin: 4px 0 22px;
+        font-family: var(--mono);
+        text-transform: uppercase;
+        letter-spacing: .2em;
+        font-size: .66rem;
+        color: var(--ink-soft);
+    }
+    .section-rule::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--rule-strong);
+    }
+    .section-rule .count {
+        color: var(--vermilion-ink);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1>OpenRouter Prompt Runner</h1>
-        <p>Select a JSON prompt file to execute against your input content.</p>
+<header class="masthead-hero">
+    <div class="dateline">
+        <span>The Compositor &mdash; Working Bench</span>
+        <span>Single-Prompt Press</span>
     </div>
-    <div>
-        <button type="button" class="btn btn-success" onclick="showLoadPromptModal()">
-            <i class="fas fa-upload"></i> Load Prompt
-        </button>
-        <a href="{{ url_for('show_prompts_registry') }}" class="btn btn-secondary ml-2">
-            <i class="fas fa-cog"></i> Manage Prompts
-        </a>
+    <div class="hero-row">
+        <div>
+            <h1>The Prompt <span class="drop">Runner</span></h1>
+            <p class="lede">Set a JSON prompt against your manuscript and pull a clean proof. One pass, one impression &mdash; ink to paper.</p>
+        </div>
+        <div class="hero-actions">
+            <button type="button" class="btn btn-success" onclick="showLoadPromptModal()">
+                <i class="fas fa-upload"></i> Load Prompt
+            </button>
+            <a href="{{ url_for('show_prompts_registry') }}" class="btn btn-secondary">
+                <i class="fas fa-cog"></i> Manage
+            </a>
+        </div>
     </div>
-</div>
+</header>
 
 {% if prompts %}
+    <div class="section-rule">
+        <span>The Composing Stick</span>
+        <span class="count">{{ prompts|length }} set{{ '' if prompts|length == 1 else 's' }}</span>
+    </div>
     <div class="prompt-list">
         {% for prompt in prompts %}
         <div class="prompt-card {{ 'disabled' if not prompt.enabled or not prompt.exists }}">
@@ -28,7 +106,7 @@
                 {% if prompt.exists %}
                     <strong>Size:</strong> {{ prompt.size_formatted }}<br>
                 {% else %}
-                    <strong>Status:</strong> <span style="color: #e74c3c;">File not found</span><br>
+                    <strong>Status:</strong> <span style="color: var(--oxblood);">File not found</span><br>
                 {% endif %}
                 <strong>Enabled:</strong> {{ "Yes" if prompt.enabled else "No" }}
             </div>

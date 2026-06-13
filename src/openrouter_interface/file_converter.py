@@ -68,7 +68,8 @@ class FileConverter:
         """
         suffix = file_path.suffix.lower().lstrip('.')
         if suffix in self.SUPPORTED_INPUT_FORMATS:
-            return suffix
+            # pandoc identifies LaTeX as 'latex'; '.tex' must map to it.
+            return 'latex' if suffix == 'tex' else suffix
         return None
 
     def convert_to_markdown(self, input_file: Path, from_format: Optional[str] = None) -> Path:
@@ -100,8 +101,19 @@ class FileConverter:
         if from_format not in self.SUPPORTED_INPUT_FORMATS:
             raise Exception(f"Unsupported input format: {from_format}")
 
+        # pandoc identifies LaTeX as 'latex', not 'tex'.
+        if from_format == 'tex':
+            from_format = 'latex'
+
         # Create output filename
         output_file = input_file.with_suffix('.md')
+
+        # Refuse to overwrite the source file (e.g. a .md input round-trip).
+        if output_file.resolve() == input_file.resolve():
+            raise Exception(
+                f"Output path would overwrite the source file: {input_file}. "
+                "Refusing to clobber the original."
+            )
 
         logging.info(f"Converting {input_file.name} ({from_format}) to markdown")
 
@@ -121,6 +133,11 @@ class FileConverter:
                 raise Exception(f"Conversion failed: output file not created")
 
             file_size = output_file.stat().st_size
+            if file_size == 0:
+                raise Exception(
+                    f"Conversion failed: output file is empty (0 bytes)"
+                )
+
             logging.info(f"Conversion successful: {output_file.name} ({file_size} bytes)")
 
             return output_file
@@ -158,9 +175,21 @@ class FileConverter:
         if to_format not in self.SUPPORTED_OUTPUT_FORMATS:
             raise Exception(f"Unsupported output format: {to_format}")
 
-        # Generate output filename if not provided
+        # Generate output filename if not provided. Use the requested suffix
+        # before normalizing the format identifier for pandoc.
         if output_file is None:
             output_file = markdown_file.with_suffix(f'.{to_format}')
+
+        # pandoc identifies LaTeX as 'latex', not 'tex'.
+        if to_format == 'tex':
+            to_format = 'latex'
+
+        # Refuse to overwrite the source file (e.g. a .txt round-trip).
+        if output_file.resolve() == markdown_file.resolve():
+            raise Exception(
+                f"Output path would overwrite the source file: {markdown_file}. "
+                "Refusing to clobber the original."
+            )
 
         logging.info(f"Converting {markdown_file.name} to {to_format}")
 
@@ -189,6 +218,11 @@ class FileConverter:
                 raise Exception(f"Conversion failed: output file not created")
 
             file_size = output_file.stat().st_size
+            if file_size == 0:
+                raise Exception(
+                    f"Conversion failed: output file is empty (0 bytes)"
+                )
+
             logging.info(f"Conversion successful: {output_file.name} ({file_size} bytes)")
 
             return output_file

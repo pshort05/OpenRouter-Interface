@@ -1,0 +1,1031 @@
+# Gemini Humanizer - Complete 30 Chapter Processing
+# Single YAML file to process all 30 chapters through 4-stage humanization pipeline
+# Run with: openrouter-chain -c GeminiHumanizer/process_all_30_chapters.yaml
+
+global_config:
+  model: "google/gemini-3-pro-preview"
+  temperature: 0.7
+  max_tokens: 30000
+
+# This chain processes ALL 30 chapters sequentially
+# Each chapter goes through all 4 phases before moving to the next chapter
+# Total: 120 prompt executions (30 chapters × 4 phases)
+
+# Input: chapter_1.md through chapter_30.md (in current directory)
+# Output: chapter_1_humanized.md through chapter_30_humanized.md (in humanized_chapters/)
+
+input_file: "chapter_1.md"
+output_file: "humanized_chapters/chapter_30_humanized.md"
+
+preprocessing:
+  script01: echo "========================================"
+  name01: "Start Processing"
+  script02: echo "Gemini Humanizer: Processing 30 Chapters"
+  name02: "Display Header"
+  script03: echo "4 Phases per Chapter = 120 Total Steps"
+  name03: "Show Stats"
+  script04: echo "========================================"
+  name04: "Separator"
+  script05: mkdir -p humanized_chapters
+  name05: "Create Output Directory"
+
+postprocessing:
+  script01: echo "========================================"
+  name01: "Completion Header"
+  script02: echo "All 30 Chapters Processed!"
+  name02: "Success Message"
+  script03: "ls -lh humanized_chapters/chapter_*_humanized.md | wc -l | xargs echo 'Files created:'"
+  name03: "Count Outputs"
+  script04: echo "========================================"
+  name04: "Final Separator"
+
+prompts:
+  # ==================== CHAPTER 1 ====================
+  ch01_phase1:
+    name: "ch01_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_1.md humanized_chapters/chapter_1_temp.md && echo 'Chapter 1 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_1_temp.md"
+
+  ch01_phase2:
+    name: "ch01_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_1_temp.md /tmp/input_temp.md && echo 'Chapter 1 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_1_temp.md"
+
+  ch01_phase3:
+    name: "ch01_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_1_temp.md /tmp/input_temp.md && echo 'Chapter 1 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_1_temp.md"
+
+  ch01_phase4:
+    name: "ch01_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_1_temp.md /tmp/input_temp.md && echo 'Chapter 1 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_1_humanized.md && rm humanized_chapters/chapter_1_temp.md && echo '✓ Chapter 1 Complete'"
+
+  # ==================== CHAPTER 2 ====================
+  ch02_phase1:
+    name: "ch02_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_2.md humanized_chapters/chapter_2_temp.md && echo 'Chapter 2 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_2_temp.md"
+
+  ch02_phase2:
+    name: "ch02_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_2_temp.md /tmp/input_temp.md && echo 'Chapter 2 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_2_temp.md"
+
+  ch02_phase3:
+    name: "ch02_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_2_temp.md /tmp/input_temp.md && echo 'Chapter 2 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_2_temp.md"
+
+  ch02_phase4:
+    name: "ch02_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_2_temp.md /tmp/input_temp.md && echo 'Chapter 2 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_2_humanized.md && rm humanized_chapters/chapter_2_temp.md && echo '✓ Chapter 2 Complete'"
+
+  # ==================== CHAPTER 3 ====================
+  ch03_phase1:
+    name: "ch03_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_3.md humanized_chapters/chapter_3_temp.md && echo 'Chapter 3 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_3_temp.md"
+
+  ch03_phase2:
+    name: "ch03_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_3_temp.md /tmp/input_temp.md && echo 'Chapter 3 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_3_temp.md"
+
+  ch03_phase3:
+    name: "ch03_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_3_temp.md /tmp/input_temp.md && echo 'Chapter 3 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_3_temp.md"
+
+  ch03_phase4:
+    name: "ch03_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_3_temp.md /tmp/input_temp.md && echo 'Chapter 3 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_3_humanized.md && rm humanized_chapters/chapter_3_temp.md && echo '✓ Chapter 3 Complete'"
+
+  # ==================== CHAPTER 4 ====================
+  ch04_phase1:
+    name: "ch04_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_4.md humanized_chapters/chapter_4_temp.md && echo 'Chapter 4 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_4_temp.md"
+
+  ch04_phase2:
+    name: "ch04_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_4_temp.md /tmp/input_temp.md && echo 'Chapter 4 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_4_temp.md"
+
+  ch04_phase3:
+    name: "ch04_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_4_temp.md /tmp/input_temp.md && echo 'Chapter 4 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_4_temp.md"
+
+  ch04_phase4:
+    name: "ch04_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_4_temp.md /tmp/input_temp.md && echo 'Chapter 4 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_4_humanized.md && rm humanized_chapters/chapter_4_temp.md && echo '✓ Chapter 4 Complete'"
+
+  # ==================== CHAPTER 5 ====================
+  ch05_phase1:
+    name: "ch05_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_5.md humanized_chapters/chapter_5_temp.md && echo 'Chapter 5 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_5_temp.md"
+
+  ch05_phase2:
+    name: "ch05_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_5_temp.md /tmp/input_temp.md && echo 'Chapter 5 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_5_temp.md"
+
+  ch05_phase3:
+    name: "ch05_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_5_temp.md /tmp/input_temp.md && echo 'Chapter 5 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_5_temp.md"
+
+  ch05_phase4:
+    name: "ch05_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_5_temp.md /tmp/input_temp.md && echo 'Chapter 5 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_5_humanized.md && rm humanized_chapters/chapter_5_temp.md && echo '✓ Chapter 5 Complete'"
+
+  # ==================== CHAPTER 6 ====================
+  ch06_phase1:
+    name: "ch06_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_6.md humanized_chapters/chapter_6_temp.md && echo 'Chapter 6 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_6_temp.md"
+
+  ch06_phase2:
+    name: "ch06_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_6_temp.md /tmp/input_temp.md && echo 'Chapter 6 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_6_temp.md"
+
+  ch06_phase3:
+    name: "ch06_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_6_temp.md /tmp/input_temp.md && echo 'Chapter 6 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_6_temp.md"
+
+  ch06_phase4:
+    name: "ch06_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_6_temp.md /tmp/input_temp.md && echo 'Chapter 6 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_6_humanized.md && rm humanized_chapters/chapter_6_temp.md && echo '✓ Chapter 6 Complete'"
+
+  # ==================== CHAPTER 7 ====================
+  ch07_phase1:
+    name: "ch07_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_7.md humanized_chapters/chapter_7_temp.md && echo 'Chapter 7 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_7_temp.md"
+
+  ch07_phase2:
+    name: "ch07_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_7_temp.md /tmp/input_temp.md && echo 'Chapter 7 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_7_temp.md"
+
+  ch07_phase3:
+    name: "ch07_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_7_temp.md /tmp/input_temp.md && echo 'Chapter 7 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_7_temp.md"
+
+  ch07_phase4:
+    name: "ch07_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_7_temp.md /tmp/input_temp.md && echo 'Chapter 7 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_7_humanized.md && rm humanized_chapters/chapter_7_temp.md && echo '✓ Chapter 7 Complete'"
+
+  # ==================== CHAPTER 8 ====================
+  ch08_phase1:
+    name: "ch08_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_8.md humanized_chapters/chapter_8_temp.md && echo 'Chapter 8 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_8_temp.md"
+
+  ch08_phase2:
+    name: "ch08_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_8_temp.md /tmp/input_temp.md && echo 'Chapter 8 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_8_temp.md"
+
+  ch08_phase3:
+    name: "ch08_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_8_temp.md /tmp/input_temp.md && echo 'Chapter 8 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_8_temp.md"
+
+  ch08_phase4:
+    name: "ch08_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_8_temp.md /tmp/input_temp.md && echo 'Chapter 8 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_8_humanized.md && rm humanized_chapters/chapter_8_temp.md && echo '✓ Chapter 8 Complete'"
+
+  # ==================== CHAPTER 9 ====================
+  ch09_phase1:
+    name: "ch09_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_9.md humanized_chapters/chapter_9_temp.md && echo 'Chapter 9 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_9_temp.md"
+
+  ch09_phase2:
+    name: "ch09_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_9_temp.md /tmp/input_temp.md && echo 'Chapter 9 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_9_temp.md"
+
+  ch09_phase3:
+    name: "ch09_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_9_temp.md /tmp/input_temp.md && echo 'Chapter 9 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_9_temp.md"
+
+  ch09_phase4:
+    name: "ch09_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_9_temp.md /tmp/input_temp.md && echo 'Chapter 9 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_9_humanized.md && rm humanized_chapters/chapter_9_temp.md && echo '✓ Chapter 9 Complete'"
+
+  # ==================== CHAPTER 10 ====================
+  ch10_phase1:
+    name: "ch10_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_10.md humanized_chapters/chapter_10_temp.md && echo 'Chapter 10 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_10_temp.md"
+
+  ch10_phase2:
+    name: "ch10_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_10_temp.md /tmp/input_temp.md && echo 'Chapter 10 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_10_temp.md"
+
+  ch10_phase3:
+    name: "ch10_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_10_temp.md /tmp/input_temp.md && echo 'Chapter 10 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_10_temp.md"
+
+  ch10_phase4:
+    name: "ch10_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_10_temp.md /tmp/input_temp.md && echo 'Chapter 10 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_10_humanized.md && rm humanized_chapters/chapter_10_temp.md && echo '✓ Chapter 10 Complete'"
+
+  # ==================== CHAPTER 11 ====================
+  ch11_phase1:
+    name: "ch11_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_11.md humanized_chapters/chapter_11_temp.md && echo 'Chapter 11 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_11_temp.md"
+
+  ch11_phase2:
+    name: "ch11_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_11_temp.md /tmp/input_temp.md && echo 'Chapter 11 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_11_temp.md"
+
+  ch11_phase3:
+    name: "ch11_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_11_temp.md /tmp/input_temp.md && echo 'Chapter 11 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_11_temp.md"
+
+  ch11_phase4:
+    name: "ch11_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_11_temp.md /tmp/input_temp.md && echo 'Chapter 11 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_11_humanized.md && rm humanized_chapters/chapter_11_temp.md && echo '✓ Chapter 11 Complete'"
+
+  # ==================== CHAPTER 12 ====================
+  ch12_phase1:
+    name: "ch12_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_12.md humanized_chapters/chapter_12_temp.md && echo 'Chapter 12 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_12_temp.md"
+
+  ch12_phase2:
+    name: "ch12_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_12_temp.md /tmp/input_temp.md && echo 'Chapter 12 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_12_temp.md"
+
+  ch12_phase3:
+    name: "ch12_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_12_temp.md /tmp/input_temp.md && echo 'Chapter 12 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_12_temp.md"
+
+  ch12_phase4:
+    name: "ch12_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_12_temp.md /tmp/input_temp.md && echo 'Chapter 12 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_12_humanized.md && rm humanized_chapters/chapter_12_temp.md && echo '✓ Chapter 12 Complete'"
+
+  # ==================== CHAPTER 13 ====================
+  ch13_phase1:
+    name: "ch13_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_13.md humanized_chapters/chapter_13_temp.md && echo 'Chapter 13 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_13_temp.md"
+
+  ch13_phase2:
+    name: "ch13_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_13_temp.md /tmp/input_temp.md && echo 'Chapter 13 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_13_temp.md"
+
+  ch13_phase3:
+    name: "ch13_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_13_temp.md /tmp/input_temp.md && echo 'Chapter 13 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_13_temp.md"
+
+  ch13_phase4:
+    name: "ch13_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_13_temp.md /tmp/input_temp.md && echo 'Chapter 13 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_13_humanized.md && rm humanized_chapters/chapter_13_temp.md && echo '✓ Chapter 13 Complete'"
+
+  # ==================== CHAPTER 14 ====================
+  ch14_phase1:
+    name: "ch14_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_14.md humanized_chapters/chapter_14_temp.md && echo 'Chapter 14 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_14_temp.md"
+
+  ch14_phase2:
+    name: "ch14_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_14_temp.md /tmp/input_temp.md && echo 'Chapter 14 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_14_temp.md"
+
+  ch14_phase3:
+    name: "ch14_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_14_temp.md /tmp/input_temp.md && echo 'Chapter 14 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_14_temp.md"
+
+  ch14_phase4:
+    name: "ch14_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_14_temp.md /tmp/input_temp.md && echo 'Chapter 14 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_14_humanized.md && rm humanized_chapters/chapter_14_temp.md && echo '✓ Chapter 14 Complete'"
+
+  # ==================== CHAPTER 15 ====================
+  ch15_phase1:
+    name: "ch15_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_15.md humanized_chapters/chapter_15_temp.md && echo 'Chapter 15 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_15_temp.md"
+
+  ch15_phase2:
+    name: "ch15_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_15_temp.md /tmp/input_temp.md && echo 'Chapter 15 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_15_temp.md"
+
+  ch15_phase3:
+    name: "ch15_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_15_temp.md /tmp/input_temp.md && echo 'Chapter 15 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_15_temp.md"
+
+  ch15_phase4:
+    name: "ch15_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_15_temp.md /tmp/input_temp.md && echo 'Chapter 15 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_15_humanized.md && rm humanized_chapters/chapter_15_temp.md && echo '✓ Chapter 15 Complete'"
+
+  # ==================== CHAPTER 16 ====================
+  ch16_phase1:
+    name: "ch16_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_16.md humanized_chapters/chapter_16_temp.md && echo 'Chapter 16 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_16_temp.md"
+
+  ch16_phase2:
+    name: "ch16_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_16_temp.md /tmp/input_temp.md && echo 'Chapter 16 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_16_temp.md"
+
+  ch16_phase3:
+    name: "ch16_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_16_temp.md /tmp/input_temp.md && echo 'Chapter 16 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_16_temp.md"
+
+  ch16_phase4:
+    name: "ch16_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_16_temp.md /tmp/input_temp.md && echo 'Chapter 16 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_16_humanized.md && rm humanized_chapters/chapter_16_temp.md && echo '✓ Chapter 16 Complete'"
+
+  # ==================== CHAPTER 17 ====================
+  ch17_phase1:
+    name: "ch17_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_17.md humanized_chapters/chapter_17_temp.md && echo 'Chapter 17 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_17_temp.md"
+
+  ch17_phase2:
+    name: "ch17_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_17_temp.md /tmp/input_temp.md && echo 'Chapter 17 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_17_temp.md"
+
+  ch17_phase3:
+    name: "ch17_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_17_temp.md /tmp/input_temp.md && echo 'Chapter 17 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_17_temp.md"
+
+  ch17_phase4:
+    name: "ch17_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_17_temp.md /tmp/input_temp.md && echo 'Chapter 17 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_17_humanized.md && rm humanized_chapters/chapter_17_temp.md && echo '✓ Chapter 17 Complete'"
+
+  # ==================== CHAPTER 18 ====================
+  ch18_phase1:
+    name: "ch18_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_18.md humanized_chapters/chapter_18_temp.md && echo 'Chapter 18 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_18_temp.md"
+
+  ch18_phase2:
+    name: "ch18_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_18_temp.md /tmp/input_temp.md && echo 'Chapter 18 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_18_temp.md"
+
+  ch18_phase3:
+    name: "ch18_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_18_temp.md /tmp/input_temp.md && echo 'Chapter 18 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_18_temp.md"
+
+  ch18_phase4:
+    name: "ch18_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_18_temp.md /tmp/input_temp.md && echo 'Chapter 18 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_18_humanized.md && rm humanized_chapters/chapter_18_temp.md && echo '✓ Chapter 18 Complete'"
+
+  # ==================== CHAPTER 19 ====================
+  ch19_phase1:
+    name: "ch19_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_19.md humanized_chapters/chapter_19_temp.md && echo 'Chapter 19 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_19_temp.md"
+
+  ch19_phase2:
+    name: "ch19_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_19_temp.md /tmp/input_temp.md && echo 'Chapter 19 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_19_temp.md"
+
+  ch19_phase3:
+    name: "ch19_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_19_temp.md /tmp/input_temp.md && echo 'Chapter 19 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_19_temp.md"
+
+  ch19_phase4:
+    name: "ch19_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_19_temp.md /tmp/input_temp.md && echo 'Chapter 19 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_19_humanized.md && rm humanized_chapters/chapter_19_temp.md && echo '✓ Chapter 19 Complete'"
+
+  # ==================== CHAPTER 20 ====================
+  ch20_phase1:
+    name: "ch20_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_20.md humanized_chapters/chapter_20_temp.md && echo 'Chapter 20 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_20_temp.md"
+
+  ch20_phase2:
+    name: "ch20_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_20_temp.md /tmp/input_temp.md && echo 'Chapter 20 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_20_temp.md"
+
+  ch20_phase3:
+    name: "ch20_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_20_temp.md /tmp/input_temp.md && echo 'Chapter 20 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_20_temp.md"
+
+  ch20_phase4:
+    name: "ch20_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_20_temp.md /tmp/input_temp.md && echo 'Chapter 20 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_20_humanized.md && rm humanized_chapters/chapter_20_temp.md && echo '✓ Chapter 20 Complete'"
+
+  # ==================== CHAPTER 21 ====================
+  ch21_phase1:
+    name: "ch21_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_21.md humanized_chapters/chapter_21_temp.md && echo 'Chapter 21 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_21_temp.md"
+
+  ch21_phase2:
+    name: "ch21_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_21_temp.md /tmp/input_temp.md && echo 'Chapter 21 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_21_temp.md"
+
+  ch21_phase3:
+    name: "ch21_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_21_temp.md /tmp/input_temp.md && echo 'Chapter 21 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_21_temp.md"
+
+  ch21_phase4:
+    name: "ch21_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_21_temp.md /tmp/input_temp.md && echo 'Chapter 21 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_21_humanized.md && rm humanized_chapters/chapter_21_temp.md && echo '✓ Chapter 21 Complete'"
+
+  # ==================== CHAPTER 22 ====================
+  ch22_phase1:
+    name: "ch22_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_22.md humanized_chapters/chapter_22_temp.md && echo 'Chapter 22 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_22_temp.md"
+
+  ch22_phase2:
+    name: "ch22_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_22_temp.md /tmp/input_temp.md && echo 'Chapter 22 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_22_temp.md"
+
+  ch22_phase3:
+    name: "ch22_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_22_temp.md /tmp/input_temp.md && echo 'Chapter 22 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_22_temp.md"
+
+  ch22_phase4:
+    name: "ch22_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_22_temp.md /tmp/input_temp.md && echo 'Chapter 22 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_22_humanized.md && rm humanized_chapters/chapter_22_temp.md && echo '✓ Chapter 22 Complete'"
+
+  # ==================== CHAPTER 23 ====================
+  ch23_phase1:
+    name: "ch23_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_23.md humanized_chapters/chapter_23_temp.md && echo 'Chapter 23 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_23_temp.md"
+
+  ch23_phase2:
+    name: "ch23_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_23_temp.md /tmp/input_temp.md && echo 'Chapter 23 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_23_temp.md"
+
+  ch23_phase3:
+    name: "ch23_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_23_temp.md /tmp/input_temp.md && echo 'Chapter 23 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_23_temp.md"
+
+  ch23_phase4:
+    name: "ch23_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_23_temp.md /tmp/input_temp.md && echo 'Chapter 23 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_23_humanized.md && rm humanized_chapters/chapter_23_temp.md && echo '✓ Chapter 23 Complete'"
+
+  # ==================== CHAPTER 24 ====================
+  ch24_phase1:
+    name: "ch24_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_24.md humanized_chapters/chapter_24_temp.md && echo 'Chapter 24 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_24_temp.md"
+
+  ch24_phase2:
+    name: "ch24_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_24_temp.md /tmp/input_temp.md && echo 'Chapter 24 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_24_temp.md"
+
+  ch24_phase3:
+    name: "ch24_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_24_temp.md /tmp/input_temp.md && echo 'Chapter 24 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_24_temp.md"
+
+  ch24_phase4:
+    name: "ch24_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_24_temp.md /tmp/input_temp.md && echo 'Chapter 24 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_24_humanized.md && rm humanized_chapters/chapter_24_temp.md && echo '✓ Chapter 24 Complete'"
+
+  # ==================== CHAPTER 25 ====================
+  ch25_phase1:
+    name: "ch25_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_25.md humanized_chapters/chapter_25_temp.md && echo 'Chapter 25 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_25_temp.md"
+
+  ch25_phase2:
+    name: "ch25_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_25_temp.md /tmp/input_temp.md && echo 'Chapter 25 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_25_temp.md"
+
+  ch25_phase3:
+    name: "ch25_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_25_temp.md /tmp/input_temp.md && echo 'Chapter 25 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_25_temp.md"
+
+  ch25_phase4:
+    name: "ch25_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_25_temp.md /tmp/input_temp.md && echo 'Chapter 25 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_25_humanized.md && rm humanized_chapters/chapter_25_temp.md && echo '✓ Chapter 25 Complete'"
+
+  # ==================== CHAPTER 26 ====================
+  ch26_phase1:
+    name: "ch26_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_26.md humanized_chapters/chapter_26_temp.md && echo 'Chapter 26 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_26_temp.md"
+
+  ch26_phase2:
+    name: "ch26_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_26_temp.md /tmp/input_temp.md && echo 'Chapter 26 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_26_temp.md"
+
+  ch26_phase3:
+    name: "ch26_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_26_temp.md /tmp/input_temp.md && echo 'Chapter 26 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_26_temp.md"
+
+  ch26_phase4:
+    name: "ch26_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_26_temp.md /tmp/input_temp.md && echo 'Chapter 26 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_26_humanized.md && rm humanized_chapters/chapter_26_temp.md && echo '✓ Chapter 26 Complete'"
+
+  # ==================== CHAPTER 27 ====================
+  ch27_phase1:
+    name: "ch27_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_27.md humanized_chapters/chapter_27_temp.md && echo 'Chapter 27 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_27_temp.md"
+
+  ch27_phase2:
+    name: "ch27_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_27_temp.md /tmp/input_temp.md && echo 'Chapter 27 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_27_temp.md"
+
+  ch27_phase3:
+    name: "ch27_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_27_temp.md /tmp/input_temp.md && echo 'Chapter 27 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_27_temp.md"
+
+  ch27_phase4:
+    name: "ch27_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_27_temp.md /tmp/input_temp.md && echo 'Chapter 27 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_27_humanized.md && rm humanized_chapters/chapter_27_temp.md && echo '✓ Chapter 27 Complete'"
+
+  # ==================== CHAPTER 28 ====================
+  ch28_phase1:
+    name: "ch28_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_28.md humanized_chapters/chapter_28_temp.md && echo 'Chapter 28 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_28_temp.md"
+
+  ch28_phase2:
+    name: "ch28_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_28_temp.md /tmp/input_temp.md && echo 'Chapter 28 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_28_temp.md"
+
+  ch28_phase3:
+    name: "ch28_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_28_temp.md /tmp/input_temp.md && echo 'Chapter 28 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_28_temp.md"
+
+  ch28_phase4:
+    name: "ch28_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_28_temp.md /tmp/input_temp.md && echo 'Chapter 28 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_28_humanized.md && rm humanized_chapters/chapter_28_temp.md && echo '✓ Chapter 28 Complete'"
+
+  # ==================== CHAPTER 29 ====================
+  ch29_phase1:
+    name: "ch29_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_29.md humanized_chapters/chapter_29_temp.md && echo 'Chapter 29 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_29_temp.md"
+
+  ch29_phase2:
+    name: "ch29_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_29_temp.md /tmp/input_temp.md && echo 'Chapter 29 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_29_temp.md"
+
+  ch29_phase3:
+    name: "ch29_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_29_temp.md /tmp/input_temp.md && echo 'Chapter 29 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_29_temp.md"
+
+  ch29_phase4:
+    name: "ch29_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_29_temp.md /tmp/input_temp.md && echo 'Chapter 29 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_29_humanized.md && rm humanized_chapters/chapter_29_temp.md && echo '✓ Chapter 29 Complete'"
+
+  # ==================== CHAPTER 30 ====================
+  ch30_phase1:
+    name: "ch30_phase1_foundational"
+    prompt_file: "GeminiHumanizer/1_foundational_cleanup.json"
+    temperature: 0.6
+    max_tokens: 30000
+    prescript: "cp chapter_30.md humanized_chapters/chapter_30_temp.md && echo 'Chapter 30 - Phase 1: Foundational Cleanup'"
+    postscript: "cp {output_file} humanized_chapters/chapter_30_temp.md"
+
+  ch30_phase2:
+    name: "ch30_phase2_stylistic"
+    prompt_file: "GeminiHumanizer/2_stylistic_narrative_enhancement.json"
+    temperature: 0.7
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_30_temp.md /tmp/input_temp.md && echo 'Chapter 30 - Phase 2: Stylistic Enhancement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_30_temp.md"
+
+  ch30_phase3:
+    name: "ch30_phase3_structural"
+    prompt_file: "GeminiHumanizer/3_advanced_structural_statistical_humanization.json"
+    temperature: 0.75
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_30_temp.md /tmp/input_temp.md && echo 'Chapter 30 - Phase 3: Structural Humanization'"
+    postscript: "cp {output_file} humanized_chapters/chapter_30_temp.md"
+
+  ch30_phase4:
+    name: "ch30_phase4_dialogue"
+    prompt_file: "GeminiHumanizer/4_dialogue_refinement.json"
+    temperature: 0.8
+    max_tokens: 30000
+    prescript: "cp humanized_chapters/chapter_30_temp.md /tmp/input_temp.md && echo 'Chapter 30 - Phase 4: Dialogue Refinement'"
+    postscript: "cp {output_file} humanized_chapters/chapter_30_humanized.md && rm humanized_chapters/chapter_30_temp.md && echo '✓ Chapter 30 Complete - ALL CHAPTERS PROCESSED!'"

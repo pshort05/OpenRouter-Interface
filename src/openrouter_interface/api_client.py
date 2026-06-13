@@ -300,6 +300,10 @@ class APIClient:
         
         # Build API data payload with all supported parameters
         data = self._build_api_payload(prompt)
+
+        # Request timeout (seconds). LLM generations can take several minutes,
+        # so default generously and allow configuration override.
+        request_timeout = self.config.get('request_timeout', self.config.get('timeout', 300))
         
         logging.info("Making API call to OpenRouter")
         self._log_api_parameters(data)
@@ -320,10 +324,10 @@ class APIClient:
             if is_streaming:
                 # For streaming requests, we need to handle SSE
                 logging.debug("Making streaming request...")
-                response = requests.post(url, headers=headers, json=data, timeout=30, stream=True)
+                response = requests.post(url, headers=headers, json=data, timeout=request_timeout, stream=True)
             else:
                 logging.debug("Making regular request...")
-                response = requests.post(url, headers=headers, json=data, timeout=30)
+                response = requests.post(url, headers=headers, json=data, timeout=request_timeout)
 
             logging.debug(f"Response status: {response.status_code}")
             logging.debug(f"Response headers: {dict(response.headers)}")
@@ -358,7 +362,26 @@ class APIClient:
                     logging.error("API returned error: " + str(result['error']))
                     raise Exception("API Error: " + str(result['error']))
 
-                raw_content = result['choices'][0]['message']['content']
+                # Validate response structure before indexing. OpenRouter can
+                # return HTTP 200 with an empty/missing 'choices' array or a
+                # choice lacking message content; surface a clear error instead
+                # of an opaque KeyError/IndexError.
+                choices = result.get('choices')
+                if not choices:
+                    summary = str(result)[:500]
+                    logging.error("API response missing 'choices': " + summary)
+                    raise ValueError(
+                        "API response did not contain any choices. Response: " + summary
+                    )
+
+                message = choices[0].get('message') if isinstance(choices[0], dict) else None
+                raw_content = message.get('content') if isinstance(message, dict) else None
+                if raw_content is None:
+                    summary = str(result)[:500]
+                    logging.error("API response choice missing message content: " + summary)
+                    raise ValueError(
+                        "API response choice did not contain message content. Response: " + summary
+                    )
             
             logging.info("API call completed in " + "{:.2f}".format(elapsed_time) + " seconds")
             logging.info("Raw response length: " + str(len(raw_content)) + " characters")
@@ -372,7 +395,7 @@ class APIClient:
             return processed_content
             
         except requests.exceptions.Timeout as e:
-            logging.error("API request timed out after 30 seconds: " + str(e))
+            logging.error("API request timed out after " + str(request_timeout) + " seconds: " + str(e))
             raise
         except requests.exceptions.ConnectionError as e:
             logging.error("API connection error: " + str(e))

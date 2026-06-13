@@ -742,37 +742,6 @@ class PromptChainRunner:
         
         return Path(output_filename)
     
-    def _get_intermediate_filename(self, input_file: Path, step: int, prompt_name: str = None) -> str:
-        """
-        Generate intermediate filename using new naming convention.
-        Format: {input_name}_step_{step_number}{_prompt_name}{input_ext}
-
-        Args:
-            input_file: Original input file to get name and extension from
-            step: Current step number
-            prompt_name: Optional prompt name from YAML config
-
-        Returns:
-            Filename string for intermediate file
-        """
-        input_name = input_file.stem
-        input_ext = input_file.suffix
-
-        # Build filename components - handle substeps by replacing . with _
-        step_str = str(step)
-        step_formatted = step_str.replace('.', '_')
-        filename_parts = [input_name, "step", step_formatted]
-
-        # Add prompt name if provided
-        if prompt_name:
-            # Clean up the prompt name (replace special characters with underscores)
-            clean_name = "".join(c if c.isalnum() else "_" for c in prompt_name)
-            filename_parts.append(clean_name)
-
-        # Combine parts with underscores and add extension
-        filename = "_".join(filename_parts) + input_ext
-        return filename
-
     def _get_temp_file(self, step: int, prompt_name: str = None) -> Path:
         """
         Generate temporary file path for intermediate steps.
@@ -886,6 +855,20 @@ class PromptChainRunner:
         except Exception as e:
             logging.error(f"Failed to append step {step} output to final file: {e}")
             raise
+
+    def _accumulate_if_appending(self, step_output_file: Path, final_output_file: Path,
+                                 step_display: str, prompt_config) -> bool:
+        """Append a step's output to the final file when accumulation is active.
+
+        Accumulation runs when global ``output_append`` is set or the individual
+        step has ``append: yes``. Returns True if the step output was appended,
+        so the caller knows not to overwrite the accumulated final file.
+        """
+        if self._get_output_append() or self._get_append(prompt_config):
+            self._append_to_output(step_output_file, final_output_file, step_display,
+                                   self._get_prompt_name(prompt_config))
+            return True
+        return False
 
     def _combine_step_outputs(self, input_file: Path, sorted_prompts: List, combined_filename: str):
         """
@@ -1107,8 +1090,9 @@ class PromptChainRunner:
         Returns:
             True if file size is acceptable, False otherwise
         """
-        # Start with base config
-        validation_config = self.config.get('file_size_validation', {})
+        # Start with a copy of the base config so step-level overrides below do
+        # not leak back into the shared self.config dict.
+        validation_config = dict(self.config.get('file_size_validation', {}))
 
         # Override with global_config if present
         if 'global_config' in self.config and 'file_size_validation' in self.config['global_config']:
@@ -1223,9 +1207,11 @@ class PromptChainRunner:
         step_formatted = step_str.replace('.', '_')
         filename_parts = [input_name, "step", step_formatted]
 
-        # Add prompt name if provided
+        # Add prompt name if provided (sanitize so names with spaces or special
+        # characters cannot produce invalid filenames)
         if prompt_name:
-            filename_parts.append(prompt_name)
+            clean_name = "".join(c if c.isalnum() else "_" for c in prompt_name)
+            filename_parts.append(clean_name)
 
         # Add pass suffix if provided
         if pass_suffix:
@@ -1815,6 +1801,7 @@ class PromptChainRunner:
                 # Execute prompts in sequence for this input file
                 current_input = input_file
                 file_successful = True
+                accumulated = False  # True once step output has been appended to final_output
 
                 for step_display, prompt_config in sorted_prompts:
                     # Check if this step should be skipped due to restart logic
@@ -1823,11 +1810,17 @@ class PromptChainRunner:
                         self.console.print_step_result(step_display, self._get_prompt_name(prompt_config), "skipped", True, 0.0, skipped=True)
                         self.status_manager.update_step_skipped(input_file.name, step_display, self._get_prompt_name(prompt_config) or "", "restart")
 
-                        # Get the intermediate output from the previous run for this step
+                        # Resume from this completed step's real output. Prefer the
+                        # path recorded in the status file (it lives in the prior
+                        # run's preserved temp dir); fall back to the current temp
+                        # dir for status files written before output paths were tracked.
+                        stored_output = self.status_manager.get_step_output_path(input_file.name, step_display)
                         intermediate_filename = self._get_intermediate_filename(input_file, step_display, self._get_prompt_name(prompt_config))
-                        intermediate_file = self.temp_dir / intermediate_filename
-                        if intermediate_file.exists():
-                            current_input = intermediate_file
+                        fallback_file = self.temp_dir / intermediate_filename
+                        if stored_output and Path(stored_output).exists():
+                            current_input = Path(stored_output)
+                        elif fallback_file.exists():
+                            current_input = fallback_file
                         continue
 
                     # Process this step normally (using existing step processing logic)
@@ -1841,11 +1834,18 @@ class PromptChainRunner:
                     intermediate_filename = self._get_intermediate_filename(input_file, step_display, self._get_prompt_name(prompt_config))
                     current_input = self.temp_dir / intermediate_filename
 
+                    # When appending is enabled, accumulate this step's output into
+                    # the final file rather than overwriting it at the end.
+                    if self._accumulate_if_appending(current_input, final_output, step_display, prompt_config):
+                        accumulated = True
+
                 # Add this file's results to the overall execution results
                 self.execution_results.append(file_result)
                 if file_successful:
-                    # Copy the last intermediate file to the final output location
-                    if current_input != input_file and current_input.exists():
+                    # Copy the last intermediate file to the final output location.
+                    # Skip this when output was accumulated, or it would clobber the
+                    # appended final file with only the last step's content.
+                    if current_input != input_file and current_input.exists() and not accumulated:
                         try:
                             shutil.copy2(current_input, final_output)
                             formatted_size = self._format_file_size(final_output)
@@ -2018,22 +2018,46 @@ class PromptChainRunner:
                 logging.error(f"Chain execution failed at Step {step_display}")
                 return False
 
-        # For simplicity, assume single pass execution (this can be expanded later)
-        # Determine output file for this step
+        # Determine the canonical output file for this step (final pass lands here)
         intermediate_filename = self._get_intermediate_filename(input_file, step_display, prompt_name)
         current_output = self.temp_dir / intermediate_filename
 
-        # Execute the prompt runner for this step
-        step_success, step_error_message = self._run_prompt_runner(prompt_config, current_input, current_output, step_display)
+        # Execute the prompt runner once per pass. Each pass's output becomes the
+        # next pass's input (content chaining).
+        pass_input = current_input
+        step_success = True
+        step_error_message = None
+        for pass_num in range(1, passes + 1):
+            if passes > 1:
+                logging.info(f"Step {step_display}: pass {pass_num} of {passes}")
 
-        step_execution_time = time.time() - step_start_time
+            step_success, step_error_message = self._run_prompt_runner(
+                prompt_config, pass_input, current_output, step_display)
+            if not step_success:
+                break
 
-        if step_success:
-            # Verify output file was created and has content
-            if not self._verify_output_file(current_output, step_display, current_input, step_settings):
+            # Verify this pass produced usable output before chaining it forward
+            if not self._verify_output_file(current_output, step_display, pass_input, step_settings):
                 step_success = False
                 step_error_message = "Output file verification failed"
                 logging.error(f"Step {step_display}: verification failed")
+                break
+
+            # Chain into the next pass. Copy this pass's output to a stable
+            # pass-input file so we never read and write the same path at once.
+            if pass_num < passes:
+                pass_filename = self._get_intermediate_filename(
+                    input_file, step_display, prompt_name, pass_suffix=f"pass_{pass_num}")
+                pass_input = self.temp_dir / pass_filename
+                shutil.copy2(current_output, pass_input)
+
+        step_execution_time = time.time() - step_start_time
+
+        # Execute postscript after a successful step. A postscript failure is
+        # logged but does not fail the step (per documented behavior).
+        if step_success and postscript:
+            if not self._execute_single_script(postscript, "postscript", step_display, current_input, current_output):
+                logging.warning(f"Step {step_display}: Postscript failed (continuing)")
 
         if step_success:
             # Get formatted file size for display
@@ -2042,8 +2066,10 @@ class PromptChainRunner:
             # Clean console output with timing
             self.console.print_step_result(step_display, prompt_name, formatted_size, True, step_execution_time)
 
-            # Update status tracking for successful completion
-            self.status_manager.update_step_complete(input_file.name, step_display, step_execution_time, formatted_size)
+            # Update status tracking for successful completion (record the output
+            # path so a later restart can resume from this step's real output)
+            self.status_manager.update_step_complete(input_file.name, step_display, step_execution_time, formatted_size,
+                                                     output_path=str(current_output))
 
             # Convert step output if configured
             self._convert_step_output(current_output, prompt_config, step_display)

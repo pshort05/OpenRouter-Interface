@@ -7,23 +7,32 @@ set -e
 echo "🌐 OpenRouter Web Interface Starter"
 echo "=================================="
 
-# Check if virtual environment exists and activate it
-if [ -d "openrouter-venv" ]; then
-    echo "🔧 Activating virtual environment..."
-    source openrouter-venv/bin/activate
-    echo "✅ Virtual environment activated: $VIRTUAL_ENV"
+# Locate the virtual environment's interpreter directly.
+# NOTE: we intentionally do NOT `source openrouter-venv/bin/activate`. This venv was
+# created under a different (Dropbox-synced) path, so its activate script hardcodes a
+# stale VIRTUAL_ENV and hijacks the shell to the wrong environment. Calling the
+# interpreter by path uses the correct, local site-packages.
+VENV_PY="openrouter-venv/bin/python"
+if [ -x "$VENV_PY" ]; then
+    echo "🔧 Using virtual environment interpreter: $VENV_PY"
 else
-    echo "❌ Error: No virtual environment found"
+    echo "❌ Error: No virtual environment interpreter found at $VENV_PY"
     echo "Please run ./install.sh first to set up the environment"
     exit 1
 fi
 
+# Import this project's source, not a synced copy installed elsewhere in the venv.
+export PYTHONPATH="src:$PYTHONPATH"
+
+# Port for this instance (5000 is used by another local program).
+PORT=3849
+
 # Verify Flask is available
 echo "🔍 Checking Flask installation..."
-if ! python3 -c "import flask; print('Flask version:', flask.__version__)" 2>/dev/null; then
+if ! "$VENV_PY" -c "import flask; print('Flask version:', flask.__version__)" 2>/dev/null; then
     echo "❌ Flask not found in virtual environment"
     echo "Installing Flask..."
-    pip install flask werkzeug
+    "$VENV_PY" -m pip install flask werkzeug
     echo "✅ Flask installed"
 fi
 
@@ -42,24 +51,9 @@ if [ -z "$OPENROUTER_API_KEY" ]; then
     fi
 fi
 
-# Check if templates exist and create/update them
-if [ ! -d "templates" ] || [ ! -f "templates/index.html" ]; then
-    echo "📋 Creating/updating templates..."
-    python3 -c "
-import sys, os
-sys.path.insert(0, 'src')
-try:
-    from openrouter_interface.create_templates import main
-    # Change to the project root directory to ensure templates are created in the right place
-    os.chdir('.')
-    main()
-    print('✅ Templates created/updated successfully')
-except Exception as e:
-    print('❌ Error creating templates:', str(e))
-    import sys
-    sys.exit(1)
-    "
-fi
+# Templates ship with the package (src/openrouter_interface/templates/) and are served
+# from there by Flask. The legacy create_templates step is intentionally not run: it
+# wrote to a separate root ./templates/ directory the app never reads.
 
 # Check if prompts registry exists
 if [ ! -f "prompts_registry.yaml" ]; then
@@ -70,32 +64,29 @@ fi
 echo ""
 echo "🚀 Starting OpenRouter Web Interface..."
 
-# Set the Python path to include the src directory
-export PYTHONPATH="src:$PYTHONPATH"
-
 echo "🔧 Running directly with Python module..."
 
-# Start the web application
+# Start the web application (PYTHONPATH was exported above)
 if [ "$1" = "--debug" ] || [ "$1" = "-d" ]; then
     echo "🛠️  Starting in debug mode..."
-    python3 -m openrouter_interface.web --debug --foreground
+    "$VENV_PY" -m openrouter_interface.web --port "$PORT" --debug --foreground
 elif [ "$1" = "--foreground" ] || [ "$1" = "-f" ]; then
     echo "🖥️  Starting in foreground mode..."
-    python3 -m openrouter_interface.web --foreground
+    "$VENV_PY" -m openrouter_interface.web --port "$PORT" --foreground
 else
     echo "🏭 Starting in production mode (background)..."
-    python3 -m openrouter_interface.web
+    "$VENV_PY" -m openrouter_interface.web --port "$PORT"
     echo ""
     echo "🎉 Web server is now running in the background!"
     echo ""
     echo "🌐 Network Access:"
     echo "  • The server is accessible from ANY device on your local network"
-    echo "  • From other computers: http://$(hostname -I | awk '{print $1}'):5000"
+    echo "  • From other computers: http://$(hostname -I | awk '{print $1}'):$PORT"
     echo "  • From phones/tablets: Use the same URL above"
-    echo "  • From this computer: http://localhost:5000"
+    echo "  • From this computer: http://localhost:$PORT"
     echo ""
     echo "🔧 Troubleshooting Network Access:"
-    echo "  • If blocked by firewall, run: sudo ufw allow 5000"
+    echo "  • If blocked by firewall, run: sudo ufw allow $PORT"
     echo "  • Check your local IP: ip addr show | grep 'inet '"
     echo "  • Server logs: tail -f openrouter_web.log"
     echo ""

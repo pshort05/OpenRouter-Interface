@@ -90,11 +90,29 @@ class ConfigManager:
             # Track which keys were explicitly set by the user
             self.user_specified_keys = self._get_all_keys(user_config)
 
-            default_config.update(user_config)
+            self._deep_merge(default_config, user_config)
         else:
             logging.info("Configuration file " + self.config_file + " not found, using defaults")
             
         return default_config
+
+    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        """Recursively merge override into base.
+
+        When both values for a key are dicts, merge them recursively so that
+        partial nested overrides preserve sibling defaults. Otherwise the
+        override value replaces the base value. Mutates and returns base.
+        """
+        for key, value in override.items():
+            if (
+                key in base
+                and isinstance(base[key], dict)
+                and isinstance(value, dict)
+            ):
+                self._deep_merge(base[key], value)
+            else:
+                base[key] = value
+        return base
 
     def _get_all_keys(self, config_dict: Dict[str, Any], prefix: str = '') -> set:
         """Recursively get all keys from a nested dictionary."""
